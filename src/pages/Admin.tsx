@@ -58,9 +58,12 @@ const Admin = () => {
 
   useEffect(() => { fetchProperties(); }, [fetchProperties]);
 
+  const navigate = useNavigate();
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     toast.success("Logout realizado.");
+    navigate("/");
   };
 
   if (authLoading) {
