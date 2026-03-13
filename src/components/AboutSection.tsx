@@ -41,11 +41,8 @@ const AboutSection = () => {
             <h2 className="font-display text-3xl sm:text-4xl font-bold text-foreground mt-2 mb-6">
               Talita Muniz
             </h2>
-            <p className="text-muted-foreground leading-relaxed mb-4">
-              Cearense apaixonada pelo mercado imobiliário, Talita Muniz fundou a <strong className="text-foreground">Simply Imóveis</strong> com a missão de transformar a experiência de compra e venda de imóveis em Fortaleza.
-            </p>
             <p className="text-muted-foreground leading-relaxed mb-8">
-              Com atendimento personalizado e transparente, ela ajuda seus clientes a encontrarem não apenas um imóvel, mas um verdadeiro lar. Sua jovialidade e energia contagiam todos ao redor, tornando cada negociação uma experiência única.
+              Cearense apaixonada por Fortaleza, Talita Muniz une a precisão da Administração de Empresas com a vivência prática como construtora de médio e alto padrão. Essa visão 360º do mercado imobiliário permite que ela ofereça uma assessoria técnica e comercial incomparável, avaliando cada propriedade com o rigor de quem entende o processo do alicerce ao acabamento. Movida pela paixão por vendas e com um perfil altamente focado e profissional, sua missão é clara: guiar você na conquista de um patrimônio sólido, garantindo um lar que entregue verdadeira qualidade de vida, conforto e segurança, seja nos endereços mais nobres da capital ou em polos de alta valorização como o Eusébio.
             </p>
 
             <div className="grid grid-cols-2 gap-6">
