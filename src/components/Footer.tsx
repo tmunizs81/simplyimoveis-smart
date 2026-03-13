@@ -2,6 +2,19 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Instagram, Phone, Mail } from "lucide-react";
 
 const Footer = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const scrollToSection = (id: string) => {
+    if (location.pathname !== "/") {
+      navigate("/");
+      setTimeout(() => {
+        document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+      }, 300);
+    } else {
+      document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+    }
+  };
   return (
     <footer className="gradient-navy text-accent-foreground section-padding">
       <div className="container-custom">
