@@ -117,14 +117,13 @@ const Navbar = () => {
           >
             <div className="px-6 py-6 space-y-1">
               {navLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  to={link.href}
-                  className="block px-4 py-3 text-sm font-bold uppercase tracking-wider text-muted-foreground hover:text-primary hover:bg-primary/5 rounded-xl transition-all"
-                  onClick={() => setOpen(false)}
+                <button
+                  key={link.label}
+                  onClick={() => { handleNavClick(link); setOpen(false); }}
+                  className="block w-full text-left px-4 py-3 text-sm font-bold uppercase tracking-wider text-muted-foreground hover:text-primary hover:bg-primary/5 rounded-xl transition-all"
                 >
                   {link.label}
-                </Link>
+                </button>
               ))}
               <Link
                 to="/admin"
