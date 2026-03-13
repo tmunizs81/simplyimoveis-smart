@@ -15,6 +15,22 @@ const Navbar = () => {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const handleNavClick = (link: typeof navLinks[0]) => {
+    if (link.hash) {
+      if (location.pathname !== "/") {
+        navigate("/");
+        setTimeout(() => {
+          document.getElementById(link.hash)?.scrollIntoView({ behavior: "smooth" });
+        }, 300);
+      } else {
+        document.getElementById(link.hash)?.scrollIntoView({ behavior: "smooth" });
+      }
+    } else {
+      navigate(link.href);
+    }
+  };
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
