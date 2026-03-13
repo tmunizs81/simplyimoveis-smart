@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import Navbar from "@/components/Navbar";
@@ -57,9 +58,12 @@ const Admin = () => {
 
   useEffect(() => { fetchProperties(); }, [fetchProperties]);
 
+  const navigate = useNavigate();
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     toast.success("Logout realizado.");
+    navigate("/");
   };
 
   if (authLoading) {
