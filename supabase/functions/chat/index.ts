@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,25 +11,95 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { messages } = await req.json();
+    const { messages, propertyId } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const systemPrompt = `Você é a assistente virtual da Simply Imóveis, imobiliária da corretora Talita Muniz em Fortaleza, Ceará.
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
-Seu papel:
-- Ajudar clientes a encontrar imóveis ideais
-- Responder dúvidas sobre imóveis disponíveis, financiamento, documentação
-- Agendar visitas e encaminhar para a Talita
-- Ser cordial, profissional e usar linguagem acessível
-- Sempre mencionar que a Talita pode ajudar pessoalmente
+    // Fetch properties from database for context
+    let propertiesContext = "";
 
-Informações de contato:
-- Telefone/WhatsApp: (85) 99999-0000
-- E-mail: contato@simplyimoveis.com.br
-- Localização: Fortaleza, CE
+    if (propertyId) {
+      // Specific property detail
+      const { data: prop } = await supabase
+        .from("properties")
+        .select("*, property_media(file_path, file_type)")
+        .eq("id", propertyId)
+        .eq("active", true)
+        .single();
 
-Responda sempre em português brasileiro, de forma simpática e prestativa.`;
+      if (prop) {
+        propertiesContext = `\n\n--- IMÓVEL EM FOCO (ID: ${prop.id}) ---
+Título: ${prop.title}
+Endereço: ${prop.address}
+Preço: R$ ${Number(prop.price).toLocaleString("pt-BR")}
+Tipo: ${prop.type}
+Status: ${prop.status === "venda" ? "À Venda" : "Para Aluguel"}
+Quartos: ${prop.bedrooms} | Banheiros: ${prop.bathrooms} | Área: ${prop.area}m²
+Descrição: ${prop.description || "Sem descrição"}
+Destaque: ${prop.featured ? "Sim" : "Não"}
+---`;
+      }
+    }
+
+    // Fetch all active properties for general context
+    const { data: allProps } = await supabase
+      .from("properties")
+      .select("id, title, address, price, type, status, bedrooms, bathrooms, area, description, featured")
+      .eq("active", true)
+      .order("featured", { ascending: false })
+      .limit(50);
+
+    if (allProps && allProps.length > 0) {
+      propertiesContext += "\n\n--- IMÓVEIS DISPONÍVEIS ---\n";
+      propertiesContext += allProps
+        .map(
+          (p) =>
+            `• [ID:${p.id}] ${p.title} — ${p.address} — R$ ${Number(p.price).toLocaleString("pt-BR")} — ${p.type} — ${p.status === "venda" ? "Venda" : "Aluguel"} — ${p.bedrooms}q/${p.bathrooms}b/${p.area}m² ${p.featured ? "⭐" : ""} ${p.description ? `— ${p.description.slice(0, 100)}` : ""}`
+        )
+        .join("\n");
+    }
+
+    const systemPrompt = `Você é a Luma, assistente virtual premium da Simply Imóveis, imobiliária da corretora Talita Muniz em Fortaleza, Ceará.
+
+## Personalidade
+- Sofisticada, acolhedora e extremamente profissional
+- Conhecimento profundo do mercado imobiliário de Fortaleza
+- Usa linguagem clara, elegante e acessível
+- Responde sempre em português brasileiro
+- Usa emojis com moderação para dar personalidade
+
+## Capacidades
+1. **Consultor Imobiliário**: Responde sobre qualquer imóvel do portfólio usando dados reais do banco
+2. **Agendador de Visitas**: Quando o cliente demonstra interesse em visitar, coleta: nome, telefone, data e horário preferidos
+3. **Especialista em Financiamento**: Orienta sobre opções de financiamento, documentação necessária
+4. **Conhecedor da Região**: Informações sobre bairros de Fortaleza e região metropolitana
+
+## Regras de Agendamento
+Quando o cliente quiser agendar uma visita:
+1. Pergunte qual imóvel (se não ficou claro)
+2. Peça o nome completo
+3. Peça o telefone com DDD
+4. Pergunte data e horário preferidos
+5. Quando tiver TODOS os dados, responda com um bloco especial no formato:
+   <<<AGENDAR_VISITA>>>
+   {"client_name":"Nome","client_phone":"(85) 99999-9999","client_email":"email@opcional.com","preferred_date":"dd/mm/aaaa","preferred_time":"HH:mm","property_id":"uuid-do-imovel","notes":"observações opcionais"}
+   <<<FIM_AGENDAMENTO>>>
+   Seguido de uma mensagem de confirmação amigável.
+
+## Dados do Portfólio
+${propertiesContext || "Nenhum imóvel cadastrado no momento."}
+
+## Informações da Imobiliária
+- Corretora: Talita Muniz
+- WhatsApp: (85) 99999-0000
+- Localização: Fortaleza, CE e Região Metropolitana
+- CRECI/CE ativo
+
+Se não souber uma informação específica, oriente o cliente a falar diretamente com a Talita pelo WhatsApp.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -38,10 +109,7 @@ Responda sempre em português brasileiro, de forma simpática e prestativa.`;
       },
       body: JSON.stringify({
         model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: systemPrompt },
-          ...messages,
-        ],
+        messages: [{ role: "system", content: systemPrompt }, ...messages],
         stream: true,
       }),
     });
