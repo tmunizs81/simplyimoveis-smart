@@ -81,11 +81,7 @@ const Admin = () => {
     }
   };
 
-  const handleSignup = async () => {
-    const { error } = await supabase.auth.signUp({ email, password });
-    if (error) toast.error(error.message);
-    else toast.success("Conta criada! Verifique seu e-mail.");
-  };
+
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
