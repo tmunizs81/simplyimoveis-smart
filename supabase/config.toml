@@ -2,3 +2,6 @@ project_id = "tbsemoedejunwisjswyw"
 
 [functions.chat]
 verify_jwt = false
+
+[functions.create-admin]
+verify_jwt = false
