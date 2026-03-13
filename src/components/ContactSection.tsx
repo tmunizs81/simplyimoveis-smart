@@ -2,18 +2,33 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { Send, Phone, Mail, MapPin } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 const ContactSection = () => {
-  const [form, setForm] = useState({ name: "", email: "", phone: "", message: "" });
+  const [form, setForm] = useState({ name: "", email: "", phone: "", subject: "", message: "" });
   const [sending, setSending] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!form.name.trim() || !form.email.trim() || !form.message.trim()) {
+      toast.error("Preencha os campos obrigatórios.");
+      return;
+    }
     setSending(true);
-    // Simulate send
-    await new Promise((r) => setTimeout(r, 1000));
-    toast.success("Mensagem enviada com sucesso! Entraremos em contato em breve.");
-    setForm({ name: "", email: "", phone: "", message: "" });
+    const { error } = await supabase.from("contact_submissions").insert({
+      name: form.name.trim(),
+      email: form.email.trim(),
+      phone: form.phone.trim() || null,
+      subject: form.subject.trim() || null,
+      message: form.message.trim(),
+    });
+    if (error) {
+      toast.error("Erro ao enviar mensagem. Tente novamente.");
+      console.error(error);
+    } else {
+      toast.success("Mensagem enviada com sucesso! Entraremos em contato em breve.");
+      setForm({ name: "", email: "", phone: "", subject: "", message: "" });
+    }
     setSending(false);
   };
 
@@ -80,7 +95,7 @@ const ContactSection = () => {
           >
             <input
               type="text"
-              placeholder="Seu nome"
+              placeholder="Seu nome *"
               required
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -88,21 +103,30 @@ const ContactSection = () => {
             />
             <input
               type="email"
-              placeholder="Seu e-mail"
+              placeholder="Seu e-mail *"
               required
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
               className="w-full px-4 py-3 rounded-lg bg-background border border-input text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-ring outline-none"
             />
-            <input
-              type="tel"
-              placeholder="Seu telefone"
-              value={form.phone}
-              onChange={(e) => setForm({ ...form, phone: e.target.value })}
-              className="w-full px-4 py-3 rounded-lg bg-background border border-input text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-ring outline-none"
-            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <input
+                type="tel"
+                placeholder="Seu telefone"
+                value={form.phone}
+                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                className="w-full px-4 py-3 rounded-lg bg-background border border-input text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-ring outline-none"
+              />
+              <input
+                type="text"
+                placeholder="Assunto"
+                value={form.subject}
+                onChange={(e) => setForm({ ...form, subject: e.target.value })}
+                className="w-full px-4 py-3 rounded-lg bg-background border border-input text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-ring outline-none"
+              />
+            </div>
             <textarea
-              placeholder="Sua mensagem"
+              placeholder="Sua mensagem *"
               required
               rows={4}
               value={form.message}

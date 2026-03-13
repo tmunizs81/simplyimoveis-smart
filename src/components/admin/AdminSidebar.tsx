@@ -1,6 +1,6 @@
-import { Building2, KeyRound, UserPlus, LogOut, LayoutDashboard } from "lucide-react";
+import { Building2, KeyRound, UserPlus, LogOut, LayoutDashboard, MessageSquare } from "lucide-react";
 
-type AdminTab = "properties" | "password" | "users";
+type AdminTab = "properties" | "contacts" | "password" | "users";
 
 interface AdminSidebarProps {
   activeTab: AdminTab;
@@ -11,6 +11,7 @@ interface AdminSidebarProps {
 
 const tabs = [
   { id: "properties" as AdminTab, label: "Imóveis", icon: Building2, description: "Gerenciar listagens" },
+  { id: "contacts" as AdminTab, label: "Contatos", icon: MessageSquare, description: "Solicitações recebidas" },
   { id: "password" as AdminTab, label: "Senha", icon: KeyRound, description: "Alterar credenciais" },
   { id: "users" as AdminTab, label: "Usuários", icon: UserPlus, description: "Cadastrar acessos" },
 ];

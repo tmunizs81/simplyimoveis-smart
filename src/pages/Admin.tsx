@@ -9,11 +9,12 @@ import PropertyForm from "@/components/admin/PropertyForm";
 import PropertyList from "@/components/admin/PropertyList";
 import PasswordTab from "@/components/admin/PasswordTab";
 import UsersTab from "@/components/admin/UsersTab";
+import ContactsTab from "@/components/admin/ContactsTab";
 import type { Database } from "@/integrations/supabase/types";
 
 type Property = Database["public"]["Tables"]["properties"]["Row"];
 type MediaRow = Database["public"]["Tables"]["property_media"]["Row"];
-type AdminTab = "properties" | "password" | "users";
+type AdminTab = "properties" | "contacts" | "password" | "users";
 
 const Admin = () => {
   const [user, setUser] = useState<any>(null);
@@ -108,6 +109,7 @@ const Admin = () => {
             />
           )}
 
+          {activeTab === "contacts" && <ContactsTab />}
           {activeTab === "password" && <PasswordTab />}
           {activeTab === "users" && <UsersTab />}
         </main>
