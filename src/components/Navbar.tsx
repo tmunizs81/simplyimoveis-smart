@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, X, Phone } from "lucide-react";
+import { Menu, X, Settings } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import logo from "@/assets/logo.png";
 
@@ -67,14 +67,18 @@ const Navbar = () => {
             );
           })}
 
-          {/* CTA */}
-          <a
-            href="tel:+5585999990000"
-            className="ml-4 gradient-primary text-primary-foreground px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider hover:opacity-90 transition-all flex items-center gap-2 shadow-lg shadow-primary/20"
+          {/* Admin link */}
+          <Link
+            to="/admin"
+            className={`ml-4 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 border ${
+              scrolled
+                ? "text-muted-foreground hover:text-primary border-border hover:border-primary/30"
+                : "text-white/80 hover:text-white border-white/20 hover:border-white/40"
+            }`}
           >
-            <Phone size={14} />
-            Ligar Agora
-          </a>
+            <Settings size={14} />
+            Área Admin
+          </Link>
         </div>
 
         {/* Mobile toggle */}
@@ -106,14 +110,14 @@ const Navbar = () => {
                   {link.label}
                 </Link>
               ))}
-              <a
-                href="tel:+5585999990000"
-                className="block gradient-primary text-primary-foreground px-4 py-3 rounded-xl text-sm font-bold text-center uppercase tracking-wider mt-4"
+              <Link
+                to="/admin"
+                className="block border border-border text-muted-foreground hover:text-primary px-4 py-3 rounded-xl text-sm font-bold text-center uppercase tracking-wider mt-4"
                 onClick={() => setOpen(false)}
               >
-                <Phone size={14} className="inline mr-2" />
-                Ligar Agora
-              </a>
+                <Settings size={14} className="inline mr-2" />
+                Área Admin
+              </Link>
             </div>
           </motion.div>
         )}
