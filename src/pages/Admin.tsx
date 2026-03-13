@@ -81,11 +81,7 @@ const Admin = () => {
     }
   };
 
-  const handleSignup = async () => {
-    const { error } = await supabase.auth.signUp({ email, password });
-    if (error) toast.error(error.message);
-    else toast.success("Conta criada! Verifique seu e-mail.");
-  };
+
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -223,9 +219,6 @@ const Admin = () => {
               </div>
               <button type="submit" className="w-full gradient-primary text-primary-foreground py-3 rounded-lg font-semibold hover:opacity-90 flex items-center justify-center gap-2">
                 <LogIn size={16} /> Entrar
-              </button>
-              <button type="button" onClick={handleSignup} className="w-full border border-border text-muted-foreground py-3 rounded-lg font-medium hover:bg-secondary text-sm">
-                Criar Conta
               </button>
             </form>
           </motion.div>
