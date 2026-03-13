@@ -32,8 +32,8 @@ const Footer = () => {
             <div className="space-y-2">
               <Link to="/" className="block text-accent-foreground/70 text-sm hover:text-terracotta-light transition-colors">Início</Link>
               <Link to="/imoveis" className="block text-accent-foreground/70 text-sm hover:text-terracotta-light transition-colors">Imóveis</Link>
-              <a href="/#sobre" className="block text-accent-foreground/70 text-sm hover:text-terracotta-light transition-colors">Sobre</a>
-              <a href="/#contato" className="block text-accent-foreground/70 text-sm hover:text-terracotta-light transition-colors">Contato</a>
+              <button onClick={() => scrollToSection("sobre")} className="block text-accent-foreground/70 text-sm hover:text-terracotta-light transition-colors">Sobre</button>
+              <button onClick={() => scrollToSection("contato")} className="block text-accent-foreground/70 text-sm hover:text-terracotta-light transition-colors">Contato</button>
             </div>
           </div>
           <div>
