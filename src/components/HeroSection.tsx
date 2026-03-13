@@ -97,15 +97,14 @@ const HeroSection = () => {
           </motion.span>
 
           <h1 className="font-display text-4xl sm:text-5xl lg:text-7xl font-bold text-white leading-[1.1] mb-6">
-            Seu novo lar{" "}
+            A excelência que o seu{" "}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-yellow-400">
-              começa aqui
+              patrimônio exige.
             </span>
           </h1>
 
           <p className="text-white/70 text-lg sm:text-xl mb-10 font-body leading-relaxed max-w-xl">
-            Imóveis exclusivos em Fortaleza e região metropolitana.
-            Atendimento personalizado com Talita Muniz.
+            Comprometimento absoluto com a sua tranquilidade. Da busca inicial à entrega das chaves, garantimos uma jornada segura e impecável nos melhores endereços.
           </p>
 
           {/* Search bar */}
