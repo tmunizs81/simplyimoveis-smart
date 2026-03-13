@@ -48,12 +48,14 @@ const Navbar = () => {
     >
       <div className="container mx-auto flex items-center justify-between h-20 px-4 sm:px-6 lg:px-8">
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-3 group">
-          <img src={logo} alt="SimplyImoveis" className="h-11 w-11 object-contain group-hover:scale-105 transition-transform" />
-          <span className="font-display text-xl font-bold">
-            <span className={scrolled ? "text-foreground" : "text-white"}>Simply</span>
-            <span className="text-primary">Imóveis</span>
-          </span>
+        <Link to="/" className="flex items-center group">
+          <img 
+            src={logo} 
+            alt="SimplyImóveis by Talita Muniz" 
+            className={`h-14 object-contain group-hover:scale-105 transition-transform ${
+              scrolled ? "" : "brightness-0 invert"
+            }`} 
+          />
         </Link>
 
         {/* Desktop nav */}
