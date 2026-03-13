@@ -185,7 +185,7 @@ const PropertyDetail = () => {
         </div>
       </div>
       <Footer />
-      <ChatWidget />
+      <ChatWidget propertyId={id} />
     </div>
   );
 };

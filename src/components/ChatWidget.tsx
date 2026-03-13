@@ -1,13 +1,21 @@
 import { useState, useRef, useEffect } from "react";
-import { MessageCircle, X, Send } from "lucide-react";
+import { MessageCircle, X, Send, Bot, User } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { supabase } from "@/integrations/supabase/client";
+import ReactMarkdown from "react-markdown";
 
 type Message = { role: "user" | "assistant"; content: string };
 
-const ChatWidget = () => {
+const SCHEDULE_REGEX = /<<<AGENDAR_VISITA>>>\s*(\{[\s\S]*?\})\s*<<<FIM_AGENDAMENTO>>>/;
+
+const ChatWidget = ({ propertyId }: { propertyId?: string }) => {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
-    { role: "assistant", content: "Olá! 👋 Sou a assistente virtual da Simply Imóveis. Como posso ajudar você hoje?" },
+    {
+      role: "assistant",
+      content:
+        "Olá! 👋 Sou a **Luma**, assistente virtual da Simply Imóveis. Posso ajudar com informações sobre nossos imóveis, agendar visitas e tirar suas dúvidas. Como posso ajudar?",
+    },
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -16,6 +24,64 @@ const ChatWidget = () => {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  const processSchedule = async (text: string) => {
+    const match = text.match(SCHEDULE_REGEX);
+    if (!match) return;
+
+    try {
+      const visitData = JSON.parse(match[1]);
+
+      // Fetch property info for telegram notification
+      let propertyTitle = "";
+      let propertyAddress = "";
+      if (visitData.property_id) {
+        const { data: prop } = await supabase
+          .from("properties")
+          .select("title, address")
+          .eq("id", visitData.property_id)
+          .single();
+        if (prop) {
+          propertyTitle = prop.title;
+          propertyAddress = prop.address;
+        }
+      }
+
+      // Insert into scheduled_visits
+      await supabase.from("scheduled_visits").insert({
+        property_id: visitData.property_id || null,
+        client_name: visitData.client_name,
+        client_phone: visitData.client_phone,
+        client_email: visitData.client_email || null,
+        preferred_date: visitData.preferred_date,
+        preferred_time: visitData.preferred_time,
+        notes: visitData.notes || null,
+      });
+
+      // Notify via Telegram
+      const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/notify-telegram`;
+      await fetch(CHAT_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+        },
+        body: JSON.stringify({
+          visit: {
+            ...visitData,
+            property_title: propertyTitle,
+            property_address: propertyAddress,
+          },
+        }),
+      });
+    } catch (err) {
+      console.error("Error processing schedule:", err);
+    }
+  };
+
+  const cleanContent = (text: string) => {
+    return text.replace(SCHEDULE_REGEX, "").trim();
+  };
 
   const sendMessage = async () => {
     if (!input.trim() || loading) return;
@@ -33,12 +99,10 @@ const ChatWidget = () => {
           "Content-Type": "application/json",
           Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
-        body: JSON.stringify({ messages: allMessages }),
+        body: JSON.stringify({ messages: allMessages, propertyId }),
       });
 
-      if (!resp.ok || !resp.body) {
-        throw new Error("Erro ao conectar com a IA");
-      }
+      if (!resp.ok || !resp.body) throw new Error("Erro ao conectar");
 
       const reader = resp.body.getReader();
       const decoder = new TextDecoder();
@@ -47,12 +111,15 @@ const ChatWidget = () => {
 
       const upsert = (chunk: string) => {
         assistantSoFar += chunk;
+        const displayContent = cleanContent(assistantSoFar);
         setMessages((prev) => {
           const last = prev[prev.length - 1];
           if (last?.role === "assistant" && prev.length > allMessages.length) {
-            return prev.map((m, i) => (i === prev.length - 1 ? { ...m, content: assistantSoFar } : m));
+            return prev.map((m, i) =>
+              i === prev.length - 1 ? { ...m, content: displayContent } : m
+            );
           }
-          return [...prev, { role: "assistant", content: assistantSoFar }];
+          return [...prev, { role: "assistant", content: displayContent }];
         });
       };
 
@@ -69,18 +136,30 @@ const ChatWidget = () => {
           if (line.endsWith("\r")) line = line.slice(0, -1);
           if (!line.startsWith("data: ")) continue;
           const jsonStr = line.slice(6).trim();
-          if (jsonStr === "[DONE]") { streamDone = true; break; }
+          if (jsonStr === "[DONE]") {
+            streamDone = true;
+            break;
+          }
           try {
             const parsed = JSON.parse(jsonStr);
             const content = parsed.choices?.[0]?.delta?.content;
             if (content) upsert(content);
-          } catch { /* partial */ }
+          } catch {
+            /* partial */
+          }
         }
       }
+
+      // After stream ends, check for scheduled visit
+      await processSchedule(assistantSoFar);
     } catch {
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: "Desculpe, ocorreu um erro. Tente novamente mais tarde ou entre em contato pelo telefone (85) 99999-0000." },
+        {
+          role: "assistant",
+          content:
+            "Desculpe, ocorreu um erro. Tente novamente ou fale pelo WhatsApp: **(85) 99999-0000**.",
+        },
       ]);
     } finally {
       setLoading(false);
@@ -95,43 +174,81 @@ const ChatWidget = () => {
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="fixed bottom-24 right-4 sm:right-6 z-50 w-[340px] sm:w-[380px] max-h-[500px] glass-card rounded-2xl shadow-2xl flex flex-col overflow-hidden border"
+            className="fixed bottom-28 right-4 sm:right-6 z-50 w-[360px] sm:w-[400px] max-h-[550px] bg-card rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-border"
           >
-            <div className="gradient-primary p-4 flex items-center justify-between">
-              <div>
-                <h3 className="text-primary-foreground font-semibold text-sm">Simply Imóveis</h3>
-                <p className="text-primary-foreground/70 text-xs">Assistente Virtual</p>
+            {/* Header */}
+            <div className="bg-gradient-to-r from-primary to-primary/80 p-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+                <Bot size={20} className="text-primary-foreground" />
               </div>
-              <button onClick={() => setOpen(false)} className="text-primary-foreground/70 hover:text-primary-foreground">
+              <div className="flex-1">
+                <h3 className="text-primary-foreground font-bold text-sm">Luma · Simply Imóveis</h3>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                  <p className="text-primary-foreground/80 text-xs">Online agora</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setOpen(false)}
+                className="text-primary-foreground/70 hover:text-primary-foreground transition-colors"
+              >
                 <X size={18} />
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-3 max-h-[340px]">
+            {/* Messages */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-3 max-h-[380px] bg-background/50">
               {messages.map((msg, i) => (
-                <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                <div
+                  key={i}
+                  className={`flex gap-2 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
+                >
+                  {msg.role === "assistant" && (
+                    <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-1">
+                      <Bot size={14} className="text-primary" />
+                    </div>
+                  )}
                   <div
-                    className={`max-w-[80%] px-3 py-2 rounded-xl text-sm ${
+                    className={`max-w-[80%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed ${
                       msg.role === "user"
-                        ? "gradient-primary text-primary-foreground rounded-br-sm"
-                        : "bg-secondary text-secondary-foreground rounded-bl-sm"
+                        ? "bg-primary text-primary-foreground rounded-br-md"
+                        : "bg-secondary text-secondary-foreground rounded-bl-md"
                     }`}
                   >
-                    {msg.content}
+                    {msg.role === "assistant" ? (
+                      <div className="prose prose-sm dark:prose-invert max-w-none [&>p]:m-0 [&>ul]:my-1 [&>ol]:my-1">
+                        <ReactMarkdown>{msg.content}</ReactMarkdown>
+                      </div>
+                    ) : (
+                      msg.content
+                    )}
                   </div>
+                  {msg.role === "user" && (
+                    <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center flex-shrink-0 mt-1">
+                      <User size={14} className="text-muted-foreground" />
+                    </div>
+                  )}
                 </div>
               ))}
               {loading && (
-                <div className="flex justify-start">
-                  <div className="bg-secondary text-secondary-foreground px-3 py-2 rounded-xl text-sm rounded-bl-sm">
-                    <span className="animate-pulse">Digitando...</span>
+                <div className="flex gap-2 justify-start">
+                  <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <Bot size={14} className="text-primary" />
+                  </div>
+                  <div className="bg-secondary text-secondary-foreground px-3.5 py-2.5 rounded-2xl rounded-bl-md text-sm">
+                    <div className="flex gap-1">
+                      <span className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-bounce [animation-delay:0ms]" />
+                      <span className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-bounce [animation-delay:150ms]" />
+                      <span className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-bounce [animation-delay:300ms]" />
+                    </div>
                   </div>
                 </div>
               )}
               <div ref={bottomRef} />
             </div>
 
-            <div className="p-3 border-t border-border">
+            {/* Input */}
+            <div className="p-3 border-t border-border bg-card">
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -139,26 +256,37 @@ const ChatWidget = () => {
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && sendMessage()}
                   placeholder="Digite sua mensagem..."
-                  className="flex-1 px-3 py-2 rounded-lg bg-background border border-input text-sm text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-ring outline-none"
+                  className="flex-1 px-3.5 py-2.5 rounded-xl bg-background border border-input text-sm text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-ring outline-none transition-shadow"
                 />
                 <button
                   onClick={sendMessage}
                   disabled={loading || !input.trim()}
-                  className="gradient-primary text-primary-foreground p-2 rounded-lg hover:opacity-90 disabled:opacity-50"
+                  className="bg-primary text-primary-foreground p-2.5 rounded-xl hover:opacity-90 disabled:opacity-50 transition-opacity"
                 >
                   <Send size={16} />
                 </button>
               </div>
+              <p className="text-[10px] text-muted-foreground/60 text-center mt-2">
+                Powered by Luma AI · Simply Imóveis
+              </p>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
+      {/* Chat toggle button */}
       <button
         onClick={() => setOpen(!open)}
-        className="fixed bottom-6 right-4 sm:right-6 z-50 gradient-primary text-primary-foreground w-14 h-14 rounded-full shadow-lg hover:opacity-90 transition-opacity flex items-center justify-center"
+        aria-label="Abrir chat"
+        className="fixed bottom-6 right-[5.5rem] sm:right-24 z-50 group"
       >
-        {open ? <X size={24} /> : <MessageCircle size={24} />}
+        <span className="absolute inset-0 rounded-full bg-primary animate-ping opacity-20" />
+        <div className="relative w-14 h-14 rounded-full bg-primary hover:bg-primary/90 shadow-2xl shadow-primary/30 flex items-center justify-center transition-all duration-300 group-hover:scale-110">
+          {open ? <X size={24} className="text-primary-foreground" /> : <Bot size={26} className="text-primary-foreground" />}
+        </div>
+        <span className="absolute right-full mr-3 top-1/2 -translate-y-1/2 bg-foreground text-background text-xs font-semibold px-3 py-2 rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-lg">
+          Fale com a Luma
+        </span>
       </button>
     </>
   );
