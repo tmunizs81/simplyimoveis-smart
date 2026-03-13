@@ -1,6 +1,6 @@
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Instagram, Phone, Mail } from "lucide-react";
-import logo from "@/assets/logo-simply-clean.png";
+import logo from "@/assets/logo.png";
 
 const Footer = () => {
   const navigate = useNavigate();
