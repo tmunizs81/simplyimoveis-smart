@@ -59,11 +59,11 @@ const Navbar = () => {
         {/* Desktop nav */}
         <div className="hidden md:flex items-center gap-1">
           {navLinks.map((link) => {
-            const isActive = location.pathname === link.href;
+            const isActive = !link.hash && location.pathname === link.href;
             return (
-              <Link
-                key={link.href}
-                to={link.href}
+              <button
+                key={link.label}
+                onClick={() => handleNavClick(link)}
                 className={`relative px-4 py-2 text-xs font-bold uppercase tracking-[0.15em] transition-colors rounded-lg ${
                   isActive
                     ? "text-primary"
@@ -79,7 +79,7 @@ const Navbar = () => {
                     className="absolute bottom-0 left-4 right-4 h-0.5 bg-primary rounded-full"
                   />
                 )}
-              </Link>
+              </button>
             );
           })}
 
