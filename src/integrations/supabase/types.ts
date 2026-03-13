@@ -14,7 +14,95 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      properties: {
+        Row: {
+          active: boolean
+          address: string
+          area: number
+          bathrooms: number
+          bedrooms: number
+          created_at: string
+          description: string | null
+          featured: boolean
+          id: string
+          price: number
+          status: Database["public"]["Enums"]["property_status"]
+          title: string
+          type: Database["public"]["Enums"]["property_type"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          active?: boolean
+          address: string
+          area?: number
+          bathrooms?: number
+          bedrooms?: number
+          created_at?: string
+          description?: string | null
+          featured?: boolean
+          id?: string
+          price: number
+          status?: Database["public"]["Enums"]["property_status"]
+          title: string
+          type?: Database["public"]["Enums"]["property_type"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          active?: boolean
+          address?: string
+          area?: number
+          bathrooms?: number
+          bedrooms?: number
+          created_at?: string
+          description?: string | null
+          featured?: boolean
+          id?: string
+          price?: number
+          status?: Database["public"]["Enums"]["property_status"]
+          title?: string
+          type?: Database["public"]["Enums"]["property_type"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      property_media: {
+        Row: {
+          created_at: string
+          file_path: string
+          file_type: string
+          id: string
+          property_id: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          file_path: string
+          file_type: string
+          id?: string
+          property_id: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          file_path?: string
+          file_type?: string
+          id?: string
+          property_id?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_media_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +111,13 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      property_status: "venda" | "aluguel"
+      property_type:
+        | "Apartamento"
+        | "Casa"
+        | "Cobertura"
+        | "Terreno"
+        | "Sala Comercial"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +244,15 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      property_status: ["venda", "aluguel"],
+      property_type: [
+        "Apartamento",
+        "Casa",
+        "Cobertura",
+        "Terreno",
+        "Sala Comercial",
+      ],
+    },
   },
 } as const
