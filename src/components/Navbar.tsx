@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Menu, X, Settings } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import logo from "@/assets/logo-simply-clean.png";
+import logo from "@/assets/logo.png";
 
 const navLinks = [
   { label: "Início", href: "/", hash: "" },
