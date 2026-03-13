@@ -21,11 +21,16 @@ const Footer = () => {
       <div className="container-custom">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
           <div>
-            <img 
-              src={logo} 
-              alt="SimplyImóveis by Talita Muniz" 
-              className="h-16 object-contain brightness-0 invert mb-4" 
-            />
+            <div className="flex items-center gap-3 mb-4">
+              <img src={logo} alt="SimplyImóveis" className="h-11 w-11 object-contain" />
+              <div className="flex flex-col leading-tight">
+                <span className="font-display text-xl font-bold">
+                  <span className="text-accent-foreground">simply</span>
+                  <span className="text-primary">Imóveis</span>
+                </span>
+                <span className="text-accent-foreground/50 text-[10px] tracking-widest">— by Talita Muniz —</span>
+              </div>
+            </div>
             <p className="text-accent-foreground/70 text-sm leading-relaxed">
               Sua imobiliária de confiança em Fortaleza. Encontre o imóvel perfeito com atendimento personalizado.
             </p>
