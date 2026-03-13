@@ -110,14 +110,14 @@ const Navbar = () => {
                   {link.label}
                 </Link>
               ))}
-              <a
-                href="tel:+5585999990000"
-                className="block gradient-primary text-primary-foreground px-4 py-3 rounded-xl text-sm font-bold text-center uppercase tracking-wider mt-4"
+              <Link
+                to="/admin"
+                className="block border border-border text-muted-foreground hover:text-primary px-4 py-3 rounded-xl text-sm font-bold text-center uppercase tracking-wider mt-4"
                 onClick={() => setOpen(false)}
               >
-                <Phone size={14} className="inline mr-2" />
-                Ligar Agora
-              </a>
+                <Settings size={14} className="inline mr-2" />
+                Área Admin
+              </Link>
             </div>
           </motion.div>
         )}
