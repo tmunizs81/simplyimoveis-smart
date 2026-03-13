@@ -109,6 +109,7 @@ const Admin = () => {
             />
           )}
 
+          {activeTab === "contacts" && <ContactsTab />}
           {activeTab === "password" && <PasswordTab />}
           {activeTab === "users" && <UsersTab />}
         </main>
