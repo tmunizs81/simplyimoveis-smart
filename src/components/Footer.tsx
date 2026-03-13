@@ -1,5 +1,6 @@
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Instagram, Phone, Mail } from "lucide-react";
+import logo from "@/assets/logo-simply-clean.png";
 
 const Footer = () => {
   const navigate = useNavigate();
@@ -20,9 +21,11 @@ const Footer = () => {
       <div className="container-custom">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
           <div>
-            <h3 className="font-display text-2xl font-bold mb-4">
-              Simply<span className="text-terracotta-light">Imóveis</span>
-            </h3>
+            <img 
+              src={logo} 
+              alt="SimplyImóveis by Talita Muniz" 
+              className="h-16 object-contain brightness-0 invert mb-4" 
+            />
             <p className="text-accent-foreground/70 text-sm leading-relaxed">
               Sua imobiliária de confiança em Fortaleza. Encontre o imóvel perfeito com atendimento personalizado.
             </p>
