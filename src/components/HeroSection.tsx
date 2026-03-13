@@ -1,19 +1,59 @@
+import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Search, ArrowRight } from "lucide-react";
 import heroBg from "@/assets/hero-bg.jpg";
+import heroDay from "@/assets/hero-day.jpg";
+import heroPortoDunas from "@/assets/hero-porto-dunas.jpg";
+import heroSunset from "@/assets/hero-sunset.jpg";
+
+const slides = [
+  { image: heroBg, alt: "Orla de Fortaleza à noite" },
+  { image: heroDay, alt: "Orla de Fortaleza de dia" },
+  { image: heroPortoDunas, alt: "Porto das Dunas, Ceará" },
+  { image: heroSunset, alt: "Pôr do sol em Fortaleza" },
+];
 
 const HeroSection = () => {
+  const [current, setCurrent] = useState(0);
+
+  const next = useCallback(() => {
+    setCurrent((prev) => (prev + 1) % slides.length);
+  }, []);
+
+  useEffect(() => {
+    const timer = setInterval(next, 6000);
+    return () => clearInterval(timer);
+  }, [next]);
+
   return (
     <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
-      <div
-        className="absolute inset-0 bg-cover bg-center"
-        style={{ backgroundImage: `url(${heroBg})` }}
-      >
-        <div className="absolute inset-0 bg-gradient-to-r from-foreground/80 via-foreground/50 to-transparent" />
-      </div>
+      {/* Background images with crossfade */}
+      {slides.map((slide, i) => (
+        <AnimatePresence key={i}>
+          {i === current && (
+            <motion.div
+              initial={{ opacity: 0, scale: 1.08 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 1.5, ease: "easeInOut" }}
+              className="absolute inset-0"
+            >
+              <img
+                src={slide.image}
+                alt={slide.alt}
+                className="w-full h-full object-cover"
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+      ))}
 
-      <div className="relative z-10 container-custom px-4 sm:px-6 lg:px-8 w-full">
+      {/* Overlay */}
+      <div className="absolute inset-0 bg-gradient-to-r from-foreground/80 via-foreground/50 to-foreground/20 z-10" />
+
+      {/* Content */}
+      <div className="relative z-20 container-custom px-4 sm:px-6 lg:px-8 w-full">
         <motion.div
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
@@ -47,6 +87,22 @@ const HeroSection = () => {
             </a>
           </div>
         </motion.div>
+      </div>
+
+      {/* Slide indicators */}
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 flex gap-2">
+        {slides.map((_, i) => (
+          <button
+            key={i}
+            onClick={() => setCurrent(i)}
+            className={`h-1.5 rounded-full transition-all duration-500 ${
+              i === current
+                ? "w-8 bg-primary-foreground"
+                : "w-3 bg-primary-foreground/40 hover:bg-primary-foreground/60"
+            }`}
+            aria-label={`Slide ${i + 1}`}
+          />
+        ))}
       </div>
     </section>
   );
