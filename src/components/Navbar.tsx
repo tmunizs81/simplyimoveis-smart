@@ -1,20 +1,36 @@
 import { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Menu, X, Settings } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import logo from "@/assets/logo.png";
 
 const navLinks = [
-  { label: "Início", href: "/" },
-  { label: "Imóveis", href: "/imoveis" },
-  { label: "Sobre", href: "/#sobre" },
-  { label: "Contato", href: "/#contato" },
+  { label: "Início", href: "/", hash: "" },
+  { label: "Imóveis", href: "/imoveis", hash: "" },
+  { label: "Sobre", href: "/", hash: "sobre" },
+  { label: "Contato", href: "/", hash: "contato" },
 ];
 
 const Navbar = () => {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const handleNavClick = (link: typeof navLinks[0]) => {
+    if (link.hash) {
+      if (location.pathname !== "/") {
+        navigate("/");
+        setTimeout(() => {
+          document.getElementById(link.hash)?.scrollIntoView({ behavior: "smooth" });
+        }, 300);
+      } else {
+        document.getElementById(link.hash)?.scrollIntoView({ behavior: "smooth" });
+      }
+    } else {
+      navigate(link.href);
+    }
+  };
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
@@ -43,11 +59,11 @@ const Navbar = () => {
         {/* Desktop nav */}
         <div className="hidden md:flex items-center gap-1">
           {navLinks.map((link) => {
-            const isActive = location.pathname === link.href;
+            const isActive = !link.hash && location.pathname === link.href;
             return (
-              <Link
-                key={link.href}
-                to={link.href}
+              <button
+                key={link.label}
+                onClick={() => handleNavClick(link)}
                 className={`relative px-4 py-2 text-xs font-bold uppercase tracking-[0.15em] transition-colors rounded-lg ${
                   isActive
                     ? "text-primary"
@@ -63,7 +79,7 @@ const Navbar = () => {
                     className="absolute bottom-0 left-4 right-4 h-0.5 bg-primary rounded-full"
                   />
                 )}
-              </Link>
+              </button>
             );
           })}
 
@@ -101,14 +117,13 @@ const Navbar = () => {
           >
             <div className="px-6 py-6 space-y-1">
               {navLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  to={link.href}
-                  className="block px-4 py-3 text-sm font-bold uppercase tracking-wider text-muted-foreground hover:text-primary hover:bg-primary/5 rounded-xl transition-all"
-                  onClick={() => setOpen(false)}
+                <button
+                  key={link.label}
+                  onClick={() => { handleNavClick(link); setOpen(false); }}
+                  className="block w-full text-left px-4 py-3 text-sm font-bold uppercase tracking-wider text-muted-foreground hover:text-primary hover:bg-primary/5 rounded-xl transition-all"
                 >
                   {link.label}
-                </Link>
+                </button>
               ))}
               <Link
                 to="/admin"
