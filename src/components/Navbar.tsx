@@ -67,14 +67,18 @@ const Navbar = () => {
             );
           })}
 
-          {/* CTA */}
-          <a
-            href="tel:+5585999990000"
-            className="ml-4 gradient-primary text-primary-foreground px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider hover:opacity-90 transition-all flex items-center gap-2 shadow-lg shadow-primary/20"
+          {/* Admin link */}
+          <Link
+            to="/admin"
+            className={`ml-4 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 border ${
+              scrolled
+                ? "text-muted-foreground hover:text-primary border-border hover:border-primary/30"
+                : "text-white/80 hover:text-white border-white/20 hover:border-white/40"
+            }`}
           >
-            <Phone size={14} />
-            Ligar Agora
-          </a>
+            <Settings size={14} />
+            Área Admin
+          </Link>
         </div>
 
         {/* Mobile toggle */}
