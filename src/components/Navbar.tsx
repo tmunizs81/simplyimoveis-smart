@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Menu, X, Settings } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import logo from "@/assets/logo-simply-clean.png";
+import logo from "@/assets/logo.png";
 
 const navLinks = [
   { label: "Início", href: "/", hash: "" },
@@ -48,14 +48,15 @@ const Navbar = () => {
     >
       <div className="container mx-auto flex items-center justify-between h-20 px-4 sm:px-6 lg:px-8">
         {/* Logo */}
-        <Link to="/" className="flex items-center group">
-          <img 
-            src={logo} 
-            alt="SimplyImóveis by Talita Muniz" 
-            className={`h-14 object-contain group-hover:scale-105 transition-transform ${
-              scrolled ? "" : "brightness-0 invert"
-            }`} 
-          />
+        <Link to="/" className="flex items-center gap-3 group">
+          <img src={logo} alt="SimplyImóveis" className="h-11 w-11 object-contain group-hover:scale-105 transition-transform" />
+          <div className="flex flex-col leading-tight">
+            <span className="font-display text-xl font-bold">
+              <span className={scrolled ? "text-foreground" : "text-white"}>simply</span>
+              <span className="text-primary">Imóveis</span>
+            </span>
+            <span className={`text-[10px] tracking-widest ${scrolled ? "text-muted-foreground" : "text-white/60"}`}>— by Talita Muniz —</span>
+          </div>
         </Link>
 
         {/* Desktop nav */}
