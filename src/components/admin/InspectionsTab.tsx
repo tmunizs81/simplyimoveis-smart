@@ -91,6 +91,8 @@ const InspectionsTab = () => {
 
   const openNew = () => {
     setEditing(null);
+    setFormFiles([]);
+    setFormFileCategory("geral");
     setForm({
       property_id: "", contract_id: "", tenant_id: "",
       inspection_type: "entrada", inspection_date: new Date().toISOString().slice(0, 10),
