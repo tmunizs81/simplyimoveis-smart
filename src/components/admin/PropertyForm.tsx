@@ -31,6 +31,8 @@ const PropertyForm = ({ editingProperty, userId, onSaved, onCancel }: PropertyFo
     bathrooms: editingProperty?.bathrooms ?? 1,
     garage_spots: (editingProperty as any)?.garage_spots ?? 0,
     area: editingProperty ? Number(editingProperty.area) : 0,
+    pool_size: (editingProperty as any)?.pool_size ? Number((editingProperty as any).pool_size) : 0,
+    nearby_points: (editingProperty as any)?.nearby_points || "",
     type: (editingProperty?.type || "Apartamento") as typeof PROPERTY_TYPES[number],
     status: (editingProperty?.status || "venda") as "venda" | "aluguel",
     description: editingProperty?.description || "",
