@@ -34,6 +34,8 @@ serve(async (req) => {
         propertiesContext = `\n\n--- IMÓVEL EM FOCO (ID: ${prop.id}) ---
 Título: ${prop.title}
 Endereço: ${prop.address}
+Bairro: ${(prop as any).neighborhood || "Não informado"}
+Cidade: ${(prop as any).city || "Não informada"}
 Preço: R$ ${Number(prop.price).toLocaleString("pt-BR")}
 Tipo: ${prop.type}
 Status: ${prop.status === "venda" ? "À Venda" : "Para Aluguel"}
