@@ -7,6 +7,7 @@ import ReactMarkdown from "react-markdown";
 type Message = { role: "user" | "assistant"; content: string };
 
 const SCHEDULE_REGEX = /<<<AGENDAR_VISITA>>>\s*(\{[\s\S]*?\})\s*<<<FIM_AGENDAMENTO>>>/;
+const CONTACT_REGEX = /<<<REGISTRAR_CONTATO>>>\s*(\{[\s\S]*?\})\s*<<<FIM_CONTATO>>>/;
 
 const ChatWidget = ({ propertyId }: { propertyId?: string }) => {
   const [open, setOpen] = useState(false);
