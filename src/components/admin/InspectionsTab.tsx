@@ -586,6 +586,7 @@ const InspectionsTab = () => {
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5">
+                  <button onClick={() => downloadPdf(ins)} title="Gerar PDF" className="p-2 rounded-lg border border-border text-muted-foreground hover:text-primary hover:border-primary transition-all"><Download size={14} /></button>
                   <button onClick={() => { setViewingMedia(ins.id); fetchMedia(ins.id); }} title="Fotos e Documentos" className="p-2 rounded-lg border border-border text-muted-foreground hover:text-primary hover:border-primary transition-all"><Camera size={14} /></button>
                   <button onClick={() => openEdit(ins)} className="p-2 rounded-lg border border-border text-muted-foreground hover:text-primary hover:border-primary transition-all"><Edit size={14} /></button>
                   <button onClick={() => deleteInspection(ins.id)} className="p-2 rounded-lg border border-border text-muted-foreground hover:text-destructive hover:border-destructive transition-all"><Trash2 size={14} /></button>
