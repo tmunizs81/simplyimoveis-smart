@@ -123,6 +123,11 @@ const PropertyList = ({ properties, onEdit, onRefresh, onNew }: PropertyListProp
               <div className="flex-1 min-w-0">
                 <div className="flex items-start gap-2 mb-1">
                   <h3 className="font-display font-bold text-foreground truncate text-sm">{p.title}</h3>
+                  {(p as any).short_code && (
+                    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-muted text-muted-foreground border border-border shrink-0">
+                      {(p as any).short_code}
+                    </span>
+                  )}
                   <div className="flex gap-1.5 shrink-0">
                     {p.featured && (
                       <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider gradient-primary text-primary-foreground px-2 py-0.5 rounded-full">
