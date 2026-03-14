@@ -243,6 +243,7 @@ const SalesTab = () => {
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5">
+                  <button onClick={() => setViewDocsSaleId(sale.id)} className="p-2 rounded-lg border border-border text-muted-foreground hover:text-blue-600 hover:border-blue-400 transition-all" title="Documentos"><FileText size={14} /></button>
                   <button onClick={() => openEditForm(sale)} className="p-2 rounded-lg border border-border text-muted-foreground hover:text-primary hover:border-primary transition-all"><Edit size={14} /></button>
                   <button onClick={() => deleteSale(sale.id)} className="p-2 rounded-lg border border-border text-muted-foreground hover:text-destructive hover:border-destructive transition-all"><Trash2 size={14} /></button>
                 </div>
