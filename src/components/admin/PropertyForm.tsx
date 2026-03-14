@@ -102,7 +102,8 @@ const PropertyForm = ({ editingProperty, userId, onSaved, onCancel }: PropertyFo
       } else {
         const { data, error } = await supabase.from("properties").insert({
           user_id: userId, title: form.title, address: form.address,
-          price: form.price, bedrooms: form.bedrooms, bathrooms: form.bathrooms,
+          price: form.price, bedrooms: form.bedrooms, suites: form.suites,
+          bathrooms: form.bathrooms, garage_spots: form.garage_spots,
           area: form.area, type: form.type, status: form.status,
           description: form.description, featured: form.featured, active: form.active,
         }).select().single();
