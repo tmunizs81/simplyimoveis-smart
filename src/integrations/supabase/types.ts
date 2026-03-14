@@ -308,6 +308,7 @@ export type Database = {
           neighborhood: string | null
           pool_size: number | null
           price: number
+          short_code: string | null
           status: Database["public"]["Enums"]["property_status"]
           suites: number
           title: string
@@ -331,6 +332,7 @@ export type Database = {
           neighborhood?: string | null
           pool_size?: number | null
           price: number
+          short_code?: string | null
           status?: Database["public"]["Enums"]["property_status"]
           suites?: number
           title: string
@@ -354,12 +356,28 @@ export type Database = {
           neighborhood?: string | null
           pool_size?: number | null
           price?: number
+          short_code?: string | null
           status?: Database["public"]["Enums"]["property_status"]
           suites?: number
           title?: string
           type?: Database["public"]["Enums"]["property_type"]
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      property_code_sequences: {
+        Row: {
+          last_number: number
+          prefix: string
+        }
+        Insert: {
+          last_number?: number
+          prefix: string
+        }
+        Update: {
+          last_number?: number
+          prefix?: string
         }
         Relationships: []
       }
