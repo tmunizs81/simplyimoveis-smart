@@ -28,7 +28,7 @@ const Admin = () => {
   const [user, setUser] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [properties, setProperties] = useState<(Property & { media: MediaRow[] })[]>([]);
-  const [activeTab, setActiveTab] = useState<AdminTab>("properties");
+  const [activeTab, setActiveTab] = useState<AdminTab>("dashboard");
   const [showForm, setShowForm] = useState(false);
   const [editingProperty, setEditingProperty] = useState<(Property & { media: MediaRow[] }) | null>(null);
 
