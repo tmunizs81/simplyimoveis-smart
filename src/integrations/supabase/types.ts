@@ -56,6 +56,197 @@ export type Database = {
         }
         Relationships: []
       }
+      contract_documents: {
+        Row: {
+          contract_id: string | null
+          created_at: string
+          document_type: Database["public"]["Enums"]["document_type"]
+          file_name: string
+          file_path: string
+          file_type: string
+          id: string
+          notes: string | null
+          user_id: string
+        }
+        Insert: {
+          contract_id?: string | null
+          created_at?: string
+          document_type?: Database["public"]["Enums"]["document_type"]
+          file_name: string
+          file_path: string
+          file_type: string
+          id?: string
+          notes?: string | null
+          user_id: string
+        }
+        Update: {
+          contract_id?: string | null
+          created_at?: string
+          document_type?: Database["public"]["Enums"]["document_type"]
+          file_name?: string
+          file_path?: string
+          file_type?: string
+          id?: string
+          notes?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_documents_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "rental_contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financial_transactions: {
+        Row: {
+          amount: number
+          category: Database["public"]["Enums"]["transaction_category"]
+          contract_id: string | null
+          created_at: string
+          date: string
+          description: string
+          due_date: string | null
+          id: string
+          notes: string | null
+          paid_date: string | null
+          payment_method: string | null
+          property_id: string | null
+          receipt_path: string | null
+          status: Database["public"]["Enums"]["invoice_status"]
+          tenant_id: string | null
+          type: Database["public"]["Enums"]["transaction_type"]
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          category?: Database["public"]["Enums"]["transaction_category"]
+          contract_id?: string | null
+          created_at?: string
+          date?: string
+          description: string
+          due_date?: string | null
+          id?: string
+          notes?: string | null
+          paid_date?: string | null
+          payment_method?: string | null
+          property_id?: string | null
+          receipt_path?: string | null
+          status?: Database["public"]["Enums"]["invoice_status"]
+          tenant_id?: string | null
+          type: Database["public"]["Enums"]["transaction_type"]
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          category?: Database["public"]["Enums"]["transaction_category"]
+          contract_id?: string | null
+          created_at?: string
+          date?: string
+          description?: string
+          due_date?: string | null
+          id?: string
+          notes?: string | null
+          paid_date?: string | null
+          payment_method?: string | null
+          property_id?: string | null
+          receipt_path?: string | null
+          status?: Database["public"]["Enums"]["invoice_status"]
+          tenant_id?: string | null
+          type?: Database["public"]["Enums"]["transaction_type"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financial_transactions_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "rental_contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_transactions_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_transactions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      leads: {
+        Row: {
+          assigned_to: string | null
+          budget_max: number | null
+          budget_min: number | null
+          created_at: string
+          email: string | null
+          id: string
+          interest_type: string | null
+          name: string
+          next_follow_up: string | null
+          notes: string | null
+          phone: string | null
+          property_id: string | null
+          source: Database["public"]["Enums"]["lead_source"]
+          status: Database["public"]["Enums"]["lead_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          budget_max?: number | null
+          budget_min?: number | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          interest_type?: string | null
+          name: string
+          next_follow_up?: string | null
+          notes?: string | null
+          phone?: string | null
+          property_id?: string | null
+          source?: Database["public"]["Enums"]["lead_source"]
+          status?: Database["public"]["Enums"]["lead_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          assigned_to?: string | null
+          budget_max?: number | null
+          budget_min?: number | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          interest_type?: string | null
+          name?: string
+          next_follow_up?: string | null
+          notes?: string | null
+          phone?: string | null
+          property_id?: string | null
+          source?: Database["public"]["Enums"]["lead_source"]
+          status?: Database["public"]["Enums"]["lead_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leads_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       properties: {
         Row: {
           active: boolean
@@ -163,6 +354,150 @@ export type Database = {
           },
         ]
       }
+      rental_contracts: {
+        Row: {
+          adjustment_index: string | null
+          created_at: string
+          deposit_amount: number | null
+          end_date: string
+          id: string
+          late_fee_percentage: number | null
+          monthly_rent: number
+          notes: string | null
+          payment_day: number
+          property_id: string | null
+          start_date: string
+          status: Database["public"]["Enums"]["contract_status"]
+          tenant_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          adjustment_index?: string | null
+          created_at?: string
+          deposit_amount?: number | null
+          end_date: string
+          id?: string
+          late_fee_percentage?: number | null
+          monthly_rent: number
+          notes?: string | null
+          payment_day?: number
+          property_id?: string | null
+          start_date: string
+          status?: Database["public"]["Enums"]["contract_status"]
+          tenant_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          adjustment_index?: string | null
+          created_at?: string
+          deposit_amount?: number | null
+          end_date?: string
+          id?: string
+          late_fee_percentage?: number | null
+          monthly_rent?: number
+          notes?: string | null
+          payment_day?: number
+          property_id?: string | null
+          start_date?: string
+          status?: Database["public"]["Enums"]["contract_status"]
+          tenant_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rental_contracts_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rental_contracts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sales: {
+        Row: {
+          buyer_cpf: string | null
+          buyer_email: string | null
+          buyer_name: string | null
+          buyer_phone: string | null
+          closing_date: string | null
+          commission_rate: number | null
+          commission_value: number | null
+          created_at: string
+          id: string
+          lead_id: string | null
+          notes: string | null
+          property_id: string | null
+          proposal_date: string | null
+          sale_value: number | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          buyer_cpf?: string | null
+          buyer_email?: string | null
+          buyer_name?: string | null
+          buyer_phone?: string | null
+          closing_date?: string | null
+          commission_rate?: number | null
+          commission_value?: number | null
+          created_at?: string
+          id?: string
+          lead_id?: string | null
+          notes?: string | null
+          property_id?: string | null
+          proposal_date?: string | null
+          sale_value?: number | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          buyer_cpf?: string | null
+          buyer_email?: string | null
+          buyer_name?: string | null
+          buyer_phone?: string | null
+          closing_date?: string | null
+          commission_rate?: number | null
+          commission_value?: number | null
+          created_at?: string
+          id?: string
+          lead_id?: string | null
+          notes?: string | null
+          property_id?: string | null
+          proposal_date?: string | null
+          sale_value?: number | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       scheduled_visits: {
         Row: {
           client_email: string | null
@@ -210,6 +545,48 @@ export type Database = {
           },
         ]
       }
+      tenants: {
+        Row: {
+          address: string | null
+          cpf_cnpj: string | null
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          notes: string | null
+          phone: string | null
+          rg: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          address?: string | null
+          cpf_cnpj?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          phone?: string | null
+          rg?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          address?: string | null
+          cpf_cnpj?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          rg?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
@@ -243,6 +620,32 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
+      contract_status: "ativo" | "encerrado" | "cancelado" | "pendente"
+      document_type:
+        | "contrato"
+        | "foto"
+        | "documento"
+        | "laudo"
+        | "comprovante"
+        | "outro"
+      invoice_status: "pendente" | "pago" | "atrasado" | "cancelado"
+      lead_source:
+        | "site"
+        | "whatsapp"
+        | "indicacao"
+        | "portal"
+        | "placa"
+        | "telefone"
+        | "chat"
+        | "outro"
+      lead_status:
+        | "novo"
+        | "contato_feito"
+        | "visita_agendada"
+        | "proposta"
+        | "negociacao"
+        | "fechado_ganho"
+        | "fechado_perdido"
       property_status: "venda" | "aluguel"
       property_type:
         | "Apartamento"
@@ -250,6 +653,18 @@ export type Database = {
         | "Cobertura"
         | "Terreno"
         | "Sala Comercial"
+      transaction_category:
+        | "aluguel"
+        | "venda"
+        | "comissao"
+        | "manutencao"
+        | "condominio"
+        | "iptu"
+        | "seguro"
+        | "taxa_administracao"
+        | "reparo"
+        | "outro"
+      transaction_type: "receita" | "despesa"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -378,6 +793,35 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "moderator", "user"],
+      contract_status: ["ativo", "encerrado", "cancelado", "pendente"],
+      document_type: [
+        "contrato",
+        "foto",
+        "documento",
+        "laudo",
+        "comprovante",
+        "outro",
+      ],
+      invoice_status: ["pendente", "pago", "atrasado", "cancelado"],
+      lead_source: [
+        "site",
+        "whatsapp",
+        "indicacao",
+        "portal",
+        "placa",
+        "telefone",
+        "chat",
+        "outro",
+      ],
+      lead_status: [
+        "novo",
+        "contato_feito",
+        "visita_agendada",
+        "proposta",
+        "negociacao",
+        "fechado_ganho",
+        "fechado_perdido",
+      ],
       property_status: ["venda", "aluguel"],
       property_type: [
         "Apartamento",
@@ -386,6 +830,19 @@ export const Constants = {
         "Terreno",
         "Sala Comercial",
       ],
+      transaction_category: [
+        "aluguel",
+        "venda",
+        "comissao",
+        "manutencao",
+        "condominio",
+        "iptu",
+        "seguro",
+        "taxa_administracao",
+        "reparo",
+        "outro",
+      ],
+      transaction_type: ["receita", "despesa"],
     },
   },
 } as const
