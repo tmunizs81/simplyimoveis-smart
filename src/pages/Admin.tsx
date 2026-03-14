@@ -97,6 +97,8 @@ const Admin = () => {
         />
 
         <main className="flex-1 p-6 lg:p-8 overflow-y-auto max-h-[calc(100vh-80px)]">
+          {activeTab === "dashboard" && <DashboardTab />}
+
           {activeTab === "properties" && !showForm && (
             <PropertyList
               properties={properties}

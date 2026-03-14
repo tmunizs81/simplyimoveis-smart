@@ -11,6 +11,7 @@ interface AdminSidebarProps {
 }
 
 const mainTabs = [
+  { id: "dashboard" as AdminTab, label: "Dashboard", icon: LayoutDashboard, description: "Visão geral" },
   { id: "properties" as AdminTab, label: "Imóveis", icon: Building2, description: "Gerenciar listagens" },
   { id: "contacts" as AdminTab, label: "Contatos", icon: MessageSquare, description: "Solicitações recebidas" },
 ];
