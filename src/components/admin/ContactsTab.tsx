@@ -136,24 +136,32 @@ const ContactsTab = () => {
                   onClick={() => setExpandedId(isExpanded ? null : contact.id)}
                   className="w-full px-5 py-4 flex items-center gap-4 text-left hover:bg-secondary/30 transition-colors"
                 >
-                  {!contact.read && (
-                    <span className="w-2.5 h-2.5 rounded-full bg-primary flex-shrink-0" />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-foreground text-sm truncate">
-                        {contact.name}
-                      </span>
-                      {contact.subject && (
-                        <span className="text-muted-foreground text-xs truncate">
-                          — {contact.subject}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-muted-foreground text-xs truncate mt-0.5">
-                      {contact.message}
-                    </p>
-                  </div>
+                   {!contact.read && (
+                     <span className="w-2.5 h-2.5 rounded-full bg-primary flex-shrink-0" />
+                   )}
+                   {contact.source && contact.source.startsWith("chat") && (
+                     <Bot size={16} className="text-primary flex-shrink-0" />
+                   )}
+                   <div className="flex-1 min-w-0">
+                     <div className="flex items-center gap-2">
+                       <span className="font-semibold text-foreground text-sm truncate">
+                         {contact.name}
+                       </span>
+                       {contact.source && contact.source !== "form" && (
+                         <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                           {contact.source === "chat-agendamento" ? "Visita" : "Chat"}
+                         </span>
+                       )}
+                       {contact.subject && (
+                         <span className="text-muted-foreground text-xs truncate">
+                           — {contact.subject}
+                         </span>
+                       )}
+                     </div>
+                     <p className="text-muted-foreground text-xs truncate mt-0.5">
+                       {contact.message}
+                     </p>
+                   </div>
                   <div className="flex items-center gap-3 flex-shrink-0">
                     <span className="text-muted-foreground/60 text-xs flex items-center gap-1">
                       <Clock size={12} />
