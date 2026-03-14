@@ -215,6 +215,11 @@ const PropertyDetail = () => {
               {/* Title & Tags */}
               <div>
                 <div className="flex flex-wrap gap-2 mb-3">
+                  {(property as any).short_code && (
+                    <span className="bg-muted text-muted-foreground text-xs font-bold px-4 py-1.5 rounded-full border border-border tracking-wider">
+                      Cód: {(property as any).short_code}
+                    </span>
+                  )}
                   <span className="gradient-primary text-primary-foreground text-xs font-bold px-4 py-1.5 rounded-full uppercase tracking-wider">{property.status}</span>
                   <span className="bg-secondary text-foreground text-xs font-bold px-4 py-1.5 rounded-full">{property.type}</span>
                   {property.featured && (

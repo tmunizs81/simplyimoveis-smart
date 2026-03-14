@@ -112,6 +112,9 @@ const FeaturedProperties = () => {
                     <div className="w-full h-full flex items-center justify-center text-muted-foreground">Sem foto</div>
                   )}
                   <div className="absolute top-3 left-3 flex gap-2">
+                    {(property as any).short_code && (
+                      <span className="bg-black/60 backdrop-blur-sm text-white text-xs font-bold px-3 py-1 rounded-full">{(property as any).short_code}</span>
+                    )}
                     <span className="gradient-primary text-primary-foreground text-xs font-semibold px-3 py-1 rounded-full uppercase">{property.status}</span>
                   </div>
                   {property.featured && (
