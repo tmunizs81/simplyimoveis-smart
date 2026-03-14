@@ -4,6 +4,7 @@ import ChatWidget from "@/components/ChatWidget";
 import WhatsAppButton from "@/components/WhatsAppButton";
 import { motion } from "framer-motion";
 import { Gem, TrendingUp, SearchCheck, Building, HardHat, Home } from "lucide-react";
+import servicesHero from "@/assets/services-hero.jpg";
 
 const services = [
   {
