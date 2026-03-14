@@ -59,6 +59,8 @@ const TenantsTab = () => {
   const openNew = () => {
     setEditing(null);
     setForm({ name: "", email: "", phone: "", cpf_cnpj: "", rg: "", address: "", notes: "" });
+    setFormFiles([]);
+    setFormDocType("rg");
     setShowForm(true);
   };
 
@@ -68,6 +70,8 @@ const TenantsTab = () => {
       name: t.name, email: t.email || "", phone: t.phone || "",
       cpf_cnpj: t.cpf_cnpj || "", rg: t.rg || "", address: t.address || "", notes: t.notes || "",
     });
+    setFormFiles([]);
+    setFormDocType("rg");
     setShowForm(true);
   };
 
