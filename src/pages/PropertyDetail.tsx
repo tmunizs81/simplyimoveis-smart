@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Bed, Bath, Maximize, MapPin, Phone, Mail, ChevronLeft, ChevronRight, Car, DoorOpen, Share2, Heart, Calendar, X, MessageCircle, Home, Shield, Star } from "lucide-react";
+import { ArrowLeft, Bed, Bath, Maximize, MapPin, Phone, Mail, ChevronLeft, ChevronRight, Car, DoorOpen, Share2, Heart, Calendar, X, MessageCircle, Home, Shield, Star, Waves, Navigation } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -238,13 +238,14 @@ const PropertyDetail = () => {
               </div>
 
               {/* Stats Grid */}
-              <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
+              <div className={`grid grid-cols-3 ${(property as any).pool_size > 0 ? 'sm:grid-cols-6' : 'sm:grid-cols-5'} gap-3`}>
                 {[
                   { icon: Bed, value: property.bedrooms, label: "Quartos", color: "blue" },
                   { icon: DoorOpen, value: (property as any).suites || 0, label: "Suítes", color: "purple" },
                   { icon: Bath, value: property.bathrooms, label: "Banheiros", color: "cyan" },
                   { icon: Car, value: (property as any).garage_spots || 0, label: "Vagas", color: "amber" },
                   { icon: Maximize, value: `${Number(property.area)}m²`, label: "Área", color: "emerald" },
+                  ...((property as any).pool_size > 0 ? [{ icon: Waves, value: `${(property as any).pool_size}m²`, label: "Piscina", color: "sky" }] : []),
                 ].map((stat) => (
                   <div key={stat.label} className="glass-card rounded-xl p-4 text-center hover:shadow-md transition-shadow">
                     <div className={`w-11 h-11 rounded-xl bg-${stat.color}-500/10 flex items-center justify-center mx-auto mb-2`}>
@@ -280,6 +281,25 @@ const PropertyDetail = () => {
                 </div>
               )}
 
+              {/* Nearby Points of Interest */}
+              {(property as any).nearby_points && (
+                <div className="glass-card rounded-2xl p-8 border border-border/50">
+                  <h2 className="font-display text-2xl font-bold text-foreground mb-6 flex items-center gap-3">
+                    <div className="w-1.5 h-8 rounded-full gradient-primary" />
+                    Localização e Arredores
+                  </h2>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {(property as any).nearby_points.split(/[,\n]/).filter((p: string) => p.trim()).map((point: string, i: number) => (
+                      <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-secondary/30 hover:bg-secondary/50 transition-colors">
+                        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                          <Navigation size={14} className="text-primary" />
+                        </div>
+                        <span className="text-sm text-foreground">{point.trim()}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               {/* Videos */}
               {videos.length > 0 && (
                 <div className="glass-card rounded-2xl p-6">
