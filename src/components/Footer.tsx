@@ -17,7 +17,7 @@ const Footer = () => {
     }
   };
   return (
-    <footer className="gradient-navy text-accent-foreground section-padding">
+    <footer className="text-accent-foreground section-padding" style={{ background: 'linear-gradient(180deg, hsl(210 40% 28%) 0%, hsl(210 60% 20%) 40%, hsl(210 65% 14%) 100%)' }}>
       <div className="container-custom">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
           <div>
