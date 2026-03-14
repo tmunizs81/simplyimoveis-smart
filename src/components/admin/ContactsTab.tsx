@@ -189,13 +189,50 @@ const ContactsTab = () => {
                           </a>
                         </div>
                       )}
-                    </div>
+                     {contact.visit_date && (
+                       <div className="flex items-center gap-2 text-sm">
+                         <Calendar size={14} className="text-primary" />
+                         <span className="text-foreground">Visita: {contact.visit_date}</span>
+                       </div>
+                     )}
+                     </div>
 
-                    <div className="mt-4 bg-secondary/50 rounded-lg p-4">
-                      <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
-                        {contact.message}
-                      </p>
-                    </div>
+                     <div className="mt-4 bg-secondary/50 rounded-lg p-4">
+                       <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
+                         {contact.message}
+                       </p>
+                     </div>
+
+                     {contact.chat_transcript && (
+                       <div className="mt-4">
+                         <div className="flex items-center gap-2 mb-2">
+                           <MessageCircle size={14} className="text-primary" />
+                           <span className="text-sm font-semibold text-foreground">Conversa com a Luma</span>
+                         </div>
+                         <div className="bg-secondary/30 rounded-lg p-4 max-h-80 overflow-y-auto border border-border/50">
+                           {contact.chat_transcript.split("\n\n").map((line, i) => {
+                             const isClient = line.startsWith("[Cliente]:");
+                             const isLuma = line.startsWith("[Luma]:");
+                             const content = line.replace(/^\[(Cliente|Luma)\]:\s*/, "");
+                             return (
+                               <div key={i} className={`mb-3 last:mb-0 flex ${isClient ? "justify-end" : "justify-start"}`}>
+                                 <div className={`max-w-[85%] px-3 py-2 rounded-xl text-xs leading-relaxed ${
+                                   isClient
+                                     ? "bg-primary/10 text-foreground rounded-br-sm"
+                                     : isLuma
+                                     ? "bg-muted text-foreground rounded-bl-sm"
+                                     : "text-muted-foreground"
+                                 }`}>
+                                   {isClient && <span className="font-semibold text-primary block mb-0.5">Cliente</span>}
+                                   {isLuma && <span className="font-semibold text-primary block mb-0.5">Luma</span>}
+                                   {content}
+                                 </div>
+                               </div>
+                             );
+                           })}
+                         </div>
+                       </div>
+                     )}
 
                     <div className="flex gap-2 mt-4">
                       <button
