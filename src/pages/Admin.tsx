@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import Navbar from "@/components/Navbar";
 import AdminLogin from "@/components/admin/AdminLogin";
 import AdminSidebar from "@/components/admin/AdminSidebar";
+import DashboardTab from "@/components/admin/DashboardTab";
 import PropertyForm from "@/components/admin/PropertyForm";
 import PropertyList from "@/components/admin/PropertyList";
 import PasswordTab from "@/components/admin/PasswordTab";
@@ -21,13 +22,13 @@ import type { Database } from "@/integrations/supabase/types";
 
 type Property = Database["public"]["Tables"]["properties"]["Row"];
 type MediaRow = Database["public"]["Tables"]["property_media"]["Row"];
-type AdminTab = "properties" | "contacts" | "password" | "users" | "leads" | "sales" | "tenants" | "rentals" | "inspections" | "financial" | "reports";
+type AdminTab = "dashboard" | "properties" | "contacts" | "password" | "users" | "leads" | "sales" | "tenants" | "rentals" | "inspections" | "financial" | "reports";
 
 const Admin = () => {
   const [user, setUser] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [properties, setProperties] = useState<(Property & { media: MediaRow[] })[]>([]);
-  const [activeTab, setActiveTab] = useState<AdminTab>("properties");
+  const [activeTab, setActiveTab] = useState<AdminTab>("dashboard");
   const [showForm, setShowForm] = useState(false);
   const [editingProperty, setEditingProperty] = useState<(Property & { media: MediaRow[] }) | null>(null);
 
@@ -96,6 +97,8 @@ const Admin = () => {
         />
 
         <main className="flex-1 p-6 lg:p-8 overflow-y-auto max-h-[calc(100vh-80px)]">
+          {activeTab === "dashboard" && <DashboardTab />}
+
           {activeTab === "properties" && !showForm && (
             <PropertyList
               properties={properties}

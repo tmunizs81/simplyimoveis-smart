@@ -1,7 +1,7 @@
 import { Building2, KeyRound, UserPlus, LogOut, LayoutDashboard, MessageSquare, Users, TrendingUp, Home, FileText, DollarSign, BarChart3, ChevronDown, ChevronRight, Handshake, ClipboardCheck } from "lucide-react";
 import { useState } from "react";
 
-type AdminTab = "properties" | "contacts" | "password" | "users" | "leads" | "sales" | "tenants" | "rentals" | "inspections" | "financial" | "reports";
+type AdminTab = "dashboard" | "properties" | "contacts" | "password" | "users" | "leads" | "sales" | "tenants" | "rentals" | "inspections" | "financial" | "reports";
 
 interface AdminSidebarProps {
   activeTab: AdminTab;
@@ -11,6 +11,7 @@ interface AdminSidebarProps {
 }
 
 const mainTabs = [
+  { id: "dashboard" as AdminTab, label: "Dashboard", icon: LayoutDashboard, description: "Visão geral" },
   { id: "properties" as AdminTab, label: "Imóveis", icon: Building2, description: "Gerenciar listagens" },
   { id: "contacts" as AdminTab, label: "Contatos", icon: MessageSquare, description: "Solicitações recebidas" },
 ];
