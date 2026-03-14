@@ -100,6 +100,7 @@ const RentalsTab = () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
+    const commissionValue = (form.monthly_rent * form.commission_rate) / 100;
     const payload = {
       property_id: form.property_id || null, tenant_id: form.tenant_id || null,
       start_date: form.start_date, end_date: form.end_date,
@@ -108,6 +109,8 @@ const RentalsTab = () => {
       late_fee_percentage: form.late_fee_percentage,
       adjustment_index: form.adjustment_index || null, notes: form.notes || null,
       user_id: user.id,
+      commission_rate: form.commission_rate,
+      commission_value: commissionValue,
     };
 
     if (editing) {
