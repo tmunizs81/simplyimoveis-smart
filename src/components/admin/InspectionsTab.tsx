@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
-import { Plus, Search, ClipboardCheck, Calendar, Home, Edit, Trash2, X, Save, Upload, FileText, Eye, Camera, Video, File } from "lucide-react";
+import { Plus, Search, ClipboardCheck, Calendar, Home, Edit, Trash2, X, Save, Upload, FileText, Eye, Camera, Video, File, Download } from "lucide-react";
+import { generateInspectionPdf } from "./generateInspectionPdf";
 
 type Inspection = {
   id: string; property_id: string; contract_id: string | null;
