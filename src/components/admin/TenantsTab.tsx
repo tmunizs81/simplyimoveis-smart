@@ -299,7 +299,10 @@ const TenantsTab = () => {
                 </div>
               </div>
               <div className="flex items-center gap-1.5">
-                <button onClick={() => { setViewingDocs(t.id); fetchDocs(t.id); }} title="Documentos" className="p-2 rounded-lg border border-border text-muted-foreground hover:text-primary hover:border-primary transition-all"><FolderOpen size={14} /></button>
+                <button onClick={() => { setViewingDocs(t.id); fetchDocs(t.id); }} title="Documentos" className="p-2 rounded-lg border border-primary/30 text-primary bg-primary/5 hover:bg-primary/10 hover:border-primary transition-all flex items-center gap-1">
+                  <FolderOpen size={14} />
+                  <span className="text-[10px] font-bold hidden sm:inline">Docs</span>
+                </button>
                 <button onClick={() => openEdit(t)} className="p-2 rounded-lg border border-border text-muted-foreground hover:text-primary hover:border-primary transition-all"><Edit size={14} /></button>
                 <button onClick={() => deleteTenant(t.id)} className="p-2 rounded-lg border border-border text-muted-foreground hover:text-destructive hover:border-destructive transition-all"><Trash2 size={14} /></button>
               </div>
