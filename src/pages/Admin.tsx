@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import Navbar from "@/components/Navbar";
 import AdminLogin from "@/components/admin/AdminLogin";
 import AdminSidebar from "@/components/admin/AdminSidebar";
+import DashboardTab from "@/components/admin/DashboardTab";
 import PropertyForm from "@/components/admin/PropertyForm";
 import PropertyList from "@/components/admin/PropertyList";
 import PasswordTab from "@/components/admin/PasswordTab";
@@ -21,7 +22,7 @@ import type { Database } from "@/integrations/supabase/types";
 
 type Property = Database["public"]["Tables"]["properties"]["Row"];
 type MediaRow = Database["public"]["Tables"]["property_media"]["Row"];
-type AdminTab = "properties" | "contacts" | "password" | "users" | "leads" | "sales" | "tenants" | "rentals" | "inspections" | "financial" | "reports";
+type AdminTab = "dashboard" | "properties" | "contacts" | "password" | "users" | "leads" | "sales" | "tenants" | "rentals" | "inspections" | "financial" | "reports";
 
 const Admin = () => {
   const [user, setUser] = useState<any>(null);
