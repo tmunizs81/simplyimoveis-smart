@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Bed, Bath, Maximize, MapPin, Phone, Mail, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, Bed, Bath, Maximize, MapPin, Phone, Mail, ChevronLeft, ChevronRight, Car, DoorOpen } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
