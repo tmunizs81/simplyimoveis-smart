@@ -654,6 +654,50 @@ export type Database = {
           },
         ]
       }
+      sales_documents: {
+        Row: {
+          created_at: string
+          document_type: string
+          file_name: string
+          file_path: string
+          file_type: string
+          id: string
+          notes: string | null
+          sale_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          document_type?: string
+          file_name: string
+          file_path: string
+          file_type: string
+          id?: string
+          notes?: string | null
+          sale_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          document_type?: string
+          file_name?: string
+          file_path?: string
+          file_type?: string
+          id?: string
+          notes?: string | null
+          sale_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_documents_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "sales"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       scheduled_visits: {
         Row: {
           client_email: string | null

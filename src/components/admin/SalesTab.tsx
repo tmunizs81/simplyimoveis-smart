@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
-import { Plus, TrendingUp, DollarSign, Calendar, Edit, Trash2, X, Save, Search } from "lucide-react";
+import { Plus, TrendingUp, DollarSign, Calendar, Edit, Trash2, X, Save, Search, FileText } from "lucide-react";
+import SaleDocuments from "./SaleDocuments";
 
 type Sale = {
   id: string; property_id: string | null; lead_id: string | null;
@@ -26,6 +27,7 @@ const SalesTab = () => {
   const [showForm, setShowForm] = useState(false);
   const [editingSale, setEditingSale] = useState<Sale | null>(null);
   const [search, setSearch] = useState("");
+  const [viewDocsSaleId, setViewDocsSaleId] = useState<string | null>(null);
   const [form, setForm] = useState({
     buyer_name: "", buyer_email: "", buyer_phone: "", buyer_cpf: "",
     sale_value: 0, commission_rate: 5, status: "em_andamento",
@@ -106,6 +108,10 @@ const SalesTab = () => {
   const inputClass = "w-full px-4 py-3 rounded-xl bg-secondary/30 border border-input text-foreground placeholder:text-muted-foreground/60 focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition-all text-sm";
 
   if (loading) return <div className="flex items-center justify-center py-20"><div className="w-8 h-8 border-3 border-primary/30 border-t-primary rounded-full animate-spin" /></div>;
+
+  if (viewDocsSaleId) {
+    return <SaleDocuments saleId={viewDocsSaleId} onClose={() => setViewDocsSaleId(null)} />;
+  }
 
   if (showForm) {
     return (
@@ -237,6 +243,7 @@ const SalesTab = () => {
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5">
+                  <button onClick={() => setViewDocsSaleId(sale.id)} className="p-2 rounded-lg border border-border text-muted-foreground hover:text-blue-600 hover:border-blue-400 transition-all" title="Documentos"><FileText size={14} /></button>
                   <button onClick={() => openEditForm(sale)} className="p-2 rounded-lg border border-border text-muted-foreground hover:text-primary hover:border-primary transition-all"><Edit size={14} /></button>
                   <button onClick={() => deleteSale(sale.id)} className="p-2 rounded-lg border border-border text-muted-foreground hover:text-destructive hover:border-destructive transition-all"><Trash2 size={14} /></button>
                 </div>
