@@ -254,6 +254,33 @@ const DashboardTab = () => {
         ))}
       </div>
 
+      {/* Monthly Evolution Chart */}
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
+        className="bg-card rounded-2xl border border-border p-5">
+        <h3 className="font-display font-bold text-sm text-foreground mb-4 flex items-center gap-2">
+          <TrendingUp size={16} className="text-primary" /> Evolução Mensal — Últimos 12 meses
+        </h3>
+        {stats.monthlyData.every(d => d.receitas === 0 && d.despesas === 0) ? (
+          <div className="text-center py-12 text-muted-foreground text-sm">Nenhuma transação registrada no período</div>
+        ) : (
+          <ResponsiveContainer width="100%" height={320}>
+            <BarChart data={stats.monthlyData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis dataKey="month" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+              <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
+              <Tooltip
+                contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "12px", fontSize: "12px" }}
+                formatter={(value: number) => formatCurrency(value)}
+              />
+              <Legend wrapperStyle={{ fontSize: "12px" }} />
+              <Bar dataKey="receitas" name="Receitas" fill="hsl(142, 71%, 45%)" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="despesas" name="Despesas" fill="hsl(0, 84%, 60%)" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="lucro" name="Lucro" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        )}
+      </motion.div>
+
       {/* Bottom: Recent Leads + Recent Transactions */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent Leads */}
