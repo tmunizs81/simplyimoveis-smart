@@ -55,10 +55,10 @@ const Navbar = () => {
           <img src={logo} alt="SimplyImóveis" className="h-12 w-12 object-contain rounded-lg group-hover:scale-105 transition-transform" />
           <div className="flex flex-col leading-tight">
             <span className="font-display text-xl font-bold">
-              <span className={scrolled ? "text-foreground" : "text-white"}>simply</span>
+            <span className={isOpaque ? "text-foreground" : "text-white"}>simply</span>
               <span className="text-primary">Imóveis</span>
             </span>
-            <span className={`text-[10px] tracking-widest ${scrolled ? "text-muted-foreground" : "text-white/60"}`}>— by Talita Muniz —</span>
+            <span className={`text-[10px] tracking-widest ${isOpaque ? "text-muted-foreground" : "text-white/60"}`}>— by Talita Muniz —</span>
           </div>
         </Link>
 
