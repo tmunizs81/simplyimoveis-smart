@@ -95,6 +95,8 @@ const Navbar = () => {
             className={`ml-4 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 border ${
               scrolled
                 ? "text-muted-foreground hover:text-primary border-border hover:border-primary/30"
+                : isOpaque
+                ? "text-muted-foreground hover:text-primary border-border hover:border-primary/30"
                 : "text-white/80 hover:text-white border-white/20 hover:border-white/40"
             }`}
           >
