@@ -63,7 +63,15 @@ const Services = () => {
       <Navbar />
 
       {/* Hero banner */}
-      <section className="pt-32 pb-16 gradient-navy text-accent-foreground text-center">
+      <section
+        className="pt-32 pb-16 text-accent-foreground text-center relative"
+        style={{
+          backgroundImage: `url(${servicesHero})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+        }}
+      >
+        <div className="absolute inset-0 bg-accent/80 backdrop-blur-[2px]" />
         <div className="container-custom px-4">
           <motion.p
             initial={{ opacity: 0, y: 10 }}
