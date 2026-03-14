@@ -73,7 +73,7 @@ const Navbar = () => {
                 className={`relative px-4 py-2 text-xs font-bold uppercase tracking-[0.15em] transition-colors rounded-lg ${
                   isActive
                     ? "text-primary"
-                    : scrolled
+                    : isOpaque
                     ? "text-muted-foreground hover:text-primary"
                     : "text-white/80 hover:text-white"
                 }`}
