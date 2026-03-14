@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Search, SlidersHorizontal, Bed, Bath, Maximize, MapPin } from "lucide-react";
+import { Search, SlidersHorizontal, Bed, Bath, Maximize, MapPin, Car, DoorOpen } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import Navbar from "@/components/Navbar";
