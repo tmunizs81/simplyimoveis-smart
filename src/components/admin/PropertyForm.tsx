@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Save, X, Upload, Video, Image, Trash2, Star, MapPin, DollarSign, Maximize2, BedDouble, Bath, Home, FileText, Tag, Car, DoorOpen } from "lucide-react";
+import { Save, X, Upload, Video, Image, Trash2, Star, MapPin, DollarSign, Maximize2, BedDouble, Bath, Home, FileText, Tag, Car, DoorOpen, Waves, Navigation } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
@@ -31,6 +31,8 @@ const PropertyForm = ({ editingProperty, userId, onSaved, onCancel }: PropertyFo
     bathrooms: editingProperty?.bathrooms ?? 1,
     garage_spots: (editingProperty as any)?.garage_spots ?? 0,
     area: editingProperty ? Number(editingProperty.area) : 0,
+    pool_size: (editingProperty as any)?.pool_size ? Number((editingProperty as any).pool_size) : 0,
+    nearby_points: (editingProperty as any)?.nearby_points || "",
     type: (editingProperty?.type || "Apartamento") as typeof PROPERTY_TYPES[number],
     status: (editingProperty?.status || "venda") as "venda" | "aluguel",
     description: editingProperty?.description || "",
@@ -93,9 +95,10 @@ const PropertyForm = ({ editingProperty, userId, onSaved, onCancel }: PropertyFo
           title: form.title, address: form.address, price: form.price,
           bedrooms: form.bedrooms, suites: form.suites, bathrooms: form.bathrooms,
           garage_spots: form.garage_spots, area: form.area,
+          pool_size: form.pool_size, nearby_points: form.nearby_points || null,
           type: form.type, status: form.status, description: form.description,
           featured: form.featured, active: form.active,
-        }).eq("id", editingProperty.id);
+        } as any).eq("id", editingProperty.id);
         if (error) throw error;
         if (mediaFiles.length) await uploadMedia(editingProperty.id);
         toast.success("Imóvel atualizado!");
@@ -104,9 +107,10 @@ const PropertyForm = ({ editingProperty, userId, onSaved, onCancel }: PropertyFo
           user_id: userId, title: form.title, address: form.address,
           price: form.price, bedrooms: form.bedrooms, suites: form.suites,
           bathrooms: form.bathrooms, garage_spots: form.garage_spots,
-          area: form.area, type: form.type, status: form.status,
+          area: form.area, pool_size: form.pool_size, nearby_points: form.nearby_points || null,
+          type: form.type, status: form.status,
           description: form.description, featured: form.featured, active: form.active,
-        }).select().single();
+        } as any).select().single();
         if (error) throw error;
         if (mediaFiles.length && data) await uploadMedia(data.id);
         toast.success("Imóvel cadastrado!");
@@ -215,7 +219,26 @@ const PropertyForm = ({ editingProperty, userId, onSaved, onCancel }: PropertyFo
               <label className={labelClass}><Car size={12} /> Vagas Garagem</label>
               <input type="number" min={0} value={form.garage_spots} onChange={(e) => setForm({ ...form, garage_spots: Number(e.target.value) })} className={inputClass} />
             </div>
+            <div>
+              <label className={labelClass}><Waves size={12} /> Piscina (m²)</label>
+              <input type="number" min={0} step="0.1" placeholder="0 = sem piscina" value={form.pool_size || ""} onChange={(e) => setForm({ ...form, pool_size: Number(e.target.value) })} className={inputClass} />
+            </div>
           </div>
+        </div>
+
+        {/* Section: Location & Points of Interest */}
+        <div className="space-y-4">
+          <h3 className="font-display text-sm font-bold text-foreground flex items-center gap-2 pb-2 border-b border-border">
+            <Navigation size={16} className="text-primary" /> Localização e Pontos de Interesse
+          </h3>
+          <textarea
+            placeholder="Ex: Próximo ao Beach Park (5 min), Shopping Porto das Dunas (2 min), Farmácia, Supermercado, Escolas, Praia a 200m..."
+            rows={3}
+            value={form.nearby_points}
+            onChange={(e) => setForm({ ...form, nearby_points: e.target.value })}
+            className={`${inputClass} resize-none`}
+          />
+          <p className="text-[10px] text-muted-foreground">Descreva pontos de referência, comércios, lazer e facilidades próximas. A Luma usará essas informações para recomendar o imóvel.</p>
         </div>
 
         {/* Section: Description */}

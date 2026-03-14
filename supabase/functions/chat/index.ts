@@ -38,7 +38,9 @@ Preço: R$ ${Number(prop.price).toLocaleString("pt-BR")}
 Tipo: ${prop.type}
 Status: ${prop.status === "venda" ? "À Venda" : "Para Aluguel"}
 Quartos: ${prop.bedrooms} | Suítes: ${prop.suites || 0} | Banheiros: ${prop.bathrooms} | Garagem: ${prop.garage_spots || 0} | Área: ${prop.area}m²
+Piscina: ${(prop as any).pool_size > 0 ? `Sim, ${(prop as any).pool_size}m²` : "Não"}
 Descrição: ${prop.description || "Sem descrição"}
+Proximidades: ${(prop as any).nearby_points || "Não informado"}
 Destaque: ${prop.featured ? "Sim" : "Não"}
 ---`;
       }
@@ -46,7 +48,7 @@ Destaque: ${prop.featured ? "Sim" : "Não"}
 
     const { data: allProps } = await supabase
       .from("properties")
-      .select("id, title, address, price, type, status, bedrooms, suites, bathrooms, garage_spots, area, description, featured")
+      .select("id, title, address, price, type, status, bedrooms, suites, bathrooms, garage_spots, area, description, featured, pool_size, nearby_points")
       .eq("active", true)
       .order("featured", { ascending: false })
       .limit(50);
@@ -55,8 +57,8 @@ Destaque: ${prop.featured ? "Sim" : "Não"}
       propertiesContext += "\n\n--- IMÓVEIS DISPONÍVEIS ---\n";
       propertiesContext += allProps
         .map(
-          (p) =>
-            `• [ID:${p.id}] ${p.title} — ${p.address} — R$ ${Number(p.price).toLocaleString("pt-BR")} — ${p.type} — ${p.status === "venda" ? "Venda" : "Aluguel"} — ${p.bedrooms}q/${p.suites || 0}s/${p.bathrooms}b/${p.garage_spots || 0}g/${p.area}m² ${p.featured ? "⭐" : ""} ${p.description ? `— ${p.description}` : ""}`
+          (p: any) =>
+            `• [ID:${p.id}] ${p.title} — ${p.address} — R$ ${Number(p.price).toLocaleString("pt-BR")} — ${p.type} — ${p.status === "venda" ? "Venda" : "Aluguel"} — ${p.bedrooms}q/${p.suites || 0}s/${p.bathrooms}b/${p.garage_spots || 0}g/${p.area}m² ${p.pool_size > 0 ? `🏊 Piscina ${p.pool_size}m²` : ""} ${p.featured ? "⭐" : ""} ${p.description ? `— ${p.description}` : ""} ${p.nearby_points ? `— Proximidades: ${p.nearby_points}` : ""}`
         )
         .join("\n");
     }
