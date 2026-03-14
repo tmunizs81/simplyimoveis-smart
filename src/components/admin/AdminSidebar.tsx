@@ -29,6 +29,7 @@ const realEstateTabs = [
 const settingsTabs = [
   { id: "password" as AdminTab, label: "Senha", icon: KeyRound, description: "Alterar credenciais" },
   { id: "users" as AdminTab, label: "Usuários", icon: UserPlus, description: "Cadastrar acessos" },
+  { id: "backup" as AdminTab, label: "Backup", icon: DatabaseBackup, description: "Backup e restauração" },
 ];
 
 const AdminSidebar = ({ activeTab, onTabChange, userEmail, onLogout }: AdminSidebarProps) => {
