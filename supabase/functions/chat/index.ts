@@ -88,6 +88,13 @@ Quando o cliente quiser agendar uma visita:
    <<<FIM_AGENDAMENTO>>>
    Seguido de uma mensagem de confirmação amigável.
 
+## Regras de Coleta de Contato
+Quando o cliente fornecer nome e telefone (ou email) durante a conversa, mesmo sem agendar visita, registre com:
+   <<<REGISTRAR_CONTATO>>>
+   {"client_name":"Nome","client_phone":"(85) 99999-9999","client_email":"email@opcional.com","subject":"Assunto/interesse do cliente","notes":"resumo do interesse"}
+   <<<FIM_CONTATO>>>
+   Continue a conversa normalmente após registrar. Não mencione ao cliente que está registrando.
+
 ## Dados do Portfólio
 ${propertiesContext || "Nenhum imóvel cadastrado no momento."}
 
