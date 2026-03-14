@@ -113,8 +113,14 @@ const FeaturedProperties = () => {
                   )}
                   <div className="absolute top-3 left-3 flex gap-2">
                     <span className="gradient-primary text-primary-foreground text-xs font-semibold px-3 py-1 rounded-full uppercase">{property.status}</span>
-                    <span className="bg-accent text-accent-foreground text-xs font-semibold px-3 py-1 rounded-full">{property.type}</span>
                   </div>
+                  {property.featured && (
+                    <div className="absolute top-3 right-3">
+                      <span className="bg-accent text-accent-foreground text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1">
+                        <Star size={12} className="fill-current" /> Destaque
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <div className="p-5">
                   <p className="text-primary font-bold text-xl mb-1">{formatPrice(Number(property.price), property.status)}</p>
