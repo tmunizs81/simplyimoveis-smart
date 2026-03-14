@@ -281,6 +281,25 @@ const PropertyDetail = () => {
                 </div>
               )}
 
+              {/* Nearby Points of Interest */}
+              {(property as any).nearby_points && (
+                <div className="glass-card rounded-2xl p-8 border border-border/50">
+                  <h2 className="font-display text-2xl font-bold text-foreground mb-6 flex items-center gap-3">
+                    <div className="w-1.5 h-8 rounded-full gradient-primary" />
+                    Localização e Arredores
+                  </h2>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {(property as any).nearby_points.split(/[,\n]/).filter((p: string) => p.trim()).map((point: string, i: number) => (
+                      <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-secondary/30 hover:bg-secondary/50 transition-colors">
+                        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                          <Navigation size={14} className="text-primary" />
+                        </div>
+                        <span className="text-sm text-foreground">{point.trim()}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
               {/* Videos */}
               {videos.length > 0 && (
                 <div className="glass-card rounded-2xl p-6">
