@@ -94,9 +94,10 @@ const PropertyForm = ({ editingProperty, userId, onSaved, onCancel }: PropertyFo
     try {
       if (editingProperty) {
         const { error } = await supabase.from("properties").update({
-          title: form.title, address: form.address, price: form.price,
-          bedrooms: form.bedrooms, suites: form.suites, bathrooms: form.bathrooms,
-          garage_spots: form.garage_spots, area: form.area,
+          title: form.title, address: form.address,
+          neighborhood: form.neighborhood || null, city: form.city || null,
+          price: form.price, bedrooms: form.bedrooms, suites: form.suites,
+          bathrooms: form.bathrooms, garage_spots: form.garage_spots, area: form.area,
           pool_size: form.pool_size, nearby_points: form.nearby_points || null,
           type: form.type, status: form.status, description: form.description,
           featured: form.featured, active: form.active,
