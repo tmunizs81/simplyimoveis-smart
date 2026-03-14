@@ -10,6 +10,7 @@ type RentalContract = {
   deposit_amount: number | null; payment_day: number; status: string;
   notes: string | null; late_fee_percentage: number | null;
   adjustment_index: string | null; created_at: string; user_id: string;
+  commission_rate: number | null; commission_value: number | null;
 };
 
 type ContractDoc = {
