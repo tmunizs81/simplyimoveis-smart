@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Bed, Bath, Maximize, MapPin, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
+import { Bed, Bath, Maximize, MapPin, ChevronLeft, ChevronRight, Sparkles, Car } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
