@@ -86,15 +86,34 @@ const TenantsTab = () => {
       address: form.address || null, notes: form.notes || null, user_id: user.id,
     };
 
+    let tenantId: string;
+
     if (editing) {
       const { error } = await supabase.from("tenants").update(payload as any).eq("id", editing.id);
       if (error) { toast.error("Erro ao atualizar"); return; }
-      toast.success("Inquilino atualizado!");
+      tenantId = editing.id;
     } else {
-      const { error } = await supabase.from("tenants").insert(payload as any);
-      if (error) { toast.error("Erro ao cadastrar"); return; }
-      toast.success("Inquilino cadastrado!");
+      const { data: inserted, error } = await supabase.from("tenants").insert(payload as any).select("id").single();
+      if (error || !inserted) { toast.error("Erro ao cadastrar"); return; }
+      tenantId = inserted.id;
     }
+
+    // Upload form documents
+    if (formFiles.length > 0) {
+      for (const { file, docType } of formFiles) {
+        const ext = file.name.split(".").pop();
+        const path = `${user.id}/${tenantId}/${crypto.randomUUID()}.${ext}`;
+        const { error: upErr } = await supabase.storage.from("tenant-documents").upload(path, file);
+        if (upErr) { toast.error(`Erro: ${file.name}`); continue; }
+        await supabase.from("tenant_documents").insert({
+          tenant_id: tenantId, file_path: path, file_name: file.name,
+          file_type: file.type, document_type: docType, user_id: user.id,
+        } as any);
+      }
+    }
+
+    toast.success(editing ? "Inquilino atualizado!" : "Inquilino cadastrado!");
+    setFormFiles([]);
     setShowForm(false);
     fetchTenants();
   };
