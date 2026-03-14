@@ -1,4 +1,4 @@
-import { Building2, KeyRound, UserPlus, LogOut, LayoutDashboard, MessageSquare, Users, TrendingUp, Home, FileText, DollarSign, BarChart3, ChevronDown, ChevronRight, Handshake } from "lucide-react";
+import { Building2, KeyRound, UserPlus, LogOut, LayoutDashboard, MessageSquare, Users, TrendingUp, Home, FileText, DollarSign, BarChart3, ChevronDown, ChevronRight, Handshake, ClipboardCheck } from "lucide-react";
 import { useState } from "react";
 
 type AdminTab = "properties" | "contacts" | "password" | "users" | "leads" | "sales" | "tenants" | "rentals" | "financial" | "reports";
