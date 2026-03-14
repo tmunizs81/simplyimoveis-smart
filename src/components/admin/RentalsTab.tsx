@@ -178,6 +178,7 @@ const RentalsTab = () => {
   });
 
   const totalMonthly = contracts.filter(c => c.status === "ativo").reduce((s, c) => s + Number(c.monthly_rent), 0);
+  const totalCommission = contracts.filter(c => c.status === "ativo").reduce((s, c) => s + (Number(c.commission_value) || 0), 0);
   const inputClass = "w-full px-4 py-3 rounded-xl bg-secondary/30 border border-input text-foreground placeholder:text-muted-foreground/60 focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition-all text-sm";
 
   if (loading) return <div className="flex items-center justify-center py-20"><div className="w-8 h-8 border-3 border-primary/30 border-t-primary rounded-full animate-spin" /></div>;
