@@ -513,6 +513,8 @@ export type Database = {
       rental_contracts: {
         Row: {
           adjustment_index: string | null
+          commission_rate: number | null
+          commission_value: number | null
           created_at: string
           deposit_amount: number | null
           end_date: string
@@ -530,6 +532,8 @@ export type Database = {
         }
         Insert: {
           adjustment_index?: string | null
+          commission_rate?: number | null
+          commission_value?: number | null
           created_at?: string
           deposit_amount?: number | null
           end_date: string
@@ -547,6 +551,8 @@ export type Database = {
         }
         Update: {
           adjustment_index?: string | null
+          commission_rate?: number | null
+          commission_value?: number | null
           created_at?: string
           deposit_amount?: number | null
           end_date?: string
