@@ -57,6 +57,8 @@ const InspectionsTab = () => {
   const [search, setSearch] = useState("");
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
   const [uploadCategory, setUploadCategory] = useState("geral");
+  const [formFiles, setFormFiles] = useState<{ file: File; category: string }[]>([]);
+  const [formFileCategory, setFormFileCategory] = useState("geral");
   const [form, setForm] = useState({
     property_id: "", contract_id: "", tenant_id: "",
     inspection_type: "entrada", inspection_date: new Date().toISOString().slice(0, 10),
