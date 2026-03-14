@@ -36,6 +36,8 @@ const TenantsTab = () => {
   const [documents, setDocuments] = useState<TenantDoc[]>([]);
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
   const [uploadDocType, setUploadDocType] = useState("rg");
+  const [formFiles, setFormFiles] = useState<{ file: File; docType: string }[]>([]);
+  const [formDocType, setFormDocType] = useState("rg");
   const [form, setForm] = useState({
     name: "", email: "", phone: "", cpf_cnpj: "", rg: "", address: "", notes: "",
   });
@@ -57,6 +59,8 @@ const TenantsTab = () => {
   const openNew = () => {
     setEditing(null);
     setForm({ name: "", email: "", phone: "", cpf_cnpj: "", rg: "", address: "", notes: "" });
+    setFormFiles([]);
+    setFormDocType("rg");
     setShowForm(true);
   };
 
@@ -66,6 +70,8 @@ const TenantsTab = () => {
       name: t.name, email: t.email || "", phone: t.phone || "",
       cpf_cnpj: t.cpf_cnpj || "", rg: t.rg || "", address: t.address || "", notes: t.notes || "",
     });
+    setFormFiles([]);
+    setFormDocType("rg");
     setShowForm(true);
   };
 
@@ -80,15 +86,34 @@ const TenantsTab = () => {
       address: form.address || null, notes: form.notes || null, user_id: user.id,
     };
 
+    let tenantId: string;
+
     if (editing) {
       const { error } = await supabase.from("tenants").update(payload as any).eq("id", editing.id);
       if (error) { toast.error("Erro ao atualizar"); return; }
-      toast.success("Inquilino atualizado!");
+      tenantId = editing.id;
     } else {
-      const { error } = await supabase.from("tenants").insert(payload as any);
-      if (error) { toast.error("Erro ao cadastrar"); return; }
-      toast.success("Inquilino cadastrado!");
+      const { data: inserted, error } = await supabase.from("tenants").insert(payload as any).select("id").single();
+      if (error || !inserted) { toast.error("Erro ao cadastrar"); return; }
+      tenantId = inserted.id;
     }
+
+    // Upload form documents
+    if (formFiles.length > 0) {
+      for (const { file, docType } of formFiles) {
+        const ext = file.name.split(".").pop();
+        const path = `${user.id}/${tenantId}/${crypto.randomUUID()}.${ext}`;
+        const { error: upErr } = await supabase.storage.from("tenant-documents").upload(path, file);
+        if (upErr) { toast.error(`Erro: ${file.name}`); continue; }
+        await supabase.from("tenant_documents").insert({
+          tenant_id: tenantId, file_path: path, file_name: file.name,
+          file_type: file.type, document_type: docType, user_id: user.id,
+        } as any);
+      }
+    }
+
+    toast.success(editing ? "Inquilino atualizado!" : "Inquilino cadastrado!");
+    setFormFiles([]);
     setShowForm(false);
     fetchTenants();
   };
@@ -248,6 +273,44 @@ const TenantsTab = () => {
               <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5 block">Observações</label>
               <textarea rows={3} value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} className={`${inputClass} resize-none`} />
             </div>
+            {/* Document Upload */}
+            <div className="space-y-3 pt-2 border-t border-border">
+              <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                <Upload size={14} className="text-primary" /> Documentos do Inquilino
+              </h3>
+              <div className="flex items-center gap-3 flex-wrap">
+                <select value={formDocType} onChange={e => setFormDocType(e.target.value)} className="px-3 py-2 rounded-lg bg-secondary/30 border border-input text-sm">
+                  {DOC_TYPES.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
+                </select>
+                <label className="flex-1 min-w-[180px] flex items-center gap-2 px-4 py-3 rounded-xl border-2 border-dashed border-primary/30 cursor-pointer hover:bg-primary/5 transition-all">
+                  <Upload size={16} className="text-primary" />
+                  <span className="text-sm text-muted-foreground">Selecionar arquivos</span>
+                  <input type="file" multiple className="hidden" onChange={e => {
+                    const files = Array.from(e.target.files || []);
+                    setFormFiles(prev => [...prev, ...files.map(f => ({ file: f, docType: formDocType }))]);
+                    e.target.value = "";
+                  }} />
+                </label>
+              </div>
+              {formFiles.length > 0 && (
+                <div className="space-y-1.5">
+                  {formFiles.map((item, idx) => (
+                    <div key={idx} className="flex items-center gap-3 bg-secondary/20 rounded-lg px-3 py-2 text-sm">
+                      <FileText size={14} className="text-primary" />
+                      <span className="flex-1 truncate text-foreground">{item.file.name}</span>
+                      <span className="text-xs text-muted-foreground px-2 py-0.5 rounded-full bg-secondary">
+                        {DOC_TYPES.find(d => d.value === item.docType)?.label}
+                      </span>
+                      <button type="button" onClick={() => setFormFiles(prev => prev.filter((_, i) => i !== idx))} className="text-muted-foreground hover:text-destructive">
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ))}
+                  <p className="text-xs text-muted-foreground">{formFiles.length} documento(s) serão enviados ao salvar</p>
+                </div>
+              )}
+            </div>
+
             <div className="flex gap-3 pt-2">
               <button type="button" onClick={() => setShowForm(false)} className="flex-1 py-3 rounded-xl border border-input text-muted-foreground font-semibold text-sm hover:bg-secondary transition-all">Cancelar</button>
               <button type="submit" className="flex-1 gradient-primary text-primary-foreground py-3 rounded-xl font-bold text-sm hover:opacity-90 flex items-center justify-center gap-2">
