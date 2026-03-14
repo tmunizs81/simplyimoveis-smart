@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import Index from "./pages/Index";
 import Properties from "./pages/Properties";
 import PropertyDetail from "./pages/PropertyDetail";
+import Services from "./pages/Services";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 
