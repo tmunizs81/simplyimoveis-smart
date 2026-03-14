@@ -451,7 +451,40 @@ const InspectionsTab = () => {
               <textarea rows={4} value={form.general_notes} onChange={e => setForm({ ...form, general_notes: e.target.value })} className={`${inputClass} resize-none`} placeholder="Descreva o estado geral do imóvel, danos, pendências..." />
             </div>
 
-            <div className="flex gap-3 pt-2">
+            {/* Photo Upload */}
+            <div className="space-y-4">
+              <h3 className="font-display text-sm font-bold text-foreground flex items-center gap-2 pb-2 border-b border-border">
+                <Camera size={16} className="text-primary" /> Fotos da Vistoria
+              </h3>
+              <div className="flex items-center gap-3 flex-wrap">
+                <select value={formFileCategory} onChange={e => setFormFileCategory(e.target.value)} className="px-3 py-2 rounded-lg bg-secondary/30 border border-input text-sm">
+                  {MEDIA_CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                </select>
+                <label className="flex-1 min-w-[200px] flex items-center gap-2 px-4 py-3 rounded-xl border-2 border-dashed border-primary/30 cursor-pointer hover:bg-primary/5 transition-all">
+                  <Upload size={16} className="text-primary" />
+                  <span className="text-sm text-muted-foreground">Selecionar fotos, vídeos ou PDFs</span>
+                  <input type="file" multiple accept="image/*,video/*,.pdf" className="hidden" onChange={e => {
+                    const files = Array.from(e.target.files || []);
+                    setFormFiles(prev => [...prev, ...files.map(f => ({ file: f, category: formFileCategory }))]);
+                    e.target.value = "";
+                  }} />
+                </label>
+              </div>
+              {formFiles.length > 0 && (
+                <div className="space-y-1.5">
+                  {formFiles.map((item, idx) => (
+                    <div key={idx} className="flex items-center gap-3 bg-secondary/20 rounded-lg px-3 py-2 text-sm">
+                      {item.file.type.startsWith("image") ? <Camera size={14} className="text-primary" /> : <FileText size={14} className="text-primary" />}
+                      <span className="flex-1 truncate text-foreground">{item.file.name}</span>
+                      <span className="text-xs text-muted-foreground px-2 py-0.5 rounded-full bg-secondary">{MEDIA_CATEGORIES.find(c => c.value === item.category)?.label}</span>
+                      <button type="button" onClick={() => setFormFiles(prev => prev.filter((_, i) => i !== idx))} className="text-muted-foreground hover:text-destructive"><X size={14} /></button>
+                    </div>
+                  ))}
+                  <p className="text-xs text-muted-foreground">{formFiles.length} arquivo(s) serão enviados ao salvar</p>
+                </div>
+              )}
+            </div>
+
               <button type="button" onClick={() => setShowForm(false)} className="flex-1 py-3 rounded-xl border border-input text-muted-foreground font-semibold text-sm hover:bg-secondary transition-all">Cancelar</button>
               <button type="submit" className="flex-1 gradient-primary text-primary-foreground py-3 rounded-xl font-bold text-sm hover:opacity-90 flex items-center justify-center gap-2">
                 <Save size={16} /> Salvar Vistoria
