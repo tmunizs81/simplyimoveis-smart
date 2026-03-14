@@ -17,6 +17,8 @@ const Navbar = () => {
   const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const isHome = location.pathname === "/";
+  const isOpaque = !isHome || scrolled;
 
   const handleNavClick = (link: typeof navLinks[0]) => {
     if (link.hash) {
@@ -42,7 +44,7 @@ const Navbar = () => {
   return (
     <nav
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
-        scrolled
+        isOpaque
           ? "bg-background/95 backdrop-blur-xl shadow-lg border-b border-border/50"
           : "bg-transparent"
       }`}
@@ -53,10 +55,10 @@ const Navbar = () => {
           <img src={logo} alt="SimplyImóveis" className="h-12 w-12 object-contain rounded-lg group-hover:scale-105 transition-transform" />
           <div className="flex flex-col leading-tight">
             <span className="font-display text-xl font-bold">
-              <span className={scrolled ? "text-foreground" : "text-white"}>simply</span>
+            <span className={isOpaque ? "text-foreground" : "text-white"}>simply</span>
               <span className="text-primary">Imóveis</span>
             </span>
-            <span className={`text-[10px] tracking-widest ${scrolled ? "text-muted-foreground" : "text-white/60"}`}>— by Talita Muniz —</span>
+            <span className={`text-[10px] tracking-widest ${isOpaque ? "text-muted-foreground" : "text-white/60"}`}>— by Talita Muniz —</span>
           </div>
         </Link>
 
@@ -71,7 +73,7 @@ const Navbar = () => {
                 className={`relative px-4 py-2 text-xs font-bold uppercase tracking-[0.15em] transition-colors rounded-lg ${
                   isActive
                     ? "text-primary"
-                    : scrolled
+                    : isOpaque
                     ? "text-muted-foreground hover:text-primary"
                     : "text-white/80 hover:text-white"
                 }`}
@@ -93,6 +95,8 @@ const Navbar = () => {
             className={`ml-4 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 border ${
               scrolled
                 ? "text-muted-foreground hover:text-primary border-border hover:border-primary/30"
+                : isOpaque
+                ? "text-muted-foreground hover:text-primary border-border hover:border-primary/30"
                 : "text-white/80 hover:text-white border-white/20 hover:border-white/40"
             }`}
           >
@@ -103,7 +107,7 @@ const Navbar = () => {
 
         {/* Mobile toggle */}
         <button
-          className={`md:hidden transition-colors ${scrolled ? "text-foreground" : "text-white"}`}
+          className={`md:hidden transition-colors ${isOpaque ? "text-foreground" : "text-white"}`}
           onClick={() => setOpen(!open)}
         >
           {open ? <X size={24} /> : <Menu size={24} />}

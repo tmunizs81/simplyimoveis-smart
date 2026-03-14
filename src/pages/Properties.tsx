@@ -111,7 +111,7 @@ const Properties = () => {
                   transition={{ duration: 0.5, delay: i * 0.1 }}
                 >
                   <Link to={`/imoveis/${property.id}`} className="block group hover-lift rounded-xl overflow-hidden glass-card">
-                    <div className="relative h-64 overflow-hidden bg-secondary">
+                    <div className="relative aspect-[4/3] overflow-hidden bg-secondary">
                       {property.media[0] ? (
                         <img src={getMediaUrl(property.media[0].file_path)} alt={property.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                       ) : (
