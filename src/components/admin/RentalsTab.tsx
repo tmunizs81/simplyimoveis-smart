@@ -352,8 +352,8 @@ const RentalsTab = () => {
           <p className="text-xs text-muted-foreground">Receita Mensal</p>
         </div>
         <div className="bg-card rounded-xl border border-border p-4 text-center">
-          <p className="font-display text-2xl font-bold text-amber-500">{contracts.filter(c => c.status === "pendente").length}</p>
-          <p className="text-xs text-muted-foreground">Pendentes</p>
+          <p className="font-display text-lg font-bold text-accent">{totalCommission.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</p>
+          <p className="text-xs text-muted-foreground">Comissão Mensal</p>
         </div>
       </div>
 
