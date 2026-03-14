@@ -243,7 +243,7 @@ SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_USER=
 SMTP_PASS=
-SMTP_SENDER_NAME=Simply Imóveis
+SMTP_SENDER_NAME="Simply Imóveis"
 SMTP_ADMIN_EMAIL=${ADMIN_EMAIL}
 
 # ========== GROQ API (Chat Luma) ==========
