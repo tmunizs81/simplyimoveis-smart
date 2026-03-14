@@ -27,6 +27,7 @@ const SalesTab = () => {
   const [showForm, setShowForm] = useState(false);
   const [editingSale, setEditingSale] = useState<Sale | null>(null);
   const [search, setSearch] = useState("");
+  const [viewDocsSaleId, setViewDocsSaleId] = useState<string | null>(null);
   const [form, setForm] = useState({
     buyer_name: "", buyer_email: "", buyer_phone: "", buyer_cpf: "",
     sale_value: 0, commission_rate: 5, status: "em_andamento",
