@@ -25,6 +25,8 @@ const PropertyForm = ({ editingProperty, userId, onSaved, onCancel }: PropertyFo
   const [form, setForm] = useState({
     title: editingProperty?.title || "",
     address: editingProperty?.address || "",
+    neighborhood: (editingProperty as any)?.neighborhood || "",
+    city: (editingProperty as any)?.city || "Fortaleza",
     price: editingProperty ? Number(editingProperty.price) : 0,
     bedrooms: editingProperty?.bedrooms ?? 1,
     suites: (editingProperty as any)?.suites ?? 0,
