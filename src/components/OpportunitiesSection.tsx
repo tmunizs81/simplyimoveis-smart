@@ -122,10 +122,19 @@ const OpportunitiesSection = () => {
                         </p>
                       )}
 
-                      <div className="flex items-center gap-5 text-muted-foreground text-sm">
-                        <span className="flex items-center gap-1.5"><Bed size={15} /> {property.bedrooms} quartos</span>
-                        <span className="flex items-center gap-1.5"><Bath size={15} /> {property.bathrooms} banheiros</span>
-                        <span className="flex items-center gap-1.5"><Maximize size={15} /> {Number(property.area)}m²</span>
+                      <div className="flex items-center gap-4 text-foreground text-sm font-medium">
+                        <span className="flex items-center gap-1.5">
+                          <span className="w-7 h-7 rounded-lg bg-blue-500/10 flex items-center justify-center"><Bed size={15} className="text-blue-500" /></span> {property.bedrooms}
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                          <span className="w-7 h-7 rounded-lg bg-cyan-500/10 flex items-center justify-center"><Bath size={15} className="text-cyan-500" /></span> {property.bathrooms}
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                          <span className="w-7 h-7 rounded-lg bg-amber-500/10 flex items-center justify-center"><Car size={15} className="text-amber-500" /></span> {(property as any).garage_spots || 0}
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                          <span className="w-7 h-7 rounded-lg bg-emerald-500/10 flex items-center justify-center"><Maximize size={15} className="text-emerald-500" /></span> {Number(property.area)}m²
+                        </span>
                       </div>
                     </div>
 

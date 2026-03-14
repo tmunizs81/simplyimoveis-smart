@@ -117,10 +117,19 @@ const HighlightsSection = () => {
                   <p className="text-primary font-bold text-lg">{formatPrice(Number(property.price), property.status)}</p>
                   <h3 className="font-display text-base font-semibold text-foreground mt-1 truncate">{property.title}</h3>
                   <p className="text-muted-foreground text-xs flex items-center gap-1 mt-1"><MapPin size={12} /> {property.address}</p>
-                  <div className="flex items-center gap-3 text-muted-foreground text-xs mt-3 pt-3 border-t border-border">
-                    <span className="flex items-center gap-1"><Bed size={12} /> {property.bedrooms}</span>
-                    <span className="flex items-center gap-1"><Bath size={12} /> {property.bathrooms}</span>
-                    <span className="flex items-center gap-1"><Maximize size={12} /> {Number(property.area)}m²</span>
+                  <div className="flex items-center gap-3 text-foreground text-xs font-semibold mt-3 pt-3 border-t border-border">
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-6 h-6 rounded-md bg-blue-500/10 flex items-center justify-center"><Bed size={13} className="text-blue-500" /></span> {property.bedrooms}
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-6 h-6 rounded-md bg-cyan-500/10 flex items-center justify-center"><Bath size={13} className="text-cyan-500" /></span> {property.bathrooms}
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-6 h-6 rounded-md bg-amber-500/10 flex items-center justify-center"><Car size={13} className="text-amber-500" /></span> {(property as any).garage_spots || 0}
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-6 h-6 rounded-md bg-emerald-500/10 flex items-center justify-center"><Maximize size={13} className="text-emerald-500" /></span> {Number(property.area)}m²
+                    </span>
                   </div>
                 </div>
               </Link>
