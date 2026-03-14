@@ -63,12 +63,14 @@ export type Database = {
           area: number
           bathrooms: number
           bedrooms: number
+          city: string | null
           created_at: string
           description: string | null
           featured: boolean
           garage_spots: number
           id: string
           nearby_points: string | null
+          neighborhood: string | null
           pool_size: number | null
           price: number
           status: Database["public"]["Enums"]["property_status"]
@@ -84,12 +86,14 @@ export type Database = {
           area?: number
           bathrooms?: number
           bedrooms?: number
+          city?: string | null
           created_at?: string
           description?: string | null
           featured?: boolean
           garage_spots?: number
           id?: string
           nearby_points?: string | null
+          neighborhood?: string | null
           pool_size?: number | null
           price: number
           status?: Database["public"]["Enums"]["property_status"]
@@ -105,12 +109,14 @@ export type Database = {
           area?: number
           bathrooms?: number
           bedrooms?: number
+          city?: string | null
           created_at?: string
           description?: string | null
           featured?: boolean
           garage_spots?: number
           id?: string
           nearby_points?: string | null
+          neighborhood?: string | null
           pool_size?: number | null
           price?: number
           status?: Database["public"]["Enums"]["property_status"]
