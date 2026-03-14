@@ -10,11 +10,17 @@ import PropertyList from "@/components/admin/PropertyList";
 import PasswordTab from "@/components/admin/PasswordTab";
 import UsersTab from "@/components/admin/UsersTab";
 import ContactsTab from "@/components/admin/ContactsTab";
+import LeadsTab from "@/components/admin/LeadsTab";
+import SalesTab from "@/components/admin/SalesTab";
+import TenantsTab from "@/components/admin/TenantsTab";
+import RentalsTab from "@/components/admin/RentalsTab";
+import FinancialTab from "@/components/admin/FinancialTab";
+import ReportsTab from "@/components/admin/ReportsTab";
 import type { Database } from "@/integrations/supabase/types";
 
 type Property = Database["public"]["Tables"]["properties"]["Row"];
 type MediaRow = Database["public"]["Tables"]["property_media"]["Row"];
-type AdminTab = "properties" | "contacts" | "password" | "users";
+type AdminTab = "properties" | "contacts" | "password" | "users" | "leads" | "sales" | "tenants" | "rentals" | "financial" | "reports";
 
 const Admin = () => {
   const [user, setUser] = useState<any>(null);
@@ -81,7 +87,6 @@ const Admin = () => {
     <div className="min-h-screen bg-background">
       <Navbar />
       <div className="pt-20 flex">
-        {/* Sidebar */}
         <AdminSidebar
           activeTab={activeTab}
           onTabChange={(tab) => { setActiveTab(tab); setShowForm(false); setEditingProperty(null); }}
@@ -89,7 +94,6 @@ const Admin = () => {
           onLogout={handleLogout}
         />
 
-        {/* Main content */}
         <main className="flex-1 p-6 lg:p-8 overflow-y-auto max-h-[calc(100vh-80px)]">
           {activeTab === "properties" && !showForm && (
             <PropertyList
@@ -112,6 +116,12 @@ const Admin = () => {
           {activeTab === "contacts" && <ContactsTab />}
           {activeTab === "password" && <PasswordTab />}
           {activeTab === "users" && <UsersTab />}
+          {activeTab === "leads" && <LeadsTab />}
+          {activeTab === "sales" && <SalesTab />}
+          {activeTab === "tenants" && <TenantsTab />}
+          {activeTab === "rentals" && <RentalsTab />}
+          {activeTab === "financial" && <FinancialTab />}
+          {activeTab === "reports" && <ReportsTab />}
         </main>
       </div>
     </div>
