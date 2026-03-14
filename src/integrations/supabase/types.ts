@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       contact_submissions: {
         Row: {
+          chat_transcript: string | null
           created_at: string
           email: string
           id: string
@@ -23,9 +24,12 @@ export type Database = {
           name: string
           phone: string | null
           read: boolean
+          source: string | null
           subject: string | null
+          visit_date: string | null
         }
         Insert: {
+          chat_transcript?: string | null
           created_at?: string
           email: string
           id?: string
@@ -33,9 +37,12 @@ export type Database = {
           name: string
           phone?: string | null
           read?: boolean
+          source?: string | null
           subject?: string | null
+          visit_date?: string | null
         }
         Update: {
+          chat_transcript?: string | null
           created_at?: string
           email?: string
           id?: string
@@ -43,7 +50,9 @@ export type Database = {
           name?: string
           phone?: string | null
           read?: boolean
+          source?: string | null
           subject?: string | null
+          visit_date?: string | null
         }
         Relationships: []
       }

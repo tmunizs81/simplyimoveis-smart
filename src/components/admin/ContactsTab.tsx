@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Mail, Phone, Clock, Eye, EyeOff, Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import { Mail, Phone, Clock, Eye, EyeOff, Trash2, ChevronDown, ChevronUp, MessageCircle, Calendar, Bot } from "lucide-react";
 
 type ContactSubmission = {
   id: string;
@@ -12,6 +12,9 @@ type ContactSubmission = {
   message: string;
   read: boolean;
   created_at: string;
+  chat_transcript: string | null;
+  visit_date: string | null;
+  source: string | null;
 };
 
 const ContactsTab = () => {
@@ -133,24 +136,32 @@ const ContactsTab = () => {
                   onClick={() => setExpandedId(isExpanded ? null : contact.id)}
                   className="w-full px-5 py-4 flex items-center gap-4 text-left hover:bg-secondary/30 transition-colors"
                 >
-                  {!contact.read && (
-                    <span className="w-2.5 h-2.5 rounded-full bg-primary flex-shrink-0" />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-foreground text-sm truncate">
-                        {contact.name}
-                      </span>
-                      {contact.subject && (
-                        <span className="text-muted-foreground text-xs truncate">
-                          — {contact.subject}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-muted-foreground text-xs truncate mt-0.5">
-                      {contact.message}
-                    </p>
-                  </div>
+                   {!contact.read && (
+                     <span className="w-2.5 h-2.5 rounded-full bg-primary flex-shrink-0" />
+                   )}
+                   {contact.source && contact.source.startsWith("chat") && (
+                     <Bot size={16} className="text-primary flex-shrink-0" />
+                   )}
+                   <div className="flex-1 min-w-0">
+                     <div className="flex items-center gap-2">
+                       <span className="font-semibold text-foreground text-sm truncate">
+                         {contact.name}
+                       </span>
+                       {contact.source && contact.source !== "form" && (
+                         <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                           {contact.source === "chat-agendamento" ? "Visita" : "Chat"}
+                         </span>
+                       )}
+                       {contact.subject && (
+                         <span className="text-muted-foreground text-xs truncate">
+                           — {contact.subject}
+                         </span>
+                       )}
+                     </div>
+                     <p className="text-muted-foreground text-xs truncate mt-0.5">
+                       {contact.message}
+                     </p>
+                   </div>
                   <div className="flex items-center gap-3 flex-shrink-0">
                     <span className="text-muted-foreground/60 text-xs flex items-center gap-1">
                       <Clock size={12} />
@@ -178,13 +189,50 @@ const ContactsTab = () => {
                           </a>
                         </div>
                       )}
-                    </div>
+                     {contact.visit_date && (
+                       <div className="flex items-center gap-2 text-sm">
+                         <Calendar size={14} className="text-primary" />
+                         <span className="text-foreground">Visita: {contact.visit_date}</span>
+                       </div>
+                     )}
+                     </div>
 
-                    <div className="mt-4 bg-secondary/50 rounded-lg p-4">
-                      <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
-                        {contact.message}
-                      </p>
-                    </div>
+                     <div className="mt-4 bg-secondary/50 rounded-lg p-4">
+                       <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
+                         {contact.message}
+                       </p>
+                     </div>
+
+                     {contact.chat_transcript && (
+                       <div className="mt-4">
+                         <div className="flex items-center gap-2 mb-2">
+                           <MessageCircle size={14} className="text-primary" />
+                           <span className="text-sm font-semibold text-foreground">Conversa com a Luma</span>
+                         </div>
+                         <div className="bg-secondary/30 rounded-lg p-4 max-h-80 overflow-y-auto border border-border/50">
+                           {contact.chat_transcript.split("\n\n").map((line, i) => {
+                             const isClient = line.startsWith("[Cliente]:");
+                             const isLuma = line.startsWith("[Luma]:");
+                             const content = line.replace(/^\[(Cliente|Luma)\]:\s*/, "");
+                             return (
+                               <div key={i} className={`mb-3 last:mb-0 flex ${isClient ? "justify-end" : "justify-start"}`}>
+                                 <div className={`max-w-[85%] px-3 py-2 rounded-xl text-xs leading-relaxed ${
+                                   isClient
+                                     ? "bg-primary/10 text-foreground rounded-br-sm"
+                                     : isLuma
+                                     ? "bg-muted text-foreground rounded-bl-sm"
+                                     : "text-muted-foreground"
+                                 }`}>
+                                   {isClient && <span className="font-semibold text-primary block mb-0.5">Cliente</span>}
+                                   {isLuma && <span className="font-semibold text-primary block mb-0.5">Luma</span>}
+                                   {content}
+                                 </div>
+                               </div>
+                             );
+                           })}
+                         </div>
+                       </div>
+                     )}
 
                     <div className="flex gap-2 mt-4">
                       <button
