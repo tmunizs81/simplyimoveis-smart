@@ -296,6 +296,10 @@ const RentalsTab = () => {
                 <input type="number" step="0.1" min={0} value={form.late_fee_percentage} onChange={e => setForm({ ...form, late_fee_percentage: Number(e.target.value) })} className={inputClass} />
               </div>
               <div>
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5 block">Comissão (%)</label>
+                <input type="number" step="0.1" min={0} value={form.commission_rate} onChange={e => setForm({ ...form, commission_rate: Number(e.target.value) })} className={inputClass} />
+              </div>
+              <div>
                 <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5 block">Índice Reajuste</label>
                 <select value={form.adjustment_index} onChange={e => setForm({ ...form, adjustment_index: e.target.value })} className={inputClass}>
                   <option value="IGPM">IGP-M</option>
