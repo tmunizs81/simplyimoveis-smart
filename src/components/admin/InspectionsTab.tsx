@@ -225,7 +225,42 @@ const InspectionsTab = () => {
   };
 
   const getPropertyTitle = (id: string | null) => properties.find(p => p.id === id)?.title || "—";
+  const getPropertyAddress = (id: string | null) => properties.find(p => p.id === id)?.address || "—";
   const getTenantName = (id: string | null) => tenants.find(t => t.id === id)?.name || "—";
+
+  const downloadPdf = async (ins: Inspection) => {
+    toast.info("Gerando PDF...");
+    try {
+      const { data: mediaData } = await supabase.from("inspection_media").select("*").eq("inspection_id", ins.id);
+      await generateInspectionPdf(
+        {
+          id: ins.id,
+          property_title: getPropertyTitle(ins.property_id),
+          property_address: getPropertyAddress(ins.property_id),
+          tenant_name: getTenantName(ins.tenant_id),
+          inspection_type: ins.inspection_type,
+          inspection_date: ins.inspection_date,
+          inspector_name: ins.inspector_name,
+          status: ins.status,
+          general_notes: ins.general_notes,
+          rooms_condition: ins.rooms_condition,
+          electrical_condition: ins.electrical_condition,
+          plumbing_condition: ins.plumbing_condition,
+          painting_condition: ins.painting_condition,
+          floor_condition: ins.floor_condition,
+          keys_delivered: ins.keys_delivered,
+          meter_reading_water: ins.meter_reading_water,
+          meter_reading_electricity: ins.meter_reading_electricity,
+          meter_reading_gas: ins.meter_reading_gas,
+        },
+        (mediaData || []) as any
+      );
+      toast.success("PDF gerado com sucesso!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Erro ao gerar PDF");
+    }
+  };
 
   const getFileIcon = (fileType: string) => {
     if (fileType.startsWith("image")) return <Camera size={18} className="text-blue-500" />;
