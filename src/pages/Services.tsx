@@ -72,7 +72,7 @@ const Services = () => {
         }}
       >
         <div className="absolute inset-0 bg-accent/80 backdrop-blur-[2px]" />
-        <div className="container-custom px-4">
+        <div className="container-custom px-4 relative z-10">
           <motion.p
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -96,7 +96,6 @@ const Services = () => {
           >
             Assessoria completa, do alicerce ao acabamento, para quem busca excelência no mercado imobiliário.
           </motion.p>
-        </div>
         </div>
       </section>
 
