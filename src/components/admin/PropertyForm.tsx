@@ -190,7 +190,7 @@ const PropertyForm = ({ editingProperty, userId, onSaved, onCancel }: PropertyFo
           <h3 className="font-display text-sm font-bold text-foreground flex items-center gap-2 pb-2 border-b border-border">
             <Maximize2 size={16} className="text-primary" /> Detalhes do Imóvel
           </h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <div>
               <label className={labelClass}><DollarSign size={12} /> Preço (R$) *</label>
               <input type="number" placeholder="0" required min={0} value={form.price || ""} onChange={(e) => setForm({ ...form, price: Number(e.target.value) })} className={inputClass} />
@@ -204,8 +204,16 @@ const PropertyForm = ({ editingProperty, userId, onSaved, onCancel }: PropertyFo
               <input type="number" min={0} value={form.bedrooms} onChange={(e) => setForm({ ...form, bedrooms: Number(e.target.value) })} className={inputClass} />
             </div>
             <div>
+              <label className={labelClass}><DoorOpen size={12} /> Suítes</label>
+              <input type="number" min={0} value={form.suites} onChange={(e) => setForm({ ...form, suites: Number(e.target.value) })} className={inputClass} />
+            </div>
+            <div>
               <label className={labelClass}><Bath size={12} /> Banheiros</label>
               <input type="number" min={0} value={form.bathrooms} onChange={(e) => setForm({ ...form, bathrooms: Number(e.target.value) })} className={inputClass} />
+            </div>
+            <div>
+              <label className={labelClass}><Car size={12} /> Vagas Garagem</label>
+              <input type="number" min={0} value={form.garage_spots} onChange={(e) => setForm({ ...form, garage_spots: Number(e.target.value) })} className={inputClass} />
             </div>
           </div>
         </div>
