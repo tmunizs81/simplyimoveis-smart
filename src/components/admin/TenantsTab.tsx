@@ -36,6 +36,8 @@ const TenantsTab = () => {
   const [documents, setDocuments] = useState<TenantDoc[]>([]);
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
   const [uploadDocType, setUploadDocType] = useState("rg");
+  const [formFiles, setFormFiles] = useState<{ file: File; docType: string }[]>([]);
+  const [formDocType, setFormDocType] = useState("rg");
   const [form, setForm] = useState({
     name: "", email: "", phone: "", cpf_cnpj: "", rg: "", address: "", notes: "",
   });
