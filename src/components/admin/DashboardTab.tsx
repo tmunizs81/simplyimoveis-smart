@@ -5,6 +5,9 @@ import {
   Building2, Users, TrendingUp, DollarSign, Home, ClipboardCheck,
   ArrowUpRight, ArrowDownRight, Calendar, FileText, AlertCircle
 } from "lucide-react";
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
+} from "recharts";
 
 type Stats = {
   totalProperties: number;
@@ -24,6 +27,7 @@ type Stats = {
   overduePayments: number;
   recentLeads: { id: string; name: string; status: string; source: string; created_at: string }[];
   recentTransactions: { id: string; description: string; amount: number; type: string; status: string; date: string }[];
+  monthlyData: { month: string; receitas: number; despesas: number; lucro: number }[];
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -94,6 +98,35 @@ const DashboardTab = () => {
       const pending = allTx.filter((t: any) => t.status === "pendente").length;
       const overdue = allTx.filter((t: any) => t.status === "atrasado").length;
 
+      // Build monthly data for last 12 months
+      const monthlyMap = new Map<string, { receitas: number; despesas: number }>();
+      const now = new Date();
+      for (let i = 11; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        monthlyMap.set(key, { receitas: 0, despesas: 0 });
+      }
+      for (const t of allTx as any[]) {
+        if (t.status === "cancelado") continue;
+        const dateStr = t.date || t.created_at;
+        const key = dateStr?.substring(0, 7);
+        if (key && monthlyMap.has(key)) {
+          const entry = monthlyMap.get(key)!;
+          if (t.type === "receita") entry.receitas += Number(t.amount);
+          else entry.despesas += Number(t.amount);
+        }
+      }
+      const MONTH_NAMES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+      const monthlyData = Array.from(monthlyMap.entries()).map(([key, val]) => {
+        const [, m] = key.split("-");
+        return {
+          month: MONTH_NAMES[parseInt(m) - 1],
+          receitas: val.receitas,
+          despesas: val.despesas,
+          lucro: val.receitas - val.despesas,
+        };
+      });
+
       setStats({
         totalProperties: allProps.length,
         activeProperties: allProps.filter((p: any) => p.active).length,
@@ -112,6 +145,7 @@ const DashboardTab = () => {
         overduePayments: overdue,
         recentLeads: (allLeads.slice(0, 5) as any),
         recentTransactions: (allTx.slice(0, 5) as any),
+        monthlyData,
       });
       setLoading(false);
     };
@@ -219,6 +253,33 @@ const DashboardTab = () => {
           </motion.div>
         ))}
       </div>
+
+      {/* Monthly Evolution Chart */}
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
+        className="bg-card rounded-2xl border border-border p-5">
+        <h3 className="font-display font-bold text-sm text-foreground mb-4 flex items-center gap-2">
+          <TrendingUp size={16} className="text-primary" /> Evolução Mensal — Últimos 12 meses
+        </h3>
+        {stats.monthlyData.every(d => d.receitas === 0 && d.despesas === 0) ? (
+          <div className="text-center py-12 text-muted-foreground text-sm">Nenhuma transação registrada no período</div>
+        ) : (
+          <ResponsiveContainer width="100%" height={320}>
+            <BarChart data={stats.monthlyData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis dataKey="month" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+              <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
+              <Tooltip
+                contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "12px", fontSize: "12px" }}
+                formatter={(value: number) => formatCurrency(value)}
+              />
+              <Legend wrapperStyle={{ fontSize: "12px" }} />
+              <Bar dataKey="receitas" name="Receitas" fill="hsl(142, 71%, 45%)" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="despesas" name="Despesas" fill="hsl(0, 84%, 60%)" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="lucro" name="Lucro" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        )}
+      </motion.div>
 
       {/* Bottom: Recent Leads + Recent Transactions */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
