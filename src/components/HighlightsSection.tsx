@@ -98,7 +98,7 @@ const HighlightsSection = () => {
                 to={`/imoveis/${property.id}`}
                 className="block group hover-lift rounded-xl overflow-hidden glass-card min-w-[calc(33.333%-1rem)] flex-shrink-0"
               >
-                <div className="relative aspect-[4/3] overflow-hidden bg-secondary">
+                <div className="relative h-56 overflow-hidden bg-secondary">
                   {property.media[0] ? (
                     <img src={getMediaUrl(property.media[0].file_path)} alt={property.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                   ) : (
