@@ -17,6 +17,8 @@ const Navbar = () => {
   const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const isHome = location.pathname === "/";
+  const isOpaque = !isHome || scrolled;
 
   const handleNavClick = (link: typeof navLinks[0]) => {
     if (link.hash) {
