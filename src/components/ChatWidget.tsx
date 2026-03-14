@@ -15,7 +15,7 @@ const ChatWidget = ({ propertyId }: { propertyId?: string }) => {
     {
       role: "assistant",
       content:
-        "Olá! 👋 Sou a **Luma**, assistente virtual da Simply Imóveis. Posso ajudar com informações sobre nossos imóveis, agendar visitas e tirar suas dúvidas. Como posso ajudar?",
+        "Olá! 👋 Sou a **Luma**, assistente virtual da Simply Imóveis. Estou aqui para ajudar com informações sobre nossos imóveis, agendar visitas e tirar suas dúvidas.\n\nPara começar, poderia me informar seu **nome completo** e **telefone com DDD**? Assim consigo te atender de forma personalizada! 😊",
     },
   ]);
   const [input, setInput] = useState("");
