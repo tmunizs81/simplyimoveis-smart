@@ -126,10 +126,10 @@ const Properties = () => {
                       <p className="text-primary font-bold text-xl mb-1">{formatPrice(Number(property.price), property.status)}</p>
                       <h3 className="font-display text-lg font-semibold text-foreground mb-1">{property.title}</h3>
                       <p className="text-muted-foreground text-sm flex items-center gap-1 mb-4"><MapPin size={14} /> {property.address}</p>
-                      <div className="flex items-center gap-4 text-muted-foreground text-sm border-t border-border pt-4">
-                        <span className="flex items-center gap-1"><Bed size={14} /> {property.bedrooms} quartos</span>
-                        <span className="flex items-center gap-1"><Bath size={14} /> {property.bathrooms} banheiros</span>
-                        <span className="flex items-center gap-1"><Maximize size={14} /> {Number(property.area)}m²</span>
+                      <div className="flex items-center gap-5 text-foreground text-sm font-medium border-t border-border pt-4">
+                        <span className="flex items-center gap-2"><Bed size={18} className="text-primary" /> {property.bedrooms}</span>
+                        <span className="flex items-center gap-2"><Bath size={18} className="text-primary" /> {property.bathrooms}</span>
+                        <span className="flex items-center gap-2"><Maximize size={18} className="text-primary" /> {Number(property.area)}m²</span>
                       </div>
                     </div>
                   </Link>
