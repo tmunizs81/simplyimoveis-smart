@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
-import { Plus, Search, Users, Phone, Mail, Edit, Trash2, X, Save, FileText } from "lucide-react";
+import { Plus, Search, Users, Phone, Mail, Edit, Trash2, X, Save, FileText, Upload, Eye, FolderOpen } from "lucide-react";
 
 type Tenant = {
   id: string; name: string; email: string | null; phone: string | null;
@@ -10,12 +10,32 @@ type Tenant = {
   notes: string | null; created_at: string; user_id: string;
 };
 
+type TenantDoc = {
+  id: string; tenant_id: string; file_path: string; file_name: string;
+  file_type: string; document_type: string; notes: string | null; created_at: string;
+};
+
+const DOC_TYPES = [
+  { value: "rg", label: "RG" },
+  { value: "cpf", label: "CPF" },
+  { value: "comprovante_residencia", label: "Comprovante Residência" },
+  { value: "comprovante_renda", label: "Comprovante Renda" },
+  { value: "contrato_trabalho", label: "Contrato Trabalho" },
+  { value: "certidao", label: "Certidão" },
+  { value: "procuracao", label: "Procuração" },
+  { value: "outro", label: "Outro" },
+];
+
 const TenantsTab = () => {
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Tenant | null>(null);
   const [search, setSearch] = useState("");
+  const [viewingDocs, setViewingDocs] = useState<string | null>(null);
+  const [documents, setDocuments] = useState<TenantDoc[]>([]);
+  const [uploadFiles, setUploadFiles] = useState<File[]>([]);
+  const [uploadDocType, setUploadDocType] = useState("rg");
   const [form, setForm] = useState({
     name: "", email: "", phone: "", cpf_cnpj: "", rg: "", address: "", notes: "",
   });
@@ -25,6 +45,11 @@ const TenantsTab = () => {
     if (error) toast.error("Erro ao carregar inquilinos");
     else setTenants((data as Tenant[]) || []);
     setLoading(false);
+  };
+
+  const fetchDocs = async (tenantId: string) => {
+    const { data } = await supabase.from("tenant_documents").select("*").eq("tenant_id", tenantId).order("created_at", { ascending: false });
+    setDocuments((data as TenantDoc[]) || []);
   };
 
   useEffect(() => { fetchTenants(); }, []);
@@ -69,10 +94,42 @@ const TenantsTab = () => {
   };
 
   const deleteTenant = async (id: string) => {
-    if (!confirm("Excluir este inquilino?")) return;
+    if (!confirm("Excluir este inquilino e todos os documentos?")) return;
     await supabase.from("tenants").delete().eq("id", id);
     toast.success("Inquilino excluído");
     fetchTenants();
+  };
+
+  const uploadDocument = async (tenantId: string) => {
+    if (uploadFiles.length === 0) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    for (const file of uploadFiles) {
+      const ext = file.name.split(".").pop();
+      const path = `${user.id}/${tenantId}/${crypto.randomUUID()}.${ext}`;
+      const { error: uploadError } = await supabase.storage.from("tenant-documents").upload(path, file);
+      if (uploadError) { toast.error(`Erro ao enviar ${file.name}`); continue; }
+      await supabase.from("tenant_documents").insert({
+        tenant_id: tenantId, file_path: path, file_name: file.name,
+        file_type: file.type, document_type: uploadDocType, user_id: user.id,
+      } as any);
+    }
+    toast.success("Documentos enviados!");
+    setUploadFiles([]);
+    fetchDocs(tenantId);
+  };
+
+  const deleteDoc = async (doc: TenantDoc) => {
+    await supabase.storage.from("tenant-documents").remove([doc.file_path]);
+    await supabase.from("tenant_documents").delete().eq("id", doc.id);
+    toast.success("Documento removido");
+    if (viewingDocs) fetchDocs(viewingDocs);
+  };
+
+  const viewDoc = async (filePath: string) => {
+    const { data } = await supabase.storage.from("tenant-documents").createSignedUrl(filePath, 3600);
+    if (data?.signedUrl) window.open(data.signedUrl, "_blank");
   };
 
   const filtered = tenants.filter(t => {
@@ -83,6 +140,71 @@ const TenantsTab = () => {
   const inputClass = "w-full px-4 py-3 rounded-xl bg-secondary/30 border border-input text-foreground placeholder:text-muted-foreground/60 focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition-all text-sm";
 
   if (loading) return <div className="flex items-center justify-center py-20"><div className="w-8 h-8 border-3 border-primary/30 border-t-primary rounded-full animate-spin" /></div>;
+
+  // Document viewer for tenant
+  if (viewingDocs) {
+    const tenant = tenants.find(t => t.id === viewingDocs);
+    return (
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="text-xl font-bold text-foreground">Documentos do Inquilino</h2>
+            <p className="text-sm text-muted-foreground">{tenant?.name} • {tenant?.cpf_cnpj || "CPF não informado"}</p>
+          </div>
+          <button onClick={() => setViewingDocs(null)} className="px-4 py-2 rounded-xl border border-input text-sm text-muted-foreground hover:bg-secondary">
+            <X size={16} className="inline mr-1" /> Voltar
+          </button>
+        </div>
+
+        {/* Upload area */}
+        <div className="bg-card rounded-xl border border-border p-4 mb-6">
+          <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2"><Upload size={16} className="text-primary" /> Enviar Documentos</h3>
+          <div className="flex items-center gap-4">
+            <select value={uploadDocType} onChange={e => setUploadDocType(e.target.value)} className="px-3 py-2 rounded-lg bg-secondary/30 border border-input text-sm">
+              {DOC_TYPES.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
+            </select>
+            <label className="flex-1 flex items-center gap-2 px-4 py-3 rounded-xl border-2 border-dashed border-primary/30 cursor-pointer hover:bg-primary/5 transition-all">
+              <Upload size={16} className="text-primary" />
+              <span className="text-sm text-muted-foreground">{uploadFiles.length > 0 ? `${uploadFiles.length} arquivo(s)` : "Selecionar arquivos"}</span>
+              <input type="file" multiple className="hidden" onChange={e => setUploadFiles(Array.from(e.target.files || []))} />
+            </label>
+            {uploadFiles.length > 0 && (
+              <button onClick={() => uploadDocument(viewingDocs)} className="gradient-primary text-primary-foreground px-4 py-2 rounded-xl font-bold text-sm">Enviar</button>
+            )}
+          </div>
+        </div>
+
+        {/* Document list */}
+        {documents.length === 0 ? (
+          <div className="text-center py-16 text-muted-foreground">
+            <FolderOpen size={48} className="mx-auto mb-4 opacity-30" />
+            <p>Nenhum documento enviado para este inquilino.</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {documents.map(doc => (
+              <div key={doc.id} className="bg-card rounded-xl border border-border p-4 flex items-center gap-4">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <FileText size={18} className="text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-foreground truncate">{doc.file_name}</p>
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                    <span className="px-2 py-0.5 rounded-full bg-secondary font-medium">{DOC_TYPES.find(d => d.value === doc.document_type)?.label || doc.document_type}</span>
+                    <span>{new Date(doc.created_at).toLocaleDateString("pt-BR")}</span>
+                  </div>
+                </div>
+                <div className="flex gap-1.5">
+                  <button onClick={() => viewDoc(doc.file_path)} className="p-2 rounded-lg border border-border text-muted-foreground hover:text-primary hover:border-primary transition-all"><Eye size={14} /></button>
+                  <button onClick={() => deleteDoc(doc)} className="p-2 rounded-lg border border-border text-muted-foreground hover:text-destructive hover:border-destructive transition-all"><Trash2 size={14} /></button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </motion.div>
+    );
+  }
 
   if (showForm) {
     return (
@@ -177,6 +299,7 @@ const TenantsTab = () => {
                 </div>
               </div>
               <div className="flex items-center gap-1.5">
+                <button onClick={() => { setViewingDocs(t.id); fetchDocs(t.id); }} title="Documentos" className="p-2 rounded-lg border border-border text-muted-foreground hover:text-primary hover:border-primary transition-all"><FolderOpen size={14} /></button>
                 <button onClick={() => openEdit(t)} className="p-2 rounded-lg border border-border text-muted-foreground hover:text-primary hover:border-primary transition-all"><Edit size={14} /></button>
                 <button onClick={() => deleteTenant(t.id)} className="p-2 rounded-lg border border-border text-muted-foreground hover:text-destructive hover:border-destructive transition-all"><Trash2 size={14} /></button>
               </div>

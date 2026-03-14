@@ -1,7 +1,7 @@
-import { Building2, KeyRound, UserPlus, LogOut, LayoutDashboard, MessageSquare, Users, TrendingUp, Home, FileText, DollarSign, BarChart3, ChevronDown, ChevronRight, Handshake } from "lucide-react";
+import { Building2, KeyRound, UserPlus, LogOut, LayoutDashboard, MessageSquare, Users, TrendingUp, Home, FileText, DollarSign, BarChart3, ChevronDown, ChevronRight, Handshake, ClipboardCheck } from "lucide-react";
 import { useState } from "react";
 
-type AdminTab = "properties" | "contacts" | "password" | "users" | "leads" | "sales" | "tenants" | "rentals" | "financial" | "reports";
+type AdminTab = "properties" | "contacts" | "password" | "users" | "leads" | "sales" | "tenants" | "rentals" | "inspections" | "financial" | "reports";
 
 interface AdminSidebarProps {
   activeTab: AdminTab;
@@ -20,6 +20,7 @@ const realEstateTabs = [
   { id: "sales" as AdminTab, label: "Vendas", icon: TrendingUp, description: "Pipeline de vendas" },
   { id: "tenants" as AdminTab, label: "Inquilinos", icon: Users, description: "Cadastro de clientes" },
   { id: "rentals" as AdminTab, label: "Aluguéis", icon: Home, description: "Contratos e gestão" },
+  { id: "inspections" as AdminTab, label: "Vistorias", icon: ClipboardCheck, description: "Vistorias de imóveis" },
   { id: "financial" as AdminTab, label: "Financeiro", icon: DollarSign, description: "Transações e cobranças" },
   { id: "reports" as AdminTab, label: "Relatórios", icon: BarChart3, description: "Dashboards e análises" },
 ];
