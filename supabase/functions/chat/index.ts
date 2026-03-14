@@ -12,8 +12,8 @@ serve(async (req) => {
 
   try {
     const { messages, propertyId } = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
+    if (!GROQ_API_KEY) throw new Error("GROQ_API_KEY is not configured");
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -23,7 +23,6 @@ serve(async (req) => {
     let propertiesContext = "";
 
     if (propertyId) {
-      // Specific property detail
       const { data: prop } = await supabase
         .from("properties")
         .select("*, property_media(file_path, file_type)")
@@ -38,17 +37,16 @@ Endereço: ${prop.address}
 Preço: R$ ${Number(prop.price).toLocaleString("pt-BR")}
 Tipo: ${prop.type}
 Status: ${prop.status === "venda" ? "À Venda" : "Para Aluguel"}
-Quartos: ${prop.bedrooms} | Banheiros: ${prop.bathrooms} | Área: ${prop.area}m²
+Quartos: ${prop.bedrooms} | Suítes: ${prop.suites || 0} | Banheiros: ${prop.bathrooms} | Garagem: ${prop.garage_spots || 0} | Área: ${prop.area}m²
 Descrição: ${prop.description || "Sem descrição"}
 Destaque: ${prop.featured ? "Sim" : "Não"}
 ---`;
       }
     }
 
-    // Fetch all active properties for general context
     const { data: allProps } = await supabase
       .from("properties")
-      .select("id, title, address, price, type, status, bedrooms, bathrooms, area, description, featured")
+      .select("id, title, address, price, type, status, bedrooms, suites, bathrooms, garage_spots, area, description, featured")
       .eq("active", true)
       .order("featured", { ascending: false })
       .limit(50);
@@ -58,7 +56,7 @@ Destaque: ${prop.featured ? "Sim" : "Não"}
       propertiesContext += allProps
         .map(
           (p) =>
-            `• [ID:${p.id}] ${p.title} — ${p.address} — R$ ${Number(p.price).toLocaleString("pt-BR")} — ${p.type} — ${p.status === "venda" ? "Venda" : "Aluguel"} — ${p.bedrooms}q/${p.bathrooms}b/${p.area}m² ${p.featured ? "⭐" : ""} ${p.description ? `— ${p.description.slice(0, 100)}` : ""}`
+            `• [ID:${p.id}] ${p.title} — ${p.address} — R$ ${Number(p.price).toLocaleString("pt-BR")} — ${p.type} — ${p.status === "venda" ? "Venda" : "Aluguel"} — ${p.bedrooms}q/${p.suites || 0}s/${p.bathrooms}b/${p.garage_spots || 0}g/${p.area}m² ${p.featured ? "⭐" : ""} ${p.description ? `— ${p.description.slice(0, 100)}` : ""}`
         )
         .join("\n");
     }
@@ -101,34 +99,30 @@ ${propertiesContext || "Nenhum imóvel cadastrado no momento."}
 
 Se não souber uma informação específica, oriente o cliente a falar diretamente com a Talita pelo WhatsApp.`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        Authorization: `Bearer ${GROQ_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "llama-3.3-70b-versatile",
         messages: [{ role: "system", content: systemPrompt }, ...messages],
         stream: true,
+        temperature: 0.7,
+        max_tokens: 1024,
       }),
     });
 
     if (!response.ok) {
+      const t = await response.text();
+      console.error("Groq API error:", response.status, t);
       if (response.status === 429) {
         return new Response(JSON.stringify({ error: "Muitas solicitações. Tente novamente em alguns segundos." }), {
           status: 429,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "Créditos insuficientes." }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      const t = await response.text();
-      console.error("AI gateway error:", response.status, t);
       return new Response(JSON.stringify({ error: "Erro no serviço de IA" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
