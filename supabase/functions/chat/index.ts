@@ -55,8 +55,8 @@ Destaque: ${prop.featured ? "Sim" : "Não"}
       propertiesContext += "\n\n--- IMÓVEIS DISPONÍVEIS ---\n";
       propertiesContext += allProps
         .map(
-          (p) =>
-            `• [ID:${p.id}] ${p.title} — ${p.address} — R$ ${Number(p.price).toLocaleString("pt-BR")} — ${p.type} — ${p.status === "venda" ? "Venda" : "Aluguel"} — ${p.bedrooms}q/${p.suites || 0}s/${p.bathrooms}b/${p.garage_spots || 0}g/${p.area}m² ${p.featured ? "⭐" : ""} ${p.description ? `— ${p.description}` : ""}`
+          (p: any) =>
+            `• [ID:${p.id}] ${p.title} — ${p.address} — R$ ${Number(p.price).toLocaleString("pt-BR")} — ${p.type} — ${p.status === "venda" ? "Venda" : "Aluguel"} — ${p.bedrooms}q/${p.suites || 0}s/${p.bathrooms}b/${p.garage_spots || 0}g/${p.area}m² ${p.pool_size > 0 ? `🏊 Piscina ${p.pool_size}m²` : ""} ${p.featured ? "⭐" : ""} ${p.description ? `— ${p.description}` : ""} ${p.nearby_points ? `— Proximidades: ${p.nearby_points}` : ""}`
         )
         .join("\n");
     }
