@@ -10,6 +10,7 @@ type RentalContract = {
   deposit_amount: number | null; payment_day: number; status: string;
   notes: string | null; late_fee_percentage: number | null;
   adjustment_index: string | null; created_at: string; user_id: string;
+  commission_rate: number | null; commission_value: number | null;
 };
 
 type ContractDoc = {
@@ -52,6 +53,7 @@ const RentalsTab = () => {
     property_id: "", tenant_id: "", start_date: "", end_date: "",
     monthly_rent: 0, deposit_amount: 0, payment_day: 5, status: "ativo",
     late_fee_percentage: 2, adjustment_index: "IGPM", notes: "",
+    commission_rate: 10,
   });
 
   const fetchAll = async () => {
@@ -75,7 +77,7 @@ const RentalsTab = () => {
 
   const openNew = () => {
     setEditing(null);
-    setForm({ property_id: "", tenant_id: "", start_date: "", end_date: "", monthly_rent: 0, deposit_amount: 0, payment_day: 5, status: "ativo", late_fee_percentage: 2, adjustment_index: "IGPM", notes: "" });
+    setForm({ property_id: "", tenant_id: "", start_date: "", end_date: "", monthly_rent: 0, deposit_amount: 0, payment_day: 5, status: "ativo", late_fee_percentage: 2, adjustment_index: "IGPM", notes: "", commission_rate: 10 });
     setShowForm(true);
   };
 
@@ -88,6 +90,7 @@ const RentalsTab = () => {
       payment_day: c.payment_day, status: c.status,
       late_fee_percentage: Number(c.late_fee_percentage) || 2,
       adjustment_index: c.adjustment_index || "IGPM", notes: c.notes || "",
+      commission_rate: Number(c.commission_rate) || 10,
     });
     setShowForm(true);
   };
@@ -97,6 +100,7 @@ const RentalsTab = () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
+    const commissionValue = (form.monthly_rent * form.commission_rate) / 100;
     const payload = {
       property_id: form.property_id || null, tenant_id: form.tenant_id || null,
       start_date: form.start_date, end_date: form.end_date,
@@ -105,6 +109,8 @@ const RentalsTab = () => {
       late_fee_percentage: form.late_fee_percentage,
       adjustment_index: form.adjustment_index || null, notes: form.notes || null,
       user_id: user.id,
+      commission_rate: form.commission_rate,
+      commission_value: commissionValue,
     };
 
     if (editing) {
@@ -172,6 +178,7 @@ const RentalsTab = () => {
   });
 
   const totalMonthly = contracts.filter(c => c.status === "ativo").reduce((s, c) => s + Number(c.monthly_rent), 0);
+  const totalCommission = contracts.filter(c => c.status === "ativo").reduce((s, c) => s + (Number(c.commission_value) || 0), 0);
   const inputClass = "w-full px-4 py-3 rounded-xl bg-secondary/30 border border-input text-foreground placeholder:text-muted-foreground/60 focus:ring-2 focus:ring-primary/30 focus:border-primary outline-none transition-all text-sm";
 
   if (loading) return <div className="flex items-center justify-center py-20"><div className="w-8 h-8 border-3 border-primary/30 border-t-primary rounded-full animate-spin" /></div>;
@@ -290,6 +297,10 @@ const RentalsTab = () => {
                 <input type="number" step="0.1" min={0} value={form.late_fee_percentage} onChange={e => setForm({ ...form, late_fee_percentage: Number(e.target.value) })} className={inputClass} />
               </div>
               <div>
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5 block">Comissão (%)</label>
+                <input type="number" step="0.1" min={0} value={form.commission_rate} onChange={e => setForm({ ...form, commission_rate: Number(e.target.value) })} className={inputClass} />
+              </div>
+              <div>
                 <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5 block">Índice Reajuste</label>
                 <select value={form.adjustment_index} onChange={e => setForm({ ...form, adjustment_index: e.target.value })} className={inputClass}>
                   <option value="IGPM">IGP-M</option>
@@ -308,6 +319,11 @@ const RentalsTab = () => {
               <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5 block">Observações</label>
               <textarea rows={3} value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} className={`${inputClass} resize-none`} />
             </div>
+            {form.monthly_rent > 0 && (
+              <div className="bg-primary/5 rounded-xl p-4 border border-primary/20">
+                <p className="text-sm text-foreground">Comissão mensal estimada: <span className="font-bold text-primary">{((form.monthly_rent * form.commission_rate) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span></p>
+              </div>
+            )}
             <div className="flex gap-3 pt-2">
               <button type="button" onClick={() => setShowForm(false)} className="flex-1 py-3 rounded-xl border border-input text-muted-foreground font-semibold text-sm hover:bg-secondary transition-all">Cancelar</button>
               <button type="submit" className="flex-1 gradient-primary text-primary-foreground py-3 rounded-xl font-bold text-sm hover:opacity-90 flex items-center justify-center gap-2">
@@ -336,8 +352,8 @@ const RentalsTab = () => {
           <p className="text-xs text-muted-foreground">Receita Mensal</p>
         </div>
         <div className="bg-card rounded-xl border border-border p-4 text-center">
-          <p className="font-display text-2xl font-bold text-amber-500">{contracts.filter(c => c.status === "pendente").length}</p>
-          <p className="text-xs text-muted-foreground">Pendentes</p>
+          <p className="font-display text-lg font-bold text-accent">{totalCommission.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</p>
+          <p className="text-xs text-muted-foreground">Comissão Mensal</p>
         </div>
       </div>
 
@@ -373,6 +389,7 @@ const RentalsTab = () => {
                     <span>Inquilino: {getTenantName(c.tenant_id)}</span>
                     <span className="flex items-center gap-1"><Calendar size={11} /> {new Date(c.start_date).toLocaleDateString("pt-BR")} - {new Date(c.end_date).toLocaleDateString("pt-BR")}</span>
                     <span className="text-primary font-bold flex items-center gap-1"><DollarSign size={11} /> {Number(c.monthly_rent).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}/mês</span>
+                    {c.commission_value ? <span className="text-accent font-medium">Comissão: {Number(c.commission_value).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span> : null}
                     <span>Venc. dia {c.payment_day}</span>
                   </div>
                 </div>
