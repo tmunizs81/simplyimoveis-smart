@@ -109,6 +109,10 @@ const SalesTab = () => {
 
   if (loading) return <div className="flex items-center justify-center py-20"><div className="w-8 h-8 border-3 border-primary/30 border-t-primary rounded-full animate-spin" /></div>;
 
+  if (viewDocsSaleId) {
+    return <SaleDocuments saleId={viewDocsSaleId} onClose={() => setViewDocsSaleId(null)} />;
+  }
+
   if (showForm) {
     return (
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="max-w-2xl">
