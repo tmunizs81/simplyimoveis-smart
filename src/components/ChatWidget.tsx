@@ -212,8 +212,9 @@ const ChatWidget = ({ propertyId }: { propertyId?: string }) => {
         }
       }
 
-      // After stream ends, check for scheduled visit
-      await processSchedule(assistantSoFar);
+      // After stream ends, check for scheduled visit or contact
+      await processSchedule(assistantSoFar, allMessages);
+      await processContact(assistantSoFar, allMessages);
     } catch {
       setMessages((prev) => [
         ...prev,
