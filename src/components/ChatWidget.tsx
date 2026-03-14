@@ -26,14 +26,45 @@ const ChatWidget = ({ propertyId }: { propertyId?: string }) => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const processSchedule = async (text: string) => {
+  const formatChatTranscript = (msgs: Message[]) => {
+    return msgs
+      .map((m) => `[${m.role === "user" ? "Cliente" : "Luma"}]: ${m.content}`)
+      .join("\n\n");
+  };
+
+  const saveContactSubmission = async (data: {
+    name: string;
+    phone: string;
+    email?: string;
+    subject?: string;
+    message: string;
+    visit_date?: string;
+    source: string;
+    chatMessages: Message[];
+  }) => {
+    try {
+      await supabase.from("contact_submissions").insert({
+        name: data.name,
+        phone: data.phone || null,
+        email: data.email || "não informado",
+        subject: data.subject || "Chat com Luma",
+        message: data.message,
+        chat_transcript: formatChatTranscript(data.chatMessages),
+        visit_date: data.visit_date || null,
+        source: data.source,
+      });
+    } catch (err) {
+      console.error("Error saving contact:", err);
+    }
+  };
+
+  const processSchedule = async (text: string, allMessages: Message[]) => {
     const match = text.match(SCHEDULE_REGEX);
     if (!match) return;
 
     try {
       const visitData = JSON.parse(match[1]);
 
-      // Fetch property info for telegram notification
       let propertyTitle = "";
       let propertyAddress = "";
       if (visitData.property_id) {
@@ -48,7 +79,6 @@ const ChatWidget = ({ propertyId }: { propertyId?: string }) => {
         }
       }
 
-      // Insert into scheduled_visits
       await supabase.from("scheduled_visits").insert({
         property_id: visitData.property_id || null,
         client_name: visitData.client_name,
@@ -59,7 +89,18 @@ const ChatWidget = ({ propertyId }: { propertyId?: string }) => {
         notes: visitData.notes || null,
       });
 
-      // Notify via Telegram
+      // Save to contact_submissions with chat transcript
+      await saveContactSubmission({
+        name: visitData.client_name,
+        phone: visitData.client_phone,
+        email: visitData.client_email,
+        subject: `Visita agendada - ${propertyTitle || "Imóvel não especificado"}`,
+        message: `Visita agendada para ${visitData.preferred_date} às ${visitData.preferred_time}. Imóvel: ${propertyTitle || "Não especificado"} (${propertyAddress || ""})`,
+        visit_date: `${visitData.preferred_date} ${visitData.preferred_time}`,
+        source: "chat-agendamento",
+        chatMessages: allMessages,
+      });
+
       const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/notify-telegram`;
       await fetch(CHAT_URL, {
         method: "POST",
@@ -80,8 +121,28 @@ const ChatWidget = ({ propertyId }: { propertyId?: string }) => {
     }
   };
 
+  const processContact = async (text: string, allMessages: Message[]) => {
+    const match = text.match(CONTACT_REGEX);
+    if (!match) return;
+
+    try {
+      const contactData = JSON.parse(match[1]);
+      await saveContactSubmission({
+        name: contactData.client_name,
+        phone: contactData.client_phone,
+        email: contactData.client_email,
+        subject: contactData.subject || "Contato via Chat",
+        message: contactData.notes || "Cliente deixou contato pelo chat",
+        source: "chat-contato",
+        chatMessages: allMessages,
+      });
+    } catch (err) {
+      console.error("Error processing contact:", err);
+    }
+  };
+
   const cleanContent = (text: string) => {
-    return text.replace(SCHEDULE_REGEX, "").trim();
+    return text.replace(SCHEDULE_REGEX, "").replace(CONTACT_REGEX, "").trim();
   };
 
   const sendMessage = async () => {
