@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Save, X, Upload, Video, Image, Trash2, Star, MapPin, DollarSign, Maximize2, BedDouble, Bath, Home, FileText, Tag } from "lucide-react";
+import { Save, X, Upload, Video, Image, Trash2, Star, MapPin, DollarSign, Maximize2, BedDouble, Bath, Home, FileText, Tag, Car, DoorOpen } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
