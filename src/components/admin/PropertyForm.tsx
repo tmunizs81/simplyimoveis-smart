@@ -95,9 +95,10 @@ const PropertyForm = ({ editingProperty, userId, onSaved, onCancel }: PropertyFo
           title: form.title, address: form.address, price: form.price,
           bedrooms: form.bedrooms, suites: form.suites, bathrooms: form.bathrooms,
           garage_spots: form.garage_spots, area: form.area,
+          pool_size: form.pool_size, nearby_points: form.nearby_points || null,
           type: form.type, status: form.status, description: form.description,
           featured: form.featured, active: form.active,
-        }).eq("id", editingProperty.id);
+        } as any).eq("id", editingProperty.id);
         if (error) throw error;
         if (mediaFiles.length) await uploadMedia(editingProperty.id);
         toast.success("Imóvel atualizado!");
