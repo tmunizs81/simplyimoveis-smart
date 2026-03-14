@@ -91,7 +91,8 @@ const PropertyForm = ({ editingProperty, userId, onSaved, onCancel }: PropertyFo
       if (editingProperty) {
         const { error } = await supabase.from("properties").update({
           title: form.title, address: form.address, price: form.price,
-          bedrooms: form.bedrooms, bathrooms: form.bathrooms, area: form.area,
+          bedrooms: form.bedrooms, suites: form.suites, bathrooms: form.bathrooms,
+          garage_spots: form.garage_spots, area: form.area,
           type: form.type, status: form.status, description: form.description,
           featured: form.featured, active: form.active,
         }).eq("id", editingProperty.id);
