@@ -77,7 +77,7 @@ const RentalsTab = () => {
 
   const openNew = () => {
     setEditing(null);
-    setForm({ property_id: "", tenant_id: "", start_date: "", end_date: "", monthly_rent: 0, deposit_amount: 0, payment_day: 5, status: "ativo", late_fee_percentage: 2, adjustment_index: "IGPM", notes: "" });
+    setForm({ property_id: "", tenant_id: "", start_date: "", end_date: "", monthly_rent: 0, deposit_amount: 0, payment_day: 5, status: "ativo", late_fee_percentage: 2, adjustment_index: "IGPM", notes: "", commission_rate: 10 });
     setShowForm(true);
   };
 
