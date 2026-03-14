@@ -25,6 +25,8 @@ const PropertyForm = ({ editingProperty, userId, onSaved, onCancel }: PropertyFo
   const [form, setForm] = useState({
     title: editingProperty?.title || "",
     address: editingProperty?.address || "",
+    neighborhood: (editingProperty as any)?.neighborhood || "",
+    city: (editingProperty as any)?.city || "Fortaleza",
     price: editingProperty ? Number(editingProperty.price) : 0,
     bedrooms: editingProperty?.bedrooms ?? 1,
     suites: (editingProperty as any)?.suites ?? 0,
@@ -92,9 +94,10 @@ const PropertyForm = ({ editingProperty, userId, onSaved, onCancel }: PropertyFo
     try {
       if (editingProperty) {
         const { error } = await supabase.from("properties").update({
-          title: form.title, address: form.address, price: form.price,
-          bedrooms: form.bedrooms, suites: form.suites, bathrooms: form.bathrooms,
-          garage_spots: form.garage_spots, area: form.area,
+          title: form.title, address: form.address,
+          neighborhood: form.neighborhood || null, city: form.city || null,
+          price: form.price, bedrooms: form.bedrooms, suites: form.suites,
+          bathrooms: form.bathrooms, garage_spots: form.garage_spots, area: form.area,
           pool_size: form.pool_size, nearby_points: form.nearby_points || null,
           type: form.type, status: form.status, description: form.description,
           featured: form.featured, active: form.active,
@@ -105,6 +108,7 @@ const PropertyForm = ({ editingProperty, userId, onSaved, onCancel }: PropertyFo
       } else {
         const { data, error } = await supabase.from("properties").insert({
           user_id: userId, title: form.title, address: form.address,
+          neighborhood: form.neighborhood || null, city: form.city || null,
           price: form.price, bedrooms: form.bedrooms, suites: form.suites,
           bathrooms: form.bathrooms, garage_spots: form.garage_spots,
           area: form.area, pool_size: form.pool_size, nearby_points: form.nearby_points || null,
@@ -160,6 +164,14 @@ const PropertyForm = ({ editingProperty, userId, onSaved, onCancel }: PropertyFo
             <div className="md:col-span-2">
               <label className={labelClass}><MapPin size={12} /> Endereço *</label>
               <input placeholder="Ex: Rua das Palmeiras, 123 - Porto das Dunas" required value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} className={inputClass} />
+            </div>
+            <div>
+              <label className={labelClass}><MapPin size={12} /> Bairro</label>
+              <input placeholder="Ex: Porto das Dunas" value={form.neighborhood} onChange={(e) => setForm({ ...form, neighborhood: e.target.value })} className={inputClass} />
+            </div>
+            <div>
+              <label className={labelClass}><MapPin size={12} /> Cidade</label>
+              <input placeholder="Ex: Fortaleza" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} className={inputClass} />
             </div>
             <div>
               <label className={labelClass}><Tag size={12} /> Tipo</label>
