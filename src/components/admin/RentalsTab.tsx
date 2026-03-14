@@ -389,6 +389,7 @@ const RentalsTab = () => {
                     <span>Inquilino: {getTenantName(c.tenant_id)}</span>
                     <span className="flex items-center gap-1"><Calendar size={11} /> {new Date(c.start_date).toLocaleDateString("pt-BR")} - {new Date(c.end_date).toLocaleDateString("pt-BR")}</span>
                     <span className="text-primary font-bold flex items-center gap-1"><DollarSign size={11} /> {Number(c.monthly_rent).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}/mês</span>
+                    {c.commission_value ? <span className="text-accent font-medium">Comissão: {Number(c.commission_value).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span> : null}
                     <span>Venc. dia {c.payment_day}</span>
                   </div>
                 </div>
