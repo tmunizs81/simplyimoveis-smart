@@ -258,12 +258,25 @@ const PropertyDetail = () => {
 
               {/* Description */}
               {property.description && (
-                <div className="glass-card rounded-2xl p-6">
-                  <h2 className="font-display text-xl font-bold text-foreground mb-4 flex items-center gap-2">
-                    <div className="w-1 h-6 rounded-full gradient-primary" />
+                <div className="glass-card rounded-2xl p-8 border border-border/50">
+                  <h2 className="font-display text-2xl font-bold text-foreground mb-6 flex items-center gap-3">
+                    <div className="w-1.5 h-8 rounded-full gradient-primary" />
                     Sobre o Imóvel
                   </h2>
-                  <p className="text-muted-foreground leading-relaxed whitespace-pre-line">{property.description}</p>
+                  <div className="space-y-3">
+                    {property.description.split('\n').filter(line => line.trim()).map((line, i) => {
+                      const cleanLine = line.replace(/^->?\s*/, '').replace(/^[-•]\s*/, '').trim();
+                      if (!cleanLine) return null;
+                      return (
+                        <div key={i} className="flex items-start gap-3 group">
+                          <div className="w-2 h-2 rounded-full gradient-primary mt-2 shrink-0 group-hover:scale-125 transition-transform" />
+                          <p className="text-muted-foreground font-body text-[15px] leading-relaxed group-hover:text-foreground transition-colors">
+                            {cleanLine}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
 
