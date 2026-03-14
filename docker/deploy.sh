@@ -205,19 +205,29 @@ generate_config() {
   JWT_SECRET=$(openssl rand -base64 32)
   POSTGRES_PASSWORD=$(openssl rand -base64 24 | tr -d '=/+' | head -c 32)
 
-  log_info "Gerando JWT ANON_KEY..."
-  # Gerar ANON_KEY (role: anon, exp: 10 anos)
-  HEADER=$(echo -n '{"alg":"HS256","typ":"JWT"}' | openssl base64 -e | tr '+/' '-_' | tr -d '=\n')
-  NOW=$(date +%s)
-  EXP=$((NOW + 315360000))
-  ANON_PAYLOAD=$(echo -n "{\"ref\":\"simply\",\"role\":\"anon\",\"iss\":\"supabase\",\"iat\":${NOW},\"exp\":${EXP}}" | openssl base64 -e | tr '+/' '-_' | tr -d '=\n')
-  ANON_SIG=$(echo -n "${HEADER}.${ANON_PAYLOAD}" | openssl dgst -sha256 -hmac "$JWT_SECRET" -binary | openssl base64 -e | tr '+/' '-_' | tr -d '=\n')
-  ANON_KEY="${HEADER}.${ANON_PAYLOAD}.${ANON_SIG}"
+  log_info "Gerando JWT keys via Node.js (Docker)..."
 
-  log_info "Gerando JWT SERVICE_ROLE_KEY..."
-  SERVICE_PAYLOAD=$(echo -n "{\"ref\":\"simply\",\"role\":\"service_role\",\"iss\":\"supabase\",\"iat\":${NOW},\"exp\":${EXP}}" | openssl base64 -e | tr '+/' '-_' | tr -d '=\n')
-  SERVICE_SIG=$(echo -n "${HEADER}.${SERVICE_PAYLOAD}" | openssl dgst -sha256 -hmac "$JWT_SECRET" -binary | openssl base64 -e | tr '+/' '-_' | tr -d '=\n')
-  SERVICE_ROLE_KEY="${HEADER}.${SERVICE_PAYLOAD}.${SERVICE_SIG}"
+  # Usar Node.js via Docker para gerar JWTs corretamente
+  ANON_KEY=$(docker run --rm node:20-alpine node -e "
+    const crypto = require('crypto');
+    const header = Buffer.from(JSON.stringify({alg:'HS256',typ:'JWT'})).toString('base64url');
+    const payload = Buffer.from(JSON.stringify({ref:'simply',role:'anon',iss:'supabase',iat:Math.floor(Date.now()/1000),exp:Math.floor(Date.now()/1000)+315360000})).toString('base64url');
+    const sig = crypto.createHmac('sha256','${JWT_SECRET}').update(header+'.'+payload).digest('base64url');
+    console.log(header+'.'+payload+'.'+sig);
+  ")
+
+  SERVICE_ROLE_KEY=$(docker run --rm node:20-alpine node -e "
+    const crypto = require('crypto');
+    const header = Buffer.from(JSON.stringify({alg:'HS256',typ:'JWT'})).toString('base64url');
+    const payload = Buffer.from(JSON.stringify({ref:'simply',role:'service_role',iss:'supabase',iat:Math.floor(Date.now()/1000),exp:Math.floor(Date.now()/1000)+315360000})).toString('base64url');
+    const sig = crypto.createHmac('sha256','${JWT_SECRET}').update(header+'.'+payload).digest('base64url');
+    console.log(header+'.'+payload+'.'+sig);
+  ")
+
+  if [ -z "$ANON_KEY" ] || [ -z "$SERVICE_ROLE_KEY" ]; then
+    log_error "Falha ao gerar JWT keys. Verifique se o Docker está funcionando."
+    exit 1
+  fi
 
   # Criar .env
   cat > "$INSTALL_DIR/docker/.env" << ENVEOF
