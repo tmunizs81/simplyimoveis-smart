@@ -182,6 +182,50 @@ export type Database = {
           },
         ]
       }
+      inspection_media: {
+        Row: {
+          created_at: string
+          file_name: string
+          file_path: string
+          file_type: string
+          id: string
+          inspection_id: string
+          media_category: string
+          notes: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          file_path: string
+          file_type: string
+          id?: string
+          inspection_id: string
+          media_category?: string
+          notes?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          file_path?: string
+          file_type?: string
+          id?: string
+          inspection_id?: string
+          media_category?: string
+          notes?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inspection_media_inspection_id_fkey"
+            columns: ["inspection_id"]
+            isOneToOne: false
+            referencedRelation: "property_inspections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leads: {
         Row: {
           assigned_to: string | null
@@ -318,6 +362,100 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      property_inspections: {
+        Row: {
+          contract_id: string | null
+          created_at: string
+          electrical_condition: string | null
+          floor_condition: string | null
+          general_notes: string | null
+          id: string
+          inspection_date: string
+          inspection_type: string
+          inspector_name: string | null
+          keys_delivered: number | null
+          meter_reading_electricity: string | null
+          meter_reading_gas: string | null
+          meter_reading_water: string | null
+          painting_condition: string | null
+          plumbing_condition: string | null
+          property_id: string
+          rooms_condition: string | null
+          status: string
+          tenant_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          contract_id?: string | null
+          created_at?: string
+          electrical_condition?: string | null
+          floor_condition?: string | null
+          general_notes?: string | null
+          id?: string
+          inspection_date?: string
+          inspection_type?: string
+          inspector_name?: string | null
+          keys_delivered?: number | null
+          meter_reading_electricity?: string | null
+          meter_reading_gas?: string | null
+          meter_reading_water?: string | null
+          painting_condition?: string | null
+          plumbing_condition?: string | null
+          property_id: string
+          rooms_condition?: string | null
+          status?: string
+          tenant_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          contract_id?: string | null
+          created_at?: string
+          electrical_condition?: string | null
+          floor_condition?: string | null
+          general_notes?: string | null
+          id?: string
+          inspection_date?: string
+          inspection_type?: string
+          inspector_name?: string | null
+          keys_delivered?: number | null
+          meter_reading_electricity?: string | null
+          meter_reading_gas?: string | null
+          meter_reading_water?: string | null
+          painting_condition?: string | null
+          plumbing_condition?: string | null
+          property_id?: string
+          rooms_condition?: string | null
+          status?: string
+          tenant_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_inspections_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "rental_contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_inspections_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_inspections_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       property_media: {
         Row: {
@@ -541,6 +679,50 @@ export type Database = {
             columns: ["property_id"]
             isOneToOne: false
             referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenant_documents: {
+        Row: {
+          created_at: string
+          document_type: string
+          file_name: string
+          file_path: string
+          file_type: string
+          id: string
+          notes: string | null
+          tenant_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          document_type?: string
+          file_name: string
+          file_path: string
+          file_type: string
+          id?: string
+          notes?: string | null
+          tenant_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          document_type?: string
+          file_name?: string
+          file_path?: string
+          file_type?: string
+          id?: string
+          notes?: string | null
+          tenant_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_documents_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
