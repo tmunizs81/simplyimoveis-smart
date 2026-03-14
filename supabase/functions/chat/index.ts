@@ -48,7 +48,7 @@ Destaque: ${prop.featured ? "Sim" : "Não"}
 
     const { data: allProps } = await supabase
       .from("properties")
-      .select("id, title, address, price, type, status, bedrooms, suites, bathrooms, garage_spots, area, description, featured, pool_size, nearby_points")
+      .select("id, title, address, neighborhood, city, price, type, status, bedrooms, suites, bathrooms, garage_spots, area, description, featured, pool_size, nearby_points")
       .eq("active", true)
       .order("featured", { ascending: false })
       .limit(50);
