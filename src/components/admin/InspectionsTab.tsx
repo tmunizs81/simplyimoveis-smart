@@ -106,6 +106,8 @@ const InspectionsTab = () => {
 
   const openEdit = (ins: Inspection) => {
     setEditing(ins);
+    setFormFiles([]);
+    setFormFileCategory("geral");
     setForm({
       property_id: ins.property_id, contract_id: ins.contract_id || "",
       tenant_id: ins.tenant_id || "", inspection_type: ins.inspection_type,
