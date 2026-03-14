@@ -16,11 +16,12 @@ import TenantsTab from "@/components/admin/TenantsTab";
 import RentalsTab from "@/components/admin/RentalsTab";
 import FinancialTab from "@/components/admin/FinancialTab";
 import ReportsTab from "@/components/admin/ReportsTab";
+import InspectionsTab from "@/components/admin/InspectionsTab";
 import type { Database } from "@/integrations/supabase/types";
 
 type Property = Database["public"]["Tables"]["properties"]["Row"];
 type MediaRow = Database["public"]["Tables"]["property_media"]["Row"];
-type AdminTab = "properties" | "contacts" | "password" | "users" | "leads" | "sales" | "tenants" | "rentals" | "financial" | "reports";
+type AdminTab = "properties" | "contacts" | "password" | "users" | "leads" | "sales" | "tenants" | "rentals" | "inspections" | "financial" | "reports";
 
 const Admin = () => {
   const [user, setUser] = useState<any>(null);
