@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Bed, Bath, Maximize, MapPin, Phone, Mail, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, Bed, Bath, Maximize, MapPin, Phone, Mail, ChevronLeft, ChevronRight, Car, DoorOpen } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -133,20 +133,40 @@ const PropertyDetail = () => {
               <h1 className="font-display text-3xl font-bold text-foreground mb-2">{property.title}</h1>
               <p className="text-muted-foreground flex items-center gap-1 mb-6"><MapPin size={16} /> {property.address}</p>
 
-              <div className="grid grid-cols-3 gap-4 mb-8">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 mb-8">
                 <div className="glass-card rounded-xl p-4 text-center">
-                  <Bed className="mx-auto text-primary mb-1" size={20} />
-                  <p className="font-semibold text-foreground">{property.bedrooms}</p>
+                  <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center mx-auto mb-2">
+                    <Bed className="text-blue-500" size={22} />
+                  </div>
+                  <p className="font-bold text-foreground text-lg">{property.bedrooms}</p>
                   <p className="text-muted-foreground text-xs">Quartos</p>
                 </div>
                 <div className="glass-card rounded-xl p-4 text-center">
-                  <Bath className="mx-auto text-primary mb-1" size={20} />
-                  <p className="font-semibold text-foreground">{property.bathrooms}</p>
+                  <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center mx-auto mb-2">
+                    <DoorOpen className="text-purple-500" size={22} />
+                  </div>
+                  <p className="font-bold text-foreground text-lg">{(property as any).suites || 0}</p>
+                  <p className="text-muted-foreground text-xs">Suítes</p>
+                </div>
+                <div className="glass-card rounded-xl p-4 text-center">
+                  <div className="w-10 h-10 rounded-xl bg-cyan-500/10 flex items-center justify-center mx-auto mb-2">
+                    <Bath className="text-cyan-500" size={22} />
+                  </div>
+                  <p className="font-bold text-foreground text-lg">{property.bathrooms}</p>
                   <p className="text-muted-foreground text-xs">Banheiros</p>
                 </div>
                 <div className="glass-card rounded-xl p-4 text-center">
-                  <Maximize className="mx-auto text-primary mb-1" size={20} />
-                  <p className="font-semibold text-foreground">{Number(property.area)}m²</p>
+                  <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center mx-auto mb-2">
+                    <Car className="text-amber-500" size={22} />
+                  </div>
+                  <p className="font-bold text-foreground text-lg">{(property as any).garage_spots || 0}</p>
+                  <p className="text-muted-foreground text-xs">Garagem</p>
+                </div>
+                <div className="glass-card rounded-xl p-4 text-center">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center mx-auto mb-2">
+                    <Maximize className="text-emerald-500" size={22} />
+                  </div>
+                  <p className="font-bold text-foreground text-lg">{Number(property.area)}m²</p>
                   <p className="text-muted-foreground text-xs">Área</p>
                 </div>
               </div>

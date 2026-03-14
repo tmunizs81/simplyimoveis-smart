@@ -57,9 +57,11 @@ export type Database = {
           created_at: string
           description: string | null
           featured: boolean
+          garage_spots: number
           id: string
           price: number
           status: Database["public"]["Enums"]["property_status"]
+          suites: number
           title: string
           type: Database["public"]["Enums"]["property_type"]
           updated_at: string
@@ -74,9 +76,11 @@ export type Database = {
           created_at?: string
           description?: string | null
           featured?: boolean
+          garage_spots?: number
           id?: string
           price: number
           status?: Database["public"]["Enums"]["property_status"]
+          suites?: number
           title: string
           type?: Database["public"]["Enums"]["property_type"]
           updated_at?: string
@@ -91,9 +95,11 @@ export type Database = {
           created_at?: string
           description?: string | null
           featured?: boolean
+          garage_spots?: number
           id?: string
           price?: number
           status?: Database["public"]["Enums"]["property_status"]
+          suites?: number
           title?: string
           type?: Database["public"]["Enums"]["property_type"]
           updated_at?: string

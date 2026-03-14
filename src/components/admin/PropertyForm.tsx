@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Save, X, Upload, Video, Image, Trash2, Star, MapPin, DollarSign, Maximize2, BedDouble, Bath, Home, FileText, Tag } from "lucide-react";
+import { Save, X, Upload, Video, Image, Trash2, Star, MapPin, DollarSign, Maximize2, BedDouble, Bath, Home, FileText, Tag, Car, DoorOpen } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
@@ -27,7 +27,9 @@ const PropertyForm = ({ editingProperty, userId, onSaved, onCancel }: PropertyFo
     address: editingProperty?.address || "",
     price: editingProperty ? Number(editingProperty.price) : 0,
     bedrooms: editingProperty?.bedrooms ?? 1,
+    suites: (editingProperty as any)?.suites ?? 0,
     bathrooms: editingProperty?.bathrooms ?? 1,
+    garage_spots: (editingProperty as any)?.garage_spots ?? 0,
     area: editingProperty ? Number(editingProperty.area) : 0,
     type: (editingProperty?.type || "Apartamento") as typeof PROPERTY_TYPES[number],
     status: (editingProperty?.status || "venda") as "venda" | "aluguel",
@@ -89,7 +91,8 @@ const PropertyForm = ({ editingProperty, userId, onSaved, onCancel }: PropertyFo
       if (editingProperty) {
         const { error } = await supabase.from("properties").update({
           title: form.title, address: form.address, price: form.price,
-          bedrooms: form.bedrooms, bathrooms: form.bathrooms, area: form.area,
+          bedrooms: form.bedrooms, suites: form.suites, bathrooms: form.bathrooms,
+          garage_spots: form.garage_spots, area: form.area,
           type: form.type, status: form.status, description: form.description,
           featured: form.featured, active: form.active,
         }).eq("id", editingProperty.id);
@@ -99,7 +102,8 @@ const PropertyForm = ({ editingProperty, userId, onSaved, onCancel }: PropertyFo
       } else {
         const { data, error } = await supabase.from("properties").insert({
           user_id: userId, title: form.title, address: form.address,
-          price: form.price, bedrooms: form.bedrooms, bathrooms: form.bathrooms,
+          price: form.price, bedrooms: form.bedrooms, suites: form.suites,
+          bathrooms: form.bathrooms, garage_spots: form.garage_spots,
           area: form.area, type: form.type, status: form.status,
           description: form.description, featured: form.featured, active: form.active,
         }).select().single();
@@ -186,7 +190,7 @@ const PropertyForm = ({ editingProperty, userId, onSaved, onCancel }: PropertyFo
           <h3 className="font-display text-sm font-bold text-foreground flex items-center gap-2 pb-2 border-b border-border">
             <Maximize2 size={16} className="text-primary" /> Detalhes do Imóvel
           </h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <div>
               <label className={labelClass}><DollarSign size={12} /> Preço (R$) *</label>
               <input type="number" placeholder="0" required min={0} value={form.price || ""} onChange={(e) => setForm({ ...form, price: Number(e.target.value) })} className={inputClass} />
@@ -200,8 +204,16 @@ const PropertyForm = ({ editingProperty, userId, onSaved, onCancel }: PropertyFo
               <input type="number" min={0} value={form.bedrooms} onChange={(e) => setForm({ ...form, bedrooms: Number(e.target.value) })} className={inputClass} />
             </div>
             <div>
+              <label className={labelClass}><DoorOpen size={12} /> Suítes</label>
+              <input type="number" min={0} value={form.suites} onChange={(e) => setForm({ ...form, suites: Number(e.target.value) })} className={inputClass} />
+            </div>
+            <div>
               <label className={labelClass}><Bath size={12} /> Banheiros</label>
               <input type="number" min={0} value={form.bathrooms} onChange={(e) => setForm({ ...form, bathrooms: Number(e.target.value) })} className={inputClass} />
+            </div>
+            <div>
+              <label className={labelClass}><Car size={12} /> Vagas Garagem</label>
+              <input type="number" min={0} value={form.garage_spots} onChange={(e) => setForm({ ...form, garage_spots: Number(e.target.value) })} className={inputClass} />
             </div>
           </div>
         </div>

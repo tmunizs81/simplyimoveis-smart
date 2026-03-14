@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Search, SlidersHorizontal, Bed, Bath, Maximize, MapPin } from "lucide-react";
+import { Search, SlidersHorizontal, Bed, Bath, Maximize, MapPin, Car, DoorOpen } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import Navbar from "@/components/Navbar";
@@ -126,10 +126,16 @@ const Properties = () => {
                       <p className="text-primary font-bold text-xl mb-1">{formatPrice(Number(property.price), property.status)}</p>
                       <h3 className="font-display text-lg font-semibold text-foreground mb-1">{property.title}</h3>
                       <p className="text-muted-foreground text-sm flex items-center gap-1 mb-4"><MapPin size={14} /> {property.address}</p>
-                      <div className="flex items-center gap-5 text-foreground text-sm font-medium border-t border-border pt-4">
-                        <span className="flex items-center gap-2"><Bed size={18} className="text-primary" /> {property.bedrooms}</span>
-                        <span className="flex items-center gap-2"><Bath size={18} className="text-primary" /> {property.bathrooms}</span>
-                        <span className="flex items-center gap-2"><Maximize size={18} className="text-primary" /> {Number(property.area)}m²</span>
+                      <div className="flex items-center gap-4 text-foreground text-sm font-semibold border-t border-border pt-4">
+                        <span className="flex items-center gap-1.5" title="Quartos">
+                          <span className="w-7 h-7 rounded-lg bg-blue-500/10 flex items-center justify-center"><Bed size={16} className="text-blue-500" /></span> {property.bedrooms}
+                        </span>
+                        <span className="flex items-center gap-1.5" title="Banheiros">
+                          <span className="w-7 h-7 rounded-lg bg-cyan-500/10 flex items-center justify-center"><Bath size={16} className="text-cyan-500" /></span> {property.bathrooms}
+                        </span>
+                        <span className="flex items-center gap-1.5" title="Área">
+                          <span className="w-7 h-7 rounded-lg bg-emerald-500/10 flex items-center justify-center"><Maximize size={16} className="text-emerald-500" /></span> {Number(property.area)}m²
+                        </span>
                       </div>
                     </div>
                   </Link>
