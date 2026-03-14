@@ -1,7 +1,7 @@
-import { Building2, KeyRound, UserPlus, LogOut, LayoutDashboard, MessageSquare, Users, TrendingUp, Home, FileText, DollarSign, BarChart3, ChevronDown, ChevronRight, Handshake, ClipboardCheck } from "lucide-react";
+import { Building2, KeyRound, UserPlus, LogOut, LayoutDashboard, MessageSquare, Users, TrendingUp, Home, FileText, DollarSign, BarChart3, ChevronDown, ChevronRight, Handshake, ClipboardCheck, DatabaseBackup } from "lucide-react";
 import { useState } from "react";
 
-type AdminTab = "dashboard" | "properties" | "contacts" | "password" | "users" | "leads" | "sales" | "tenants" | "rentals" | "inspections" | "financial" | "reports";
+type AdminTab = "dashboard" | "properties" | "contacts" | "password" | "users" | "leads" | "sales" | "tenants" | "rentals" | "inspections" | "financial" | "reports" | "backup";
 
 interface AdminSidebarProps {
   activeTab: AdminTab;
@@ -29,6 +29,7 @@ const realEstateTabs = [
 const settingsTabs = [
   { id: "password" as AdminTab, label: "Senha", icon: KeyRound, description: "Alterar credenciais" },
   { id: "users" as AdminTab, label: "Usuários", icon: UserPlus, description: "Cadastrar acessos" },
+  { id: "backup" as AdminTab, label: "Backup", icon: DatabaseBackup, description: "Backup e restauração" },
 ];
 
 const AdminSidebar = ({ activeTab, onTabChange, userEmail, onLogout }: AdminSidebarProps) => {
