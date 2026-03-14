@@ -4,6 +4,7 @@ import ChatWidget from "@/components/ChatWidget";
 import WhatsAppButton from "@/components/WhatsAppButton";
 import { motion } from "framer-motion";
 import { Gem, TrendingUp, SearchCheck, Building, HardHat, Home } from "lucide-react";
+import servicesHero from "@/assets/services-hero.jpg";
 
 const services = [
   {
@@ -62,8 +63,16 @@ const Services = () => {
       <Navbar />
 
       {/* Hero banner */}
-      <section className="pt-32 pb-16 gradient-navy text-accent-foreground text-center">
-        <div className="container-custom px-4">
+      <section
+        className="pt-32 pb-16 text-accent-foreground text-center relative"
+        style={{
+          backgroundImage: `url(${servicesHero})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+        }}
+      >
+        <div className="absolute inset-0 bg-accent/80 backdrop-blur-[2px]" />
+        <div className="container-custom px-4 relative z-10">
           <motion.p
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
