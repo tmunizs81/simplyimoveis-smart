@@ -68,6 +68,8 @@ export type Database = {
           featured: boolean
           garage_spots: number
           id: string
+          nearby_points: string | null
+          pool_size: number | null
           price: number
           status: Database["public"]["Enums"]["property_status"]
           suites: number
@@ -87,6 +89,8 @@ export type Database = {
           featured?: boolean
           garage_spots?: number
           id?: string
+          nearby_points?: string | null
+          pool_size?: number | null
           price: number
           status?: Database["public"]["Enums"]["property_status"]
           suites?: number
@@ -106,6 +110,8 @@ export type Database = {
           featured?: boolean
           garage_spots?: number
           id?: string
+          nearby_points?: string | null
+          pool_size?: number | null
           price?: number
           status?: Database["public"]["Enums"]["property_status"]
           suites?: number
