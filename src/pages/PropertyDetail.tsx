@@ -299,7 +299,7 @@ const PropertyDetail = () => {
                     ))}
                   </div>
                 </div>
-
+              )}
               {/* Videos */}
               {videos.length > 0 && (
                 <div className="glass-card rounded-2xl p-6">
