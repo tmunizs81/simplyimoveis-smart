@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
-import { Plus, Search, ClipboardCheck, Calendar, Home, Edit, Trash2, X, Save, Upload, FileText, Eye, Camera, Video, File } from "lucide-react";
+import { Plus, Search, ClipboardCheck, Calendar, Home, Edit, Trash2, X, Save, Upload, FileText, Eye, Camera, Video, File, Download } from "lucide-react";
+import { generateInspectionPdf } from "./generateInspectionPdf";
 
 type Inspection = {
   id: string; property_id: string; contract_id: string | null;
@@ -224,7 +225,42 @@ const InspectionsTab = () => {
   };
 
   const getPropertyTitle = (id: string | null) => properties.find(p => p.id === id)?.title || "—";
+  const getPropertyAddress = (id: string | null) => properties.find(p => p.id === id)?.address || "—";
   const getTenantName = (id: string | null) => tenants.find(t => t.id === id)?.name || "—";
+
+  const downloadPdf = async (ins: Inspection) => {
+    toast.info("Gerando PDF...");
+    try {
+      const { data: mediaData } = await supabase.from("inspection_media").select("*").eq("inspection_id", ins.id);
+      await generateInspectionPdf(
+        {
+          id: ins.id,
+          property_title: getPropertyTitle(ins.property_id),
+          property_address: getPropertyAddress(ins.property_id),
+          tenant_name: getTenantName(ins.tenant_id),
+          inspection_type: ins.inspection_type,
+          inspection_date: ins.inspection_date,
+          inspector_name: ins.inspector_name,
+          status: ins.status,
+          general_notes: ins.general_notes,
+          rooms_condition: ins.rooms_condition,
+          electrical_condition: ins.electrical_condition,
+          plumbing_condition: ins.plumbing_condition,
+          painting_condition: ins.painting_condition,
+          floor_condition: ins.floor_condition,
+          keys_delivered: ins.keys_delivered,
+          meter_reading_water: ins.meter_reading_water,
+          meter_reading_electricity: ins.meter_reading_electricity,
+          meter_reading_gas: ins.meter_reading_gas,
+        },
+        (mediaData || []) as any
+      );
+      toast.success("PDF gerado com sucesso!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Erro ao gerar PDF");
+    }
+  };
 
   const getFileIcon = (fileType: string) => {
     if (fileType.startsWith("image")) return <Camera size={18} className="text-blue-500" />;
@@ -550,6 +586,7 @@ const InspectionsTab = () => {
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5">
+                  <button onClick={() => downloadPdf(ins)} title="Gerar PDF" className="p-2 rounded-lg border border-border text-muted-foreground hover:text-primary hover:border-primary transition-all"><Download size={14} /></button>
                   <button onClick={() => { setViewingMedia(ins.id); fetchMedia(ins.id); }} title="Fotos e Documentos" className="p-2 rounded-lg border border-border text-muted-foreground hover:text-primary hover:border-primary transition-all"><Camera size={14} /></button>
                   <button onClick={() => openEdit(ins)} className="p-2 rounded-lg border border-border text-muted-foreground hover:text-primary hover:border-primary transition-all"><Edit size={14} /></button>
                   <button onClick={() => deleteInspection(ins.id)} className="p-2 rounded-lg border border-border text-muted-foreground hover:text-destructive hover:border-destructive transition-all"><Trash2 size={14} /></button>
