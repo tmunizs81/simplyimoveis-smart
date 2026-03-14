@@ -90,6 +90,7 @@ const RentalsTab = () => {
       payment_day: c.payment_day, status: c.status,
       late_fee_percentage: Number(c.late_fee_percentage) || 2,
       adjustment_index: c.adjustment_index || "IGPM", notes: c.notes || "",
+      commission_rate: Number(c.commission_rate) || 10,
     });
     setShowForm(true);
   };
