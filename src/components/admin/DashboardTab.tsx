@@ -5,6 +5,9 @@ import {
   Building2, Users, TrendingUp, DollarSign, Home, ClipboardCheck,
   ArrowUpRight, ArrowDownRight, Calendar, FileText, AlertCircle
 } from "lucide-react";
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
+} from "recharts";
 
 type Stats = {
   totalProperties: number;
