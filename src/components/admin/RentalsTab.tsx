@@ -319,6 +319,11 @@ const RentalsTab = () => {
               <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5 block">Observações</label>
               <textarea rows={3} value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} className={`${inputClass} resize-none`} />
             </div>
+            {form.monthly_rent > 0 && (
+              <div className="bg-primary/5 rounded-xl p-4 border border-primary/20">
+                <p className="text-sm text-foreground">Comissão mensal estimada: <span className="font-bold text-primary">{((form.monthly_rent * form.commission_rate) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span></p>
+              </div>
+            )}
             <div className="flex gap-3 pt-2">
               <button type="button" onClick={() => setShowForm(false)} className="flex-1 py-3 rounded-xl border border-input text-muted-foreground font-semibold text-sm hover:bg-secondary transition-all">Cancelar</button>
               <button type="submit" className="flex-1 gradient-primary text-primary-foreground py-3 rounded-xl font-bold text-sm hover:opacity-90 flex items-center justify-center gap-2">
