@@ -38,7 +38,9 @@ Preço: R$ ${Number(prop.price).toLocaleString("pt-BR")}
 Tipo: ${prop.type}
 Status: ${prop.status === "venda" ? "À Venda" : "Para Aluguel"}
 Quartos: ${prop.bedrooms} | Suítes: ${prop.suites || 0} | Banheiros: ${prop.bathrooms} | Garagem: ${prop.garage_spots || 0} | Área: ${prop.area}m²
+Piscina: ${(prop as any).pool_size > 0 ? `Sim, ${(prop as any).pool_size}m²` : "Não"}
 Descrição: ${prop.description || "Sem descrição"}
+Proximidades: ${(prop as any).nearby_points || "Não informado"}
 Destaque: ${prop.featured ? "Sim" : "Não"}
 ---`;
       }
