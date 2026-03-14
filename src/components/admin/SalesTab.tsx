@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
-import { Plus, TrendingUp, DollarSign, Calendar, Edit, Trash2, X, Save, Search } from "lucide-react";
+import { Plus, TrendingUp, DollarSign, Calendar, Edit, Trash2, X, Save, Search, FileText } from "lucide-react";
+import SaleDocuments from "./SaleDocuments";
 
 type Sale = {
   id: string; property_id: string | null; lead_id: string | null;
