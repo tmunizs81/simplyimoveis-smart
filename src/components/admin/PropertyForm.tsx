@@ -107,9 +107,10 @@ const PropertyForm = ({ editingProperty, userId, onSaved, onCancel }: PropertyFo
           user_id: userId, title: form.title, address: form.address,
           price: form.price, bedrooms: form.bedrooms, suites: form.suites,
           bathrooms: form.bathrooms, garage_spots: form.garage_spots,
-          area: form.area, type: form.type, status: form.status,
+          area: form.area, pool_size: form.pool_size, nearby_points: form.nearby_points || null,
+          type: form.type, status: form.status,
           description: form.description, featured: form.featured, active: form.active,
-        }).select().single();
+        } as any).select().single();
         if (error) throw error;
         if (mediaFiles.length && data) await uploadMedia(data.id);
         toast.success("Imóvel cadastrado!");
