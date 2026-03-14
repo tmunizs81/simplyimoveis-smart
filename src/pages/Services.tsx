@@ -97,6 +97,7 @@ const Services = () => {
             Assessoria completa, do alicerce ao acabamento, para quem busca excelência no mercado imobiliário.
           </motion.p>
         </div>
+        </div>
       </section>
 
       {/* Services grid */}
