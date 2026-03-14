@@ -219,7 +219,26 @@ const PropertyForm = ({ editingProperty, userId, onSaved, onCancel }: PropertyFo
               <label className={labelClass}><Car size={12} /> Vagas Garagem</label>
               <input type="number" min={0} value={form.garage_spots} onChange={(e) => setForm({ ...form, garage_spots: Number(e.target.value) })} className={inputClass} />
             </div>
+            <div>
+              <label className={labelClass}><Waves size={12} /> Piscina (m²)</label>
+              <input type="number" min={0} step="0.1" placeholder="0 = sem piscina" value={form.pool_size || ""} onChange={(e) => setForm({ ...form, pool_size: Number(e.target.value) })} className={inputClass} />
+            </div>
           </div>
+        </div>
+
+        {/* Section: Location & Points of Interest */}
+        <div className="space-y-4">
+          <h3 className="font-display text-sm font-bold text-foreground flex items-center gap-2 pb-2 border-b border-border">
+            <Navigation size={16} className="text-primary" /> Localização e Pontos de Interesse
+          </h3>
+          <textarea
+            placeholder="Ex: Próximo ao Beach Park (5 min), Shopping Porto das Dunas (2 min), Farmácia, Supermercado, Escolas, Praia a 200m..."
+            rows={3}
+            value={form.nearby_points}
+            onChange={(e) => setForm({ ...form, nearby_points: e.target.value })}
+            className={`${inputClass} resize-none`}
+          />
+          <p className="text-[10px] text-muted-foreground">Descreva pontos de referência, comércios, lazer e facilidades próximas. A Luma usará essas informações para recomendar o imóvel.</p>
         </div>
 
         {/* Section: Description */}
