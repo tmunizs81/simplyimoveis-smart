@@ -164,6 +164,14 @@ const PropertyForm = ({ editingProperty, userId, onSaved, onCancel }: PropertyFo
               <input placeholder="Ex: Rua das Palmeiras, 123 - Porto das Dunas" required value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} className={inputClass} />
             </div>
             <div>
+              <label className={labelClass}><MapPin size={12} /> Bairro</label>
+              <input placeholder="Ex: Porto das Dunas" value={form.neighborhood} onChange={(e) => setForm({ ...form, neighborhood: e.target.value })} className={inputClass} />
+            </div>
+            <div>
+              <label className={labelClass}><MapPin size={12} /> Cidade</label>
+              <input placeholder="Ex: Fortaleza" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} className={inputClass} />
+            </div>
+            <div>
               <label className={labelClass}><Tag size={12} /> Tipo</label>
               <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as any })} className={inputClass}>
                 {PROPERTY_TYPES.map((t) => <option key={t}>{t}</option>)}
