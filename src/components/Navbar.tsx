@@ -107,7 +107,7 @@ const Navbar = () => {
 
         {/* Mobile toggle */}
         <button
-          className={`md:hidden transition-colors ${scrolled ? "text-foreground" : "text-white"}`}
+          className={`md:hidden transition-colors ${isOpaque ? "text-foreground" : "text-white"}`}
           onClick={() => setOpen(!open)}
         >
           {open ? <X size={24} /> : <Menu size={24} />}
