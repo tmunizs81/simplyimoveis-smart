@@ -147,9 +147,11 @@ const PropertyList = ({ properties, onEdit, onRefresh, onNew }: PropertyListProp
                 </p>
 
                 <div className="flex items-center gap-4 text-xs text-muted-foreground mb-2">
-                  <span className="flex items-center gap-1"><BedDouble size={12} /> {p.bedrooms} quartos</span>
-                  <span className="flex items-center gap-1"><Bath size={12} /> {p.bathrooms} banheiros</span>
-                  <span className="flex items-center gap-1"><Maximize2 size={12} /> {Number(p.area)} m²</span>
+                  <span className="flex items-center gap-1"><BedDouble size={12} className="text-blue-500" /> {p.bedrooms} quartos</span>
+                  <span className="flex items-center gap-1"><DoorOpen size={12} className="text-purple-500" /> {(p as any).suites || 0} suítes</span>
+                  <span className="flex items-center gap-1"><Bath size={12} className="text-cyan-500" /> {p.bathrooms} banheiros</span>
+                  <span className="flex items-center gap-1"><Car size={12} className="text-amber-500" /> {(p as any).garage_spots || 0} vagas</span>
+                  <span className="flex items-center gap-1"><Maximize2 size={12} className="text-emerald-500" /> {Number(p.area)} m²</span>
                   <span className="flex items-center gap-1"><ImageIcon size={12} /> {p.media.length} mídias</span>
                 </div>
 
