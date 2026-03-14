@@ -20,6 +20,7 @@ const realEstateTabs = [
   { id: "sales" as AdminTab, label: "Vendas", icon: TrendingUp, description: "Pipeline de vendas" },
   { id: "tenants" as AdminTab, label: "Inquilinos", icon: Users, description: "Cadastro de clientes" },
   { id: "rentals" as AdminTab, label: "Aluguéis", icon: Home, description: "Contratos e gestão" },
+  { id: "inspections" as AdminTab, label: "Vistorias", icon: ClipboardCheck, description: "Vistorias de imóveis" },
   { id: "financial" as AdminTab, label: "Financeiro", icon: DollarSign, description: "Transações e cobranças" },
   { id: "reports" as AdminTab, label: "Relatórios", icon: BarChart3, description: "Dashboards e análises" },
 ];
