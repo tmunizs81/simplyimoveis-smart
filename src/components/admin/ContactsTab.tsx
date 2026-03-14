@@ -12,6 +12,9 @@ type ContactSubmission = {
   message: string;
   read: boolean;
   created_at: string;
+  chat_transcript: string | null;
+  visit_date: string | null;
+  source: string | null;
 };
 
 const ContactsTab = () => {
