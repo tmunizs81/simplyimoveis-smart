@@ -47,5 +47,10 @@ echo -e "   ${GREEN}✅ Frontend + Functions atualizados${NC}"
 bash sync-db-passwords.sh || echo -e "${YELLOW}⚠️  sync-db-passwords falhou${NC}"
 bash ensure-storage-buckets.sh || echo -e "${YELLOW}⚠️  ensure-storage-buckets falhou${NC}"
 
+if ! bash validate-install.sh; then
+  echo -e "${YELLOW}⚠️  Validação falhou. Rodando reparo completo...${NC}"
+  bash fix-vps-admin.sh
+fi
+
 echo -e "\n${GREEN}✅ Atualização concluída!${NC}"
-echo -e "${YELLOW}💡 Validar: bash validate-install.sh${NC}"
+echo -e "${YELLOW}💡 Validação final: bash validate-install.sh${NC}"

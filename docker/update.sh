@@ -27,4 +27,9 @@ docker compose up -d --force-recreate functions
 bash sync-db-passwords.sh || echo "⚠️  sync-db-passwords falhou"
 bash ensure-storage-buckets.sh || echo "⚠️  ensure-storage-buckets falhou"
 
+if ! bash validate-install.sh; then
+  echo "⚠️  Validação falhou. Rodando reparo completo..."
+  bash fix-vps-admin.sh
+fi
+
 echo "✅ Atualização concluída!"
