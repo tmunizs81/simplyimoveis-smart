@@ -28,6 +28,23 @@ if [ -z "$ANON_KEY" ] || [ -z "$SERVICE_ROLE_KEY" ]; then
   exit 1
 fi
 
+POSTGRES_PASSWORD=$(read_env_var "POSTGRES_PASSWORD")
+POSTGRES_DB=$(read_env_var "POSTGRES_DB")
+POSTGRES_DB="${POSTGRES_DB:-simply_db}"
+
+run_psql() {
+  docker compose exec -T -e PGPASSWORD="${POSTGRES_PASSWORD}" db psql \
+    -v ON_ERROR_STOP=1 \
+    -U supabase_admin \
+    -d "$POSTGRES_DB" \
+    "$@" 2>/dev/null || \
+  docker compose exec -T db psql \
+    -v ON_ERROR_STOP=1 \
+    -U postgres \
+    -d "$POSTGRES_DB" \
+    "$@"
+}
+
 check_container() {
   local container="$1"
   local state restarting
