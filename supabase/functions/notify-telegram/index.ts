@@ -44,22 +44,30 @@ ${visit.notes ? `📝 <b>Obs:</b> ${visit.notes}` : ""}`;
       });
     }
 
-    const response = await fetch(`${GATEWAY_URL}/sendMessage`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "X-Connection-Api-Key": TELEGRAM_API_KEY,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text,
-        parse_mode: "HTML",
-      }),
-    });
+    const payload = {
+      chat_id: chatId,
+      text,
+      parse_mode: "HTML",
+    };
+
+    const response = TELEGRAM_API_KEY && LOVABLE_API_KEY
+      ? await fetch(`${GATEWAY_URL}/sendMessage`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            "X-Connection-Api-Key": TELEGRAM_API_KEY,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        })
+      : await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
 
     const data = await response.json();
-    if (!response.ok) {
+    if (!response.ok || data?.ok === false) {
       throw new Error(`Telegram API failed [${response.status}]: ${JSON.stringify(data)}`);
     }
 
