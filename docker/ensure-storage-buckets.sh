@@ -30,7 +30,7 @@ ROLE_DEPS_OK=$(docker compose exec -T -e PGPASSWORD="$POSTGRES_PASSWORD" db \
   SELECT
     CASE
       WHEN to_regclass('public.user_roles') IS NOT NULL
-       AND to_regproc('public.has_role_text(uuid,text)') IS NOT NULL
+       AND to_regprocedure('public.has_role_text(uuid,text)') IS NOT NULL
       THEN 'ok' ELSE 'fail' END;" 2>/dev/null || echo "fail")
 
 if [ "$(echo "$ROLE_DEPS_OK" | tr -d '[:space:]')" != "ok" ]; then

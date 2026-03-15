@@ -69,12 +69,12 @@ if [ "$DB_OK" = "1" ]; then
 
   HAS_ROLE=$(docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" simply-db \
     psql -tA -w -h 127.0.0.1 -U supabase_admin -d "$POSTGRES_DB" \
-    -c "SELECT to_regproc('public.has_role') IS NOT NULL;" 2>/dev/null || echo "f")
+    -c "SELECT to_regprocedure('public.has_role(uuid,public.app_role)') IS NOT NULL;" 2>/dev/null || echo "f")
   [ "$(echo "$HAS_ROLE" | tr -d '[:space:]')" = "t" ] && check "Função has_role" "ok" || check "Função has_role" "fail"
 
   HAS_ROLE_TEXT=$(docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" simply-db \
     psql -tA -w -h 127.0.0.1 -U supabase_admin -d "$POSTGRES_DB" \
-    -c "SELECT to_regproc('public.has_role_text') IS NOT NULL;" 2>/dev/null || echo "f")
+    -c "SELECT to_regprocedure('public.has_role_text(uuid,text)') IS NOT NULL;" 2>/dev/null || echo "f")
   [ "$(echo "$HAS_ROLE_TEXT" | tr -d '[:space:]')" = "t" ] && check "Função has_role_text" "ok" || check "Função has_role_text" "fail"
 
   for tbl in tenants leads properties user_roles; do

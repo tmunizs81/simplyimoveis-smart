@@ -53,8 +53,8 @@ CORE_OK=$(docker compose exec -T -e PGPASSWORD="$POSTGRES_PASSWORD" db \
       JOIN pg_namespace n ON n.oid = t.typnamespace
       WHERE n.nspname = 'public' AND t.typname = 'app_role'
     )
-    AND to_regproc('public.has_role(uuid,public.app_role)') IS NOT NULL
-    AND to_regproc('public.has_role_text(uuid,text)') IS NOT NULL
+    AND to_regprocedure('public.has_role(uuid,public.app_role)') IS NOT NULL
+    AND to_regprocedure('public.has_role_text(uuid,text)') IS NOT NULL
   THEN 'ok' ELSE 'fail' END;" 2>/dev/null || echo "fail")
 
 if [ "$(echo "$CORE_OK" | tr -d '[:space:]')" != "ok" ]; then
