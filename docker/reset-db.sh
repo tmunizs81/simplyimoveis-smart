@@ -60,21 +60,16 @@ for i in {1..60}; do
 done
 sleep 15  # aguarda init scripts
 
-echo -e "${BLUE}🔐 Sincronizando credenciais...${NC}"
-bash sync-db-passwords.sh
-
-echo -e "${BLUE}📋 Aplicando recovery SQL...${NC}"
-POSTGRES_PASSWORD=$(read_env "POSTGRES_PASSWORD")
-docker exec -i -e PGPASSWORD="$POSTGRES_PASSWORD" simply-db \
-  psql -v ON_ERROR_STOP=1 -w -h 127.0.0.1 -U supabase_admin -d "$POSTGRES_DB" < sql/selfhosted-admin-recovery.sql
+echo -e "${BLUE}🧱 Aplicando bootstrap do banco/storage...${NC}"
+bash bootstrap-db.sh || { echo -e "${RED}❌ Bootstrap falhou${NC}"; exit 1; }
 
 echo -e "${BLUE}🚀 Subindo serviços...${NC}"
 docker compose up -d
 
 sleep 15
 
-echo -e "${BLUE}🪣 Garantindo buckets...${NC}"
-bash ensure-storage-buckets.sh || echo -e "${YELLOW}⚠️  Buckets pendentes${NC}"
+echo -e "${BLUE}🧪 Validando...${NC}"
+bash validate.sh || echo -e "${YELLOW}⚠️  Validação com alertas${NC}"
 
 echo -e "${GREEN}✅ Banco resetado com sucesso!${NC}"
 echo -e "${YELLOW}⚠️  Crie o admin novamente: bash create-admin.sh email senha${NC}"
