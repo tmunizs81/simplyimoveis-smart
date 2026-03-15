@@ -429,7 +429,9 @@ CREATE TABLE public.sales_documents (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 ALTER TABLE public.sales_documents ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Admins can manage sale docs" ON public.sales_documents FOR ALL TO authenticated USING (has_role(auth.uid(), 'admin'));
+CREATE POLICY "Admins can manage sale docs" ON public.sales_documents FOR ALL TO authenticated
+  USING (has_role(auth.uid(), 'admin'::app_role))
+  WITH CHECK (has_role(auth.uid(), 'admin'::app_role));
 
 -- ============================================================
 -- Property Code Sequences
