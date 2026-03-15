@@ -1,7 +1,7 @@
 /**
- * Admin CRUD helper — routes mutations through the admin-crud edge function
- * which uses service_role to bypass RLS. Falls back to direct supabase
- * client if the edge function isn't available (e.g. for reads).
+ * Admin CRUD helper — routes ALL operations through the admin-crud edge function
+ * which uses service_role to bypass RLS. This ensures the admin panel works
+ * identically on both Lovable Cloud and self-hosted VPS environments.
  */
 import { supabase } from "@/integrations/supabase/client";
 
@@ -37,6 +37,23 @@ async function callAdminCrud(body: Record<string, unknown>): Promise<CrudResult>
   }
 
   return { data: data?.data ?? data, error: null };
+}
+
+export async function adminSelect(
+  table: string,
+  options?: {
+    select?: string;
+    match?: Record<string, unknown>;
+    order?: { column: string; ascending?: boolean };
+  }
+): Promise<CrudResult> {
+  return callAdminCrud({
+    action: "select",
+    table,
+    select: options?.select,
+    match: options?.match,
+    order: options?.order,
+  });
 }
 
 export async function adminInsert(
