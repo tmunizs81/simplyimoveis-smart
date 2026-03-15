@@ -54,7 +54,7 @@ const Footer = () => {
               <a href="tel:+5585999990000" className="text-accent-foreground/70 hover:text-terracotta-light transition-colors">
                 <Phone size={20} />
               </a>
-              <a href="mailto:contato@simplyimoveis.com.br" className="text-accent-foreground/70 hover:text-terracotta-light transition-colors">
+              <a href="mailto:tmunizs89@proton.me" className="text-accent-foreground/70 hover:text-terracotta-light transition-colors">
                 <Mail size={20} />
               </a>
             </div>

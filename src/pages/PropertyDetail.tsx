@@ -368,7 +368,7 @@ const PropertyDetail = () => {
                     <Phone size={18} /> Ligar Agora
                   </a>
                   <a
-                    href="mailto:contato@simplyimoveis.com.br"
+                    href="mailto:tmunizs89@proton.me"
                     className="w-full border-2 border-border text-foreground py-3.5 rounded-xl font-semibold hover:border-primary hover:text-primary transition-colors flex items-center justify-center gap-2 text-sm"
                   >
                     <Mail size={18} /> Enviar E-mail

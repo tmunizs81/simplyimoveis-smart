@@ -72,7 +72,7 @@ const ContactSection = () => {
               </div>
               <div>
                 <h3 className="font-semibold text-foreground">E-mail</h3>
-                <p className="text-muted-foreground text-sm">contato@simplyimoveis.com.br</p>
+                <p className="text-muted-foreground text-sm">tmunizs89@proton.me</p>
               </div>
             </div>
             <div className="glass-card rounded-xl p-6 flex items-start gap-4">
@@ -81,7 +81,7 @@ const ContactSection = () => {
               </div>
               <div>
                 <h3 className="font-semibold text-foreground">Endereço</h3>
-                <p className="text-muted-foreground text-sm">Fortaleza, Ceará - Brasil</p>
+                <p className="text-muted-foreground text-sm">Av. Yolanda Pontes Vidal Queiroz, 57, Torre 1, Sala 309 — Jereissati Setor A, Maracanaú - CE, 61900-410 — Edifício Business Place</p>
               </div>
             </div>
           </motion.div>
