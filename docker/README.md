@@ -18,7 +18,8 @@ sudo bash install.sh
 
 ```bash
 cd /opt/simply-imoveis/docker
-sudo bash install.sh --clean
+sudo bash install-clean.sh
+# ou: sudo bash install.sh --clean
 ```
 
 O script faz **tudo automaticamente**:
