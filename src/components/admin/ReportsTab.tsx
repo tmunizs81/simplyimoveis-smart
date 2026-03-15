@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { adminSelect } from "@/lib/adminCrud";
 import { BarChart3, TrendingUp, TrendingDown, DollarSign, Home, Users, FileText, Calendar } from "lucide-react";
 
 type MonthlyData = { month: string; receitas: number; despesas: number };
