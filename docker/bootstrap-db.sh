@@ -63,6 +63,19 @@ if [ "$(echo "$CORE_OK" | tr -d '[:space:]')" != "ok" ]; then
 fi
 echo -e "   ${GREEN}✅ Dependências core OK${NC}"
 
+echo -e "${BLUE}🧩 Subindo serviços mínimos para storage migrations (rest + storage)...${NC}"
+docker compose up -d rest storage
+
+echo -e "${BLUE}⏳ Aguardando schema storage ficar disponível...${NC}"
+for i in {1..60}; do
+  STORAGE_READY=$(docker compose exec -T -e PGPASSWORD="$POSTGRES_PASSWORD" db \
+    psql -tA -w -h 127.0.0.1 -U "$DB_ADMIN_USER" -d "$POSTGRES_DB" -c "
+    SELECT CASE WHEN to_regclass('storage.buckets') IS NOT NULL AND to_regclass('storage.objects') IS NOT NULL THEN 'ok' ELSE 'wait' END;" 2>/dev/null || echo "wait")
+  [ "$(echo "$STORAGE_READY" | tr -d '[:space:]')" = "ok" ] && break
+  [ "$i" = "60" ] && echo -e "${RED}❌ storage.buckets/storage.objects não disponíveis após 120s${NC}" && exit 1
+  sleep 2
+done
+
 echo -e "${BLUE}🪣 Aplicando bootstrap de storage...${NC}"
 bash ensure-storage-buckets.sh
 
