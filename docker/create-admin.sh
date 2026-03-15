@@ -2,7 +2,7 @@
 # ============================================================
 # Cria ou atualiza admin via SQL direto (100% idempotente)
 # Uso: bash create-admin.sh email senha
-# Versão: 2026-03-15-v5-rewrite
+# Versão: 2026-03-15-v6
 # ============================================================
 
 set -euo pipefail
@@ -20,14 +20,17 @@ cd "$SCRIPT_DIR"
 POSTGRES_DB=$(grep -E '^POSTGRES_DB=' .env | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")
 POSTGRES_DB="${POSTGRES_DB:-simply_db}"
 
+POSTGRES_PASSWORD=$(grep -E '^POSTGRES_PASSWORD=' .env | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")
+
 run_sql() {
-  docker compose exec -T db psql -v ON_ERROR_STOP=1 -U postgres -d "$POSTGRES_DB" "$@"
+  timeout 60s docker compose exec -T -e PGPASSWORD="$POSTGRES_PASSWORD" db psql -v ON_ERROR_STOP=1 -w -U postgres -d "$POSTGRES_DB" "$@"
 }
 
 # Espera banco
 docker compose up -d db >/dev/null 2>&1
-for _ in {1..30}; do
-  docker compose exec -T db pg_isready -U postgres -q 2>/dev/null && break
+for i in {1..30}; do
+  timeout 8s docker compose exec -T -e PGPASSWORD="$POSTGRES_PASSWORD" db pg_isready -U postgres -q -t 2 >/dev/null 2>&1 && break
+  [ "$i" = "30" ] && echo "❌ Banco não respondeu em 60s" && exit 1
   sleep 2
 done
 
