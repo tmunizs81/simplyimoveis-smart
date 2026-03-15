@@ -96,7 +96,8 @@ Internet → Nginx (443/SSL) → Frontend (:3000)
                                 └── Edge Functions (:9000)
                                       ├── chat (Luma IA)
                                       ├── notify-telegram
-                                      └── create-admin-user
+                                      ├── create-admin-user
+                                      └── admin-crud
                             → PostgreSQL (:5432, interno)
 ```
 
