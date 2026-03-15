@@ -156,7 +156,7 @@ Se não souber uma informação específica, oriente o cliente a falar diretamen
 
     if (!response.ok) {
       const t = await response.text();
-      console.error("Groq API error:", response.status, t);
+      console.error("AI API error:", response.status, t);
       if (response.status === 429) {
         return new Response(JSON.stringify({ error: "Muitas solicitações. Tente novamente em alguns segundos." }), {
           status: 429,
