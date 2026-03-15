@@ -3,7 +3,7 @@
 # Sincroniza senhas e permissões dos roles internos do Supabase
 # Corrige ownership do schema auth (causa raiz do erro 500)
 # Uso: bash sync-db-passwords.sh [--quiet]
-# Versão: 2026-03-15-v3
+# Versão: 2026-03-15-v4
 # ============================================================
 
 set -euo pipefail
