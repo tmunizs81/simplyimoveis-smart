@@ -39,8 +39,9 @@ services:
       GOTRUE_API_PORT: 9999
       API_EXTERNAL_URL: https://${SITE_DOMAIN}
       GOTRUE_DB_DRIVER: postgres
-      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-simply_db}
+      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-simply_db}?search_path=auth
       GOTRUE_DB_NAMESPACE: auth
+      DB_NAMESPACE: auth
       GOTRUE_SITE_URL: https://${SITE_DOMAIN}
       GOTRUE_URI_ALLOW_LIST: "*"
       GOTRUE_JWT_SECRET: ${JWT_SECRET}
