@@ -242,27 +242,29 @@ bash sync-functions.sh "$INSTALL_DIR/supabase/functions" "volumes/functions"
 echo -e "   ${GREEN}✅ Kong + Functions prontos${NC}"
 
 # ════════════════════════════════════════════════════════════
-# ETAPA 8 — Subir DB e aguardar init
+# ETAPA 8 — Subir DB e aguardar readiness
 # ════════════════════════════════════════════════════════════
 echo -e "\n${BLUE}🐘 Subindo PostgreSQL...${NC}"
 docker compose up -d --build db
 DB_USER=$(read_env "POSTGRES_USER"); DB_USER="${DB_USER:-supabase_admin}"
 DB_NAME=$(read_env "POSTGRES_DB"); DB_NAME="${DB_NAME:-simply_db}"
-for i in {1..60}; do
+for i in {1..90}; do
   docker exec simply-db pg_isready -U "$DB_USER" -d "$DB_NAME" -q 2>/dev/null && break
-  [ "$i" = "60" ] && echo -e "${RED}❌ PostgreSQL não respondeu em 120s${NC}" && exit 1
+  [ "$i" = "90" ] && echo -e "${RED}❌ PostgreSQL não respondeu em 180s${NC}" && exit 1
   sleep 2
 done
 echo -e "   ${GREEN}✅ PostgreSQL pronto${NC}"
-echo -e "${BLUE}⏳ Aguardando init scripts (15s)...${NC}"
-sleep 15
 
 # ════════════════════════════════════════════════════════════
-# ETAPA 9 — Bootstrap DB + Storage
+# ETAPA 9 — Bootstrap DB + Storage (pipeline determinístico)
 # ════════════════════════════════════════════════════════════
 echo -e "${BLUE}🧱 Bootstrap do banco e storage...${NC}"
-bash bootstrap-db.sh || { echo -e "${RED}❌ Falha no bootstrap${NC}"; exit 1; }
-echo -e "   ${GREEN}✅ Bootstrap concluído${NC}"
+if ! bash bootstrap-db.sh; then
+  echo -e "${RED}❌ Falha no bootstrap do banco/storage${NC}"
+  echo -e "${YELLOW}Debug: docker compose logs --tail=120 db rest storage${NC}"
+  exit 1
+fi
+echo -e "   ${GREEN}✅ Bootstrap concluído${NC}
 
 # ════════════════════════════════════════════════════════════
 # ETAPA 10 — Subir todos os serviços

@@ -36,8 +36,7 @@ fi
 echo -e "${BLUE}⏳ Aguardando (15s)...${NC}"
 sleep 15
 
-bash sync-db-passwords.sh || echo -e "${YELLOW}⚠️  sync-db-passwords falhou${NC}"
-bash ensure-storage-buckets.sh || echo -e "${YELLOW}⚠️  ensure-storage-buckets falhou${NC}"
+bash bootstrap-db.sh || echo -e "${YELLOW}⚠️  bootstrap-db falhou${NC}"
 
 bash validate-install.sh || echo -e "${YELLOW}⚠️  Validação com alertas${NC}"
 

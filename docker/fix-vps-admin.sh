@@ -57,20 +57,9 @@ docker compose up -d --force-recreate functions
 sleep 5
 
 echo ""
-echo "3️⃣  Aplicando SQL de correção..."
-# SQL via stdin do host
-docker compose exec -T -e PGPASSWORD="$POSTGRES_PASSWORD" db \
-  psql -v ON_ERROR_STOP=1 -w -h 127.0.0.1 -U "$DB_USER" -d "$POSTGRES_DB" \
-  < "$SQL_FILE"
-echo "   ✅ SQL aplicado"
-
-echo ""
-echo "4️⃣  Reaplicando auth roles/grants..."
-bash sync-db-passwords.sh
-
-echo ""
-echo "5️⃣  Reaplicando buckets e policies de storage..."
-bash ensure-storage-buckets.sh
+echo "3️⃣  Reaplicando pipeline de bootstrap completo..."
+bash bootstrap-db.sh
+echo "   ✅ Bootstrap concluído"
 
 echo ""
 echo "6️⃣  Reiniciando serviços..."
