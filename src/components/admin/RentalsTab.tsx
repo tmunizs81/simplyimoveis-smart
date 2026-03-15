@@ -129,7 +129,7 @@ const RentalsTab = () => {
 
   const deleteContract = async (id: string) => {
     if (!confirm("Excluir este contrato e todos os documentos?")) return;
-    await supabase.from("rental_contracts").delete().eq("id", id);
+    await adminDelete("rental_contracts", { id });
     toast.success("Contrato excluído");
     fetchAll();
   };
