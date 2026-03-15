@@ -69,6 +69,14 @@ check_container simply-functions
 check_container simply-kong
 check_container simply-frontend
 
+AUTH_USERS_EXISTS=$(run_psql -tA -c "SELECT to_regclass('auth.users') IS NOT NULL;" | tr -d '[:space:]')
+if [ "$AUTH_USERS_EXISTS" != "t" ]; then
+  echo "❌ auth.users não existe (schema auth quebrado)."
+  echo "💡 Execute: bash sync-db-passwords.sh && docker compose up -d --force-recreate auth kong"
+  exit 1
+fi
+
+echo "✅ auth.users encontrado"
 echo "🔍 Validando autenticação no Kong..."
 AUTH_SERVICE_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:${KONG_PORT}/auth/v1/settings" -H "apikey: ${SERVICE_ROLE_KEY}" 2>/dev/null || echo "000")
 AUTH_ANON_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:${KONG_PORT}/auth/v1/settings" -H "apikey: ${ANON_KEY}" 2>/dev/null || echo "000")
