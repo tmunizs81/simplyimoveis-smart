@@ -93,6 +93,7 @@ CREATE TABLE public.property_media (
 ALTER TABLE public.property_media ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Anyone can view property media" ON public.property_media FOR SELECT USING (true);
 CREATE POLICY "Users can insert media for own properties" ON public.property_media FOR INSERT TO authenticated WITH CHECK (EXISTS (SELECT 1 FROM properties WHERE properties.id = property_media.property_id AND properties.user_id = auth.uid()));
+CREATE POLICY "Users can update media for own properties" ON public.property_media FOR UPDATE TO authenticated USING (EXISTS (SELECT 1 FROM properties WHERE properties.id = property_media.property_id AND properties.user_id = auth.uid()));
 CREATE POLICY "Users can delete media for own properties" ON public.property_media FOR DELETE TO authenticated USING (EXISTS (SELECT 1 FROM properties WHERE properties.id = property_media.property_id AND properties.user_id = auth.uid()));
 
 -- ============================================================
