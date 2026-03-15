@@ -26,7 +26,12 @@ DB_CONTAINER="simply-db"
 
 docker inspect -f '{{.State.Status}}' "$DB_CONTAINER" >/dev/null 2>&1 || { echo "❌ Container $DB_CONTAINER não encontrado"; exit 1; }
 
-run_sql() {
+run_sql_cmd() {
+  timeout 30s docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" \
+    "$DB_CONTAINER" psql -v ON_ERROR_STOP=1 -w -h 127.0.0.1 -U supabase_admin -d "$POSTGRES_DB" "$@"
+}
+
+run_sql_stdin() {
   timeout 30s docker exec -i -e PGPASSWORD="$POSTGRES_PASSWORD" \
     "$DB_CONTAINER" psql -v ON_ERROR_STOP=1 -w -h 127.0.0.1 -U supabase_admin -d "$POSTGRES_DB" "$@"
 }
