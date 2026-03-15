@@ -5,6 +5,9 @@
 
 BEGIN;
 
+-- Extensões obrigatórias
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 -- ------------------------------------------------------------
 -- 1) Enum e tabela de roles
 -- ------------------------------------------------------------
