@@ -118,7 +118,7 @@ const Admin = () => {
     navigate("/");
   };
 
-  if (authLoading) {
+  if (authLoading || (user && adminCheckLoading)) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="w-8 h-8 border-3 border-primary/30 border-t-primary rounded-full animate-spin" />
@@ -127,6 +127,25 @@ const Admin = () => {
   }
 
   if (!user) return <AdminLogin />;
+
+  if (!isAdmin) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center px-4">
+        <div className="w-full max-w-md bg-card border border-border rounded-2xl p-6 text-center shadow-xl">
+          <h1 className="font-display text-xl font-bold text-foreground mb-2">Acesso negado</h1>
+          <p className="text-sm text-muted-foreground mb-5">
+            Sua conta está autenticada, mas não possui permissão de administrador.
+          </p>
+          <button
+            onClick={handleLogout}
+            className="w-full gradient-primary text-primary-foreground py-3 rounded-xl font-semibold"
+          >
+            Sair
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
