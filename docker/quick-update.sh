@@ -1,10 +1,11 @@
 #!/bin/bash
 # ============================================================
 # Simply Imóveis - Atualização RÁPIDA (incremental)
-# Atualiza código, frontend e functions SEM reinstalar tudo.
+# Baixa código do GitHub (tarball), rebuild frontend + functions.
 # Preserva banco, storage, .env e dados existentes.
 #
 # Uso: cd /opt/simply-imoveis/docker && sudo bash quick-update.sh
+#      sudo bash quick-update.sh --repo https://github.com/user/repo
 # ============================================================
 set -euo pipefail
 
@@ -16,47 +17,56 @@ INSTALL_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$SCRIPT_DIR"
 [ ! -f .env ] && echo -e "${RED}❌ .env não encontrado em $SCRIPT_DIR${NC}" && exit 1
 
+read_env() { grep -E "^${1}=" "$SCRIPT_DIR/.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'"; }
+
 echo -e "${BLUE}╔══════════════════════════════════════════════════════╗${NC}"
 echo -e "${BLUE}║     Simply Imóveis — Atualização Rápida              ║${NC}"
 echo -e "${BLUE}╚══════════════════════════════════════════════════════╝${NC}"
 
-# ── 1. Backup do .env (segurança) ──
+# ── 1. Backup do .env ──
 ENV_BACKUP="/tmp/simply-env-$(date +%Y%m%d-%H%M%S)"
 cp .env "$ENV_BACKUP"
 echo -e "   ${GREEN}✅ .env backup: $ENV_BACKUP${NC}"
 
-# ── 2. Pull do código ──
-echo -e "\n${BLUE}1️⃣  Atualizando código do GitHub...${NC}"
-cd "$INSTALL_DIR"
-if [ -d ".git" ]; then
-  BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")
-  git fetch --all --prune 2>/dev/null
-  git reset --hard "origin/$BRANCH" 2>/dev/null
-  echo -e "   ${GREEN}✅ Código atualizado (branch: $BRANCH)${NC}"
-else
-  echo -e "   ${YELLOW}⚠️  Sem .git — inicializando repositório...${NC}"
-  command -v git &>/dev/null || { apt-get update -qq >/dev/null 2>&1; apt-get install -y -qq git >/dev/null 2>&1; }
-  git init
-  # Tenta detectar remote do GitHub
-  REPO_URL=""
-  if [ -f "$SCRIPT_DIR/.env" ]; then
-    REPO_URL=$(grep -E "^GITHUB_REPO=" "$SCRIPT_DIR/.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'" || true)
-  fi
-  if [ -z "$REPO_URL" ]; then
-    read -p "   URL do repositório GitHub (ex: https://github.com/user/repo.git): " REPO_URL
-  fi
-  if [ -n "$REPO_URL" ]; then
-    git remote add origin "$REPO_URL"
-    BRANCH="main"
-    git fetch origin 2>/dev/null
-    git reset --hard "origin/$BRANCH" 2>/dev/null || git reset --hard "origin/master" 2>/dev/null
-    echo -e "   ${GREEN}✅ Repositório inicializado e código atualizado${NC}"
-  else
-    echo -e "   ${RED}❌ URL não informada. Pulando pull.${NC}"
-  fi
+# ── 2. Baixar código do GitHub ──
+echo -e "\n${BLUE}1️⃣  Baixando código do GitHub...${NC}"
+
+# Detectar repo: flag --repo > .env GITHUB_REPO > git remote > perguntar
+REPO_URL=""
+for arg in "$@"; do
+  case "$arg" in --repo) shift; REPO_URL="${1:-}"; shift || true ;; --repo=*) REPO_URL="${arg#*=}" ;; esac
+done
+[ -z "$REPO_URL" ] && REPO_URL=$(read_env "GITHUB_REPO")
+[ -z "$REPO_URL" ] && [ -d "$INSTALL_DIR/.git" ] && REPO_URL=$(cd "$INSTALL_DIR" && git remote get-url origin 2>/dev/null || true)
+[ -z "$REPO_URL" ] && read -p "   URL do repositório GitHub: " REPO_URL
+[ -z "$REPO_URL" ] && echo -e "${RED}❌ URL não informada${NC}" && exit 1
+
+# Normalizar URL para tarball
+REPO_URL="${REPO_URL%.git}"
+BRANCH="${BRANCH:-main}"
+TARBALL_URL="${REPO_URL}/archive/refs/heads/${BRANCH}.tar.gz"
+
+TMP_DIR=$(mktemp -d)
+echo -e "   Baixando ${TARBALL_URL}..."
+if ! curl -fsSL "$TARBALL_URL" -o "$TMP_DIR/repo.tar.gz" 2>/dev/null; then
+  # Tentar branch master
+  BRANCH="master"
+  TARBALL_URL="${REPO_URL}/archive/refs/heads/${BRANCH}.tar.gz"
+  echo -e "   ${YELLOW}Branch main não encontrada, tentando master...${NC}"
+  curl -fsSL "$TARBALL_URL" -o "$TMP_DIR/repo.tar.gz" || { echo -e "${RED}❌ Falha ao baixar do GitHub${NC}"; rm -rf "$TMP_DIR"; exit 1; }
 fi
 
-# ── Restaurar .env (git reset pode sobrescrever) ──
+# Extrair (o tarball cria uma pasta repo-branch/)
+tar -xzf "$TMP_DIR/repo.tar.gz" -C "$TMP_DIR"
+EXTRACTED=$(find "$TMP_DIR" -mindepth 1 -maxdepth 1 -type d | head -1)
+
+# Copiar tudo EXCETO docker/.env (preservar configs)
+rsync -a --exclude='docker/.env' --exclude='node_modules' "$EXTRACTED/" "$INSTALL_DIR/"
+rm -rf "$TMP_DIR"
+
+echo -e "   ${GREEN}✅ Código atualizado (branch: $BRANCH)${NC}"
+
+# ── Restaurar .env (segurança extra) ──
 cp "$ENV_BACKUP" "$SCRIPT_DIR/.env"
 
 # ── Permissões ──
@@ -70,59 +80,34 @@ bash sync-functions.sh "$INSTALL_DIR/supabase/functions" "volumes/functions"
 bash render-kong-config.sh
 echo -e "   ${GREEN}✅ Functions e Kong sincronizados${NC}"
 
-# ── 4. Rebuild frontend ──
-echo -e "\n${BLUE}3️⃣  Rebuild do frontend...${NC}"
+# ── 4. Rebuild + restart via docker compose ──
+echo -e "\n${BLUE}3️⃣  Docker Compose: rebuild + restart...${NC}"
 docker compose build --no-cache frontend
-echo -e "   ${GREEN}✅ Frontend compilado${NC}"
-
-# ── 5. Restart serviços afetados (SEM tocar no DB) ──
-echo -e "\n${BLUE}4️⃣  Reiniciando serviços...${NC}"
 docker compose up -d frontend
 docker compose up -d --force-recreate functions kong
 echo -e "   ${GREEN}✅ Frontend + Functions + Kong reiniciados${NC}"
 
-# ── 6. Aguardar e validar ──
-echo -e "\n${BLUE}5️⃣  Aguardando serviços (10s)...${NC}"
+# ── 5. Validar ──
+echo -e "\n${BLUE}4️⃣  Aguardando serviços (10s)...${NC}"
 sleep 10
 
-read_env() { grep -E "^${1}=" "$SCRIPT_DIR/.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'"; }
 KONG_HTTP_PORT=$(read_env "KONG_HTTP_PORT"); KONG_HTTP_PORT="${KONG_HTTP_PORT:-8000}"
 ANON_KEY=$(read_env "ANON_KEY")
 FRONTEND_PORT=$(read_env "FRONTEND_PORT"); FRONTEND_PORT="${FRONTEND_PORT:-3000}"
 
 ERRORS=0
 
-# Testar frontend
 FE_ST=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:${FRONTEND_PORT}/" 2>/dev/null || echo "000")
-if [ "$FE_ST" = "200" ]; then
-  echo -e "   ${GREEN}✅ Frontend: HTTP $FE_ST${NC}"
-else
-  echo -e "   ${RED}❌ Frontend: HTTP $FE_ST${NC}"; ERRORS=$((ERRORS + 1))
-fi
+[ "$FE_ST" = "200" ] && echo -e "   ${GREEN}✅ Frontend: HTTP $FE_ST${NC}" || { echo -e "   ${RED}❌ Frontend: HTTP $FE_ST${NC}"; ERRORS=$((ERRORS + 1)); }
 
-# Testar Auth
 AUTH_ST=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:${KONG_HTTP_PORT}/auth/v1/settings" -H "apikey: ${ANON_KEY}" 2>/dev/null || echo "000")
-if [ "$AUTH_ST" = "200" ]; then
-  echo -e "   ${GREEN}✅ Auth: HTTP $AUTH_ST${NC}"
-else
-  echo -e "   ${YELLOW}⚠️  Auth: HTTP $AUTH_ST${NC}"; ERRORS=$((ERRORS + 1))
-fi
+[ "$AUTH_ST" = "200" ] && echo -e "   ${GREEN}✅ Auth: HTTP $AUTH_ST${NC}" || { echo -e "   ${YELLOW}⚠️  Auth: HTTP $AUTH_ST${NC}"; ERRORS=$((ERRORS + 1)); }
 
-# Testar Functions
 FUNC_ST=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:${KONG_HTTP_PORT}/functions/v1/" -H "apikey: ${ANON_KEY}" 2>/dev/null || echo "000")
-if [ "$FUNC_ST" = "200" ]; then
-  echo -e "   ${GREEN}✅ Functions: HTTP $FUNC_ST${NC}"
-else
-  echo -e "   ${YELLOW}⚠️  Functions: HTTP $FUNC_ST (pode ser normal)${NC}"
-fi
+[ "$FUNC_ST" = "200" ] && echo -e "   ${GREEN}✅ Functions: HTTP $FUNC_ST${NC}" || echo -e "   ${YELLOW}⚠️  Functions: HTTP $FUNC_ST (pode ser normal)${NC}"
 
-# Testar REST
 REST_ST=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:${KONG_HTTP_PORT}/rest/v1/" -H "apikey: ${ANON_KEY}" 2>/dev/null || echo "000")
-if [ "$REST_ST" = "200" ]; then
-  echo -e "   ${GREEN}✅ REST API: HTTP $REST_ST${NC}"
-else
-  echo -e "   ${YELLOW}⚠️  REST API: HTTP $REST_ST${NC}"
-fi
+[ "$REST_ST" = "200" ] && echo -e "   ${GREEN}✅ REST API: HTTP $REST_ST${NC}" || echo -e "   ${YELLOW}⚠️  REST API: HTTP $REST_ST${NC}"
 
 echo ""
 if [ "$ERRORS" -eq 0 ]; then
