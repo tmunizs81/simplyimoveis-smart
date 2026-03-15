@@ -147,36 +147,35 @@ const InspectionsTab = () => {
     };
 
     if (editing) {
-      const { error } = await supabase.from("property_inspections").update(payload as any).eq("id", editing.id);
+      const { error } = await adminUpdate("property_inspections", payload, { id: editing.id });
       if (error) { toast.error("Erro ao atualizar vistoria"); return; }
-      // Upload form files for existing inspection
       if (formFiles.length > 0) {
         for (const { file, category } of formFiles) {
           const ext = file.name.split(".").pop();
           const path = `${user.id}/${editing.id}/${crypto.randomUUID()}.${ext}`;
           const { error: upErr } = await supabase.storage.from("inspection-media").upload(path, file);
           if (upErr) { toast.error(`Erro: ${file.name}`); continue; }
-          await supabase.from("inspection_media").insert({
+          await adminInsert("inspection_media", {
             inspection_id: editing.id, file_path: path, file_name: file.name,
             file_type: file.type, media_category: category, user_id: user.id,
-          } as any);
+          });
         }
       }
       toast.success("Vistoria atualizada!");
     } else {
-      const { data: inserted, error } = await supabase.from("property_inspections").insert(payload as any).select("id").single();
-      if (error || !inserted) { toast.error("Erro ao criar vistoria"); return; }
-      // Upload form files for new inspection
+      const { data: inserted, error } = await adminInsert("property_inspections", payload);
+      if (error || !inserted?.[0]) { toast.error("Erro ao criar vistoria"); return; }
+      const newId = inserted[0].id;
       if (formFiles.length > 0) {
         for (const { file, category } of formFiles) {
           const ext = file.name.split(".").pop();
-          const path = `${user.id}/${inserted.id}/${crypto.randomUUID()}.${ext}`;
+          const path = `${user.id}/${newId}/${crypto.randomUUID()}.${ext}`;
           const { error: upErr } = await supabase.storage.from("inspection-media").upload(path, file);
           if (upErr) { toast.error(`Erro: ${file.name}`); continue; }
-          await supabase.from("inspection_media").insert({
-            inspection_id: inserted.id, file_path: path, file_name: file.name,
+          await adminInsert("inspection_media", {
+            inspection_id: newId, file_path: path, file_name: file.name,
             file_type: file.type, media_category: category, user_id: user.id,
-          } as any);
+          });
         }
       }
       toast.success("Vistoria criada com fotos!");
