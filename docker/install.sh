@@ -146,20 +146,27 @@ echo -e "   ${GREEN}✅ Docker Compose: $(docker compose version --short)${NC}"
 # ETAPA 4 — Copiar projeto para /opt/simply-imoveis
 # ════════════════════════════════════════════════════════════
 INSTALL_DIR="/opt/simply-imoveis"
-# Capture source paths BEFORE cd, since cwd may have been deleted by full-wipe
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd || echo "/opt/simply-imoveis/docker")"
-PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+
+# Use paths captured at script start (before full-wipe could delete them)
+SCRIPT_DIR="$_ORIG_SCRIPT_DIR"
+PROJECT_DIR="$_ORIG_PROJECT_DIR"
 
 # Reset cwd to a safe location (full-wipe may have deleted our cwd)
 cd /
 
 mkdir -p "$INSTALL_DIR"
 echo -e "${BLUE}📋 Copiando projeto para $INSTALL_DIR...${NC}"
-rsync -av --delete \
-  --exclude='node_modules' \
-  --exclude='.git' \
-  --exclude='docker/.env' \
-  "$PROJECT_DIR/" "$INSTALL_DIR/"
+
+# If running from inside INSTALL_DIR itself, skip rsync (already in place)
+if [ "$(realpath "$PROJECT_DIR")" = "$(realpath "$INSTALL_DIR")" ]; then
+  echo -e "   ${GREEN}✅ Já executando de $INSTALL_DIR, rsync não necessário${NC}"
+else
+  rsync -av --delete \
+    --exclude='node_modules' \
+    --exclude='.git' \
+    --exclude='docker/.env' \
+    "$PROJECT_DIR/" "$INSTALL_DIR/"
+fi
 
 cd "$INSTALL_DIR/docker"
 chmod +x *.sh 2>/dev/null || true
