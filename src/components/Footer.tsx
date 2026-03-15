@@ -32,7 +32,7 @@ const Footer = () => {
               </div>
             </div>
             <p className="text-accent-foreground/70 text-sm leading-relaxed">
-              Sua imobiliária de confiança em Fortaleza. Encontre o imóvel perfeito com atendimento personalizado.
+              A vida é feita de mudanças, aqui nós intermediamos o seu sonho!
             </p>
           </div>
           <div>
