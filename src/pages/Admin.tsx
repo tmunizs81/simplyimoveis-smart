@@ -28,6 +28,8 @@ type AdminTab = "dashboard" | "properties" | "contacts" | "password" | "users" |
 const Admin = () => {
   const [user, setUser] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [adminCheckLoading, setAdminCheckLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [properties, setProperties] = useState<(Property & { media: MediaRow[] })[]>([]);
   const [activeTab, setActiveTab] = useState<AdminTab>("dashboard");
   const [showForm, setShowForm] = useState(false);
