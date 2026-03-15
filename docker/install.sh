@@ -199,8 +199,18 @@ for i in {1..40}; do
   sleep 2
 done
 
-echo -e "${BLUE}⏳ Aguardando GoTrue migrar (30s)...${NC}"
-sleep 30
+echo -e "${BLUE}🔧 Sincronizando senhas dos roles internos...${NC}"
+if ! bash sync-db-passwords.sh; then
+  echo -e "${RED}❌ Falha ao sincronizar credenciais do banco${NC}"
+  echo "   docker compose logs --tail=40 db"
+  exit 1
+fi
+
+echo -e "${BLUE}🔄 Reiniciando auth/rest/storage após sincronização...${NC}"
+docker compose restart auth rest storage >/dev/null 2>&1 || true
+
+echo -e "${BLUE}⏳ Aguardando serviços estabilizarem (20s)...${NC}"
+sleep 20
 
 # ── 11. Validação ────────────────────────────────────────────
 echo -e "${BLUE}🧪 Validando...${NC}"
