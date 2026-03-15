@@ -157,8 +157,16 @@ cd /
 mkdir -p "$INSTALL_DIR"
 echo -e "${BLUE}📋 Copiando projeto para $INSTALL_DIR...${NC}"
 
-# If running from inside INSTALL_DIR itself, skip rsync (already in place)
-if [ "$(realpath "$PROJECT_DIR")" = "$(realpath "$INSTALL_DIR")" ]; then
+# Check if source dir still exists (full-wipe may have deleted it if running from INSTALL_DIR)
+if [ ! -d "$PROJECT_DIR/docker" ]; then
+  echo -e "${RED}❌ Diretório fonte foi removido pelo full-wipe.${NC}"
+  echo -e "${YELLOW}   Execute o install.sh a partir do repositório clonado, não de /opt/simply-imoveis.${NC}"
+  echo -e "${YELLOW}   Exemplo: cd ~/simply-imoveis/docker && sudo bash install.sh --clean${NC}"
+  exit 1
+fi
+
+# Copy project to INSTALL_DIR (skip if already there and intact)
+if [ "$(realpath "$PROJECT_DIR")" = "$(realpath "$INSTALL_DIR")" ] && [ -d "$INSTALL_DIR/docker" ]; then
   echo -e "   ${GREEN}✅ Já executando de $INSTALL_DIR, rsync não necessário${NC}"
 else
   rsync -av --delete \
