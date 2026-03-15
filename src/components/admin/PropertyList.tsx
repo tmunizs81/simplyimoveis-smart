@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { Edit, Trash2, Star, Eye, EyeOff, MapPin, BedDouble, Bath, Maximize2, ImageIcon, Plus, Search, Building2, Car, DoorOpen } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { adminUpdate, adminDelete } from "@/lib/adminCrud";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
 
