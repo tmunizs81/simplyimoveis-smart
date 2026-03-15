@@ -2,7 +2,6 @@
 # ============================================================
 # Simply Imóveis - Atualizar VPS a partir do GitHub
 # Uso: sudo bash update-from-github.sh [repo-url]
-# Versão: 2026-03-15-v11-simplified
 # ============================================================
 set -euo pipefail
 
@@ -35,11 +34,10 @@ cd "$INSTALL_DIR/docker"
 chmod +x *.sh 2>/dev/null || true
 chmod +x volumes/db/init/*.sh 2>/dev/null || true
 
-# Rebuild
 echo -e "${BLUE}🔄 Atualizando serviços...${NC}"
 bash sync-functions.sh "$INSTALL_DIR/supabase/functions" "volumes/functions"
 bash render-kong-config.sh
-docker compose build frontend
+docker compose build --no-cache frontend
 docker compose up -d frontend
 docker compose up -d --force-recreate functions
 echo -e "   ${GREEN}✅ Frontend + Functions atualizados${NC}"
@@ -47,10 +45,15 @@ echo -e "   ${GREEN}✅ Frontend + Functions atualizados${NC}"
 bash sync-db-passwords.sh || echo -e "${YELLOW}⚠️  sync-db-passwords falhou${NC}"
 bash ensure-storage-buckets.sh || echo -e "${YELLOW}⚠️  ensure-storage-buckets falhou${NC}"
 
+echo -e "${BLUE}🧪 Validando...${NC}"
 if ! bash validate-install.sh; then
-  echo -e "${YELLOW}⚠️  Validação falhou. Rodando reparo completo...${NC}"
-  bash fix-vps-admin.sh
+  echo -e "${YELLOW}⚠️  Validação falhou. Aplicando recovery SQL...${NC}"
+  POSTGRES_PASSWORD=$(grep -E "^POSTGRES_PASSWORD=" .env | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")
+  docker exec -i -e PGPASSWORD="$POSTGRES_PASSWORD" simply-db \
+    psql -v ON_ERROR_STOP=1 -w -h 127.0.0.1 -U supabase_admin -d simply_db < sql/selfhosted-admin-recovery.sql 2>/dev/null || true
+  docker compose restart auth rest functions
+  sleep 15
+  bash validate-install.sh || echo -e "${YELLOW}⚠️  Validação ainda com alertas${NC}"
 fi
 
 echo -e "\n${GREEN}✅ Atualização concluída!${NC}"
-echo -e "${YELLOW}💡 Validação final: bash validate-install.sh${NC}"
