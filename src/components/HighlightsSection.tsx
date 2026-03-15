@@ -88,7 +88,7 @@ const HighlightsSection = () => {
 
         <div className="overflow-hidden">
           <motion.div
-            className="flex gap-6"
+            className="flex gap-4 sm:gap-6"
             animate={{ x: `-${scrollIndex * (100 / 3 + 1.5)}%` }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
           >
@@ -96,7 +96,7 @@ const HighlightsSection = () => {
               <Link
                 key={property.id}
                 to={`/imoveis/${property.id}`}
-                className="block group hover-lift rounded-xl overflow-hidden glass-card min-w-[calc(33.333%-1rem)] flex-shrink-0"
+                className="block group hover-lift rounded-xl overflow-hidden glass-card min-w-[80vw] sm:min-w-[calc(50%-0.75rem)] lg:min-w-[calc(33.333%-1rem)] flex-shrink-0"
               >
                 <div className="relative h-56 overflow-hidden bg-secondary">
                   {property.media[0] ? (
