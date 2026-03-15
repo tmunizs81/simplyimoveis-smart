@@ -20,6 +20,7 @@ import FinancialTab from "@/components/admin/FinancialTab";
 import ReportsTab from "@/components/admin/ReportsTab";
 import InspectionsTab from "@/components/admin/InspectionsTab";
 import BackupTab from "@/components/admin/BackupTab";
+import InsightsTab from "@/components/admin/InsightsTab";
 import type { Database } from "@/integrations/supabase/types";
 
 type Property = Database["public"]["Tables"]["properties"]["Row"];
