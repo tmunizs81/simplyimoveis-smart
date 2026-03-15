@@ -125,18 +125,23 @@ for img in $(docker images --filter "reference=docker-frontend*" -q 2>/dev/null)
 done
 echo -e "   ${GREEN}✅ Imagens removidas${NC}"
 
-# ── 5. Limpar diretório do projeto ──
-echo -e "${BLUE}   5/7 Removendo diretório do projeto...${NC}"
+# ── 5. Limpar dados gerados (preservar scripts fonte) ──
+echo -e "${BLUE}   5/7 Limpando dados gerados...${NC}"
 if [ -d "$INSTALL_DIR" ]; then
   # Preserva backups se existirem
   if [ -d "$BACKUP_DIR" ] && [ "$(ls -A "$BACKUP_DIR" 2>/dev/null)" ]; then
     mkdir -p /tmp/simply-backup
     cp -r "$BACKUP_DIR"/* /tmp/simply-backup/ 2>/dev/null || true
-    echo -e "   ${CYAN}📦 Backups preservados em /tmp/simply-backup/${NC}"
+    echo -e "   ${CYAN}Backups preservados em /tmp/simply-backup/${NC}"
   fi
-  rm -rf "$INSTALL_DIR"
+  # Remove apenas dados gerados, NAO os scripts fonte
+  rm -rf "$INSTALL_DIR/docker/volumes/functions" 2>/dev/null || true
+  rm -rf "$INSTALL_DIR/docker/volumes/kong/kong.yml" 2>/dev/null || true
+  rm -rf "$INSTALL_DIR/backups" 2>/dev/null || true
+  echo -e "   ${GREEN}OK: Dados gerados limpos (scripts fonte preservados)${NC}"
+else
+  echo -e "   ${YELLOW}Diretorio $INSTALL_DIR nao existe${NC}"
 fi
-echo -e "   ${GREEN}✅ Diretório removido${NC}"
 
 # ── 6. Limpar Nginx ──
 echo -e "${BLUE}   6/7 Limpando configuração Nginx...${NC}"
