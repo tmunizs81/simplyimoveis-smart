@@ -11,7 +11,7 @@ echo "🔐 Configurando senhas dos roles internos..."
 # Escapar a senha para uso seguro em SQL
 ESCAPED_PASS=$(printf '%s' "${POSTGRES_PASSWORD}" | sed "s/'/''/g")
 
-psql -v ON_ERROR_STOP=0 --username postgres --dbname "${POSTGRES_DB:-simply_db}" <<EOSQL
+psql -v ON_ERROR_STOP=0 --username supabase_admin --dbname "${POSTGRES_DB:-simply_db}" <<EOSQL
 
 -- Tentar definir senhas (ignora erro se role não existir ainda)
 DO \$\$

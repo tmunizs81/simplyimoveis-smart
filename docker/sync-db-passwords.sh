@@ -2,8 +2,7 @@
 # ============================================================
 # Sincroniza senhas dos roles internos do Supabase
 # Uso: bash sync-db-passwords.sh
-# Versão: 2026-03-15-v10-definitive
-# Usa docker exec direto (não docker compose exec que trava)
+# Versão: 2026-03-15-v11
 # ============================================================
 
 set -euo pipefail
@@ -16,14 +15,13 @@ cd "$SCRIPT_DIR"
 POSTGRES_PASSWORD=$(grep -E '^POSTGRES_PASSWORD=' .env | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")
 POSTGRES_DB=$(grep -E '^POSTGRES_DB=' .env | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")
 POSTGRES_DB="${POSTGRES_DB:-simply_db}"
+DB_CONTAINER="simply-db"
+DB_ADMIN_USER="supabase_admin"
 
 [ -z "${POSTGRES_PASSWORD:-}" ] && echo "❌ POSTGRES_PASSWORD vazio" && exit 1
 
-DB_CONTAINER="simply-db"
-
 echo "🔧 Sincronizando credenciais..."
 
-# ── 1. Checar container rodando ──
 echo "   Verificando container ${DB_CONTAINER}..."
 DB_STATUS=$(docker inspect -f '{{.State.Status}}' "$DB_CONTAINER" 2>/dev/null || echo "not_found")
 if [ "$DB_STATUS" != "running" ]; then
@@ -33,36 +31,40 @@ if [ "$DB_STATUS" != "running" ]; then
 fi
 echo "   ✅ Container rodando"
 
-# ── 2. Testar conexão SQL (com retry simples) ──
-echo "   Testando conexão SQL..."
+echo "   Testando conexão SQL com ${DB_ADMIN_USER}..."
+CONNECTED=false
 for i in 1 2 3 4 5 6 7 8 9 10; do
   RESULT=$(docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" "$DB_CONTAINER" \
-    psql -tA -w -U postgres -d "$POSTGRES_DB" -c "SELECT 1" 2>&1) && break
+    psql -tA -w -U "$DB_ADMIN_USER" -d "$POSTGRES_DB" -c "SELECT 1" 2>&1 || true)
+
+  if [ "$RESULT" = "1" ]; then
+    CONNECTED=true
+    echo "   ✅ Conexão SQL OK"
+    break
+  fi
+
   echo "   ⏳ tentativa $i/10..."
   sleep 3
 done
 
-if [ "${RESULT:-}" != "1" ]; then
-  echo "❌ Não foi possível conectar ao PostgreSQL"
+if [ "$CONNECTED" != "true" ]; then
+  echo "❌ Não foi possível conectar ao PostgreSQL com user ${DB_ADMIN_USER}"
   echo "   Resultado: $RESULT"
   exit 1
 fi
-echo "   ✅ Conexão SQL OK"
 
-# ── 3. Verificar roles ──
 echo "   Verificando roles internos..."
 ROLE_CHECK=$(docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" "$DB_CONTAINER" \
-  psql -tA -w -U postgres -d "$POSTGRES_DB" \
+  psql -tA -w -U "$DB_ADMIN_USER" -d "$POSTGRES_DB" \
   -c "SELECT string_agg(rolname, ',') FROM pg_roles WHERE rolname IN ('supabase_admin','supabase_auth_admin','authenticator','supabase_storage_admin');" 2>/dev/null || echo "")
 
 echo "   Roles encontrados: ${ROLE_CHECK:-nenhum}"
 
-# ── 4. Aplicar senhas ──
 echo "   Aplicando senhas..."
 ESCAPED_PASS=$(printf '%s' "$POSTGRES_PASSWORD" | sed "s/'/''/g")
 
 docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" "$DB_CONTAINER" \
-  psql -v ON_ERROR_STOP=0 -w -U postgres -d "$POSTGRES_DB" <<EOSQL
+  psql -v ON_ERROR_STOP=0 -w -U "$DB_ADMIN_USER" -d "$POSTGRES_DB" <<EOSQL
 DO \$\$
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_admin') THEN
