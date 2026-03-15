@@ -304,7 +304,9 @@ CREATE TABLE public.financial_transactions (
 );
 
 ALTER TABLE public.financial_transactions ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Admins can manage transactions" ON public.financial_transactions FOR ALL TO authenticated USING (has_role(auth.uid(), 'admin'));
+CREATE POLICY "Admins can manage transactions" ON public.financial_transactions FOR ALL TO authenticated
+  USING (has_role(auth.uid(), 'admin'::app_role))
+  WITH CHECK (has_role(auth.uid(), 'admin'::app_role));
 
 -- ============================================================
 -- Property Inspections
