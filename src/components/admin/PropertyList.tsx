@@ -35,7 +35,7 @@ const PropertyList = ({ properties, onEdit, onRefresh, onNew }: PropertyListProp
   };
 
   const toggleActive = async (p: Property) => {
-    await supabase.from("properties").update({ active: !p.active }).eq("id", p.id);
+    await adminUpdate("properties", { active: !p.active }, { id: p.id });
     toast.success(p.active ? "Imóvel desativado" : "Imóvel ativado");
     onRefresh();
   };
