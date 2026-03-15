@@ -41,16 +41,22 @@ echo ""
 echo "🛠️  Etapa 3/5: Testando auth.uid() com JWT simulado..."
 
 # Simula como PostgREST seta os GUCs (legacy mode = true)
-TEST_UID=$(docker exec -i -e PGPASSWORD="$POSTGRES_PASSWORD" "$DB_CONTAINER" \
-  psql -tA -w -h 127.0.0.1 -U supabase_admin -d "$POSTGRES_DB" 2>/dev/null <<'EOSQL'
+RAW_TEST_UID=""
+if ! RAW_TEST_UID=$(docker exec -i -e PGPASSWORD="$POSTGRES_PASSWORD" "$DB_CONTAINER" \
+  psql -tA -w -h 127.0.0.1 -U supabase_admin -d "$POSTGRES_DB" 2>&1 <<'EOSQL'
 DO $$ BEGIN
   PERFORM set_config('request.jwt.claim.sub', 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee', true);
   PERFORM set_config('request.jwt.claim.role', 'authenticated', true);
 END $$;
 SELECT auth.uid();
 EOSQL
-)
-TEST_UID=$(echo "$TEST_UID" | grep -v '^$' | grep -v '^DO$' | tr -d '[:space:]')
+); then
+  echo "   ❌ Falha ao executar teste auth.uid()"
+  echo "$RAW_TEST_UID"
+  exit 1
+fi
+
+TEST_UID=$(echo "$RAW_TEST_UID" | awk 'NF && $0 != "DO" { print; exit }' | tr -d '[:space:]')
 
 if [ "$TEST_UID" = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee" ]; then
   echo "   ✅ auth.uid() funciona corretamente!"
