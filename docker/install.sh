@@ -188,10 +188,15 @@ echo ""
 EXISTING=$(docker compose ps -q 2>/dev/null | wc -l)
 if [ "$EXISTING" -gt 0 ]; then
   echo -e "${YELLOW}⚠️  Instalação anterior detectada.${NC}"
-  read -p "   Limpar tudo e reinstalar? (S/n): " CLEAN
-  if [[ ! "$CLEAN" =~ ^[nN]$ ]]; then
-    echo -e "${BLUE}🗑️  Removendo containers e volumes...${NC}"
+  if [ "$FORCE_CLEAN" = "true" ]; then
+    echo -e "${BLUE}🧹 Modo --clean ativado: removendo containers e volumes...${NC}"
     docker compose down -v --remove-orphans 2>/dev/null || true
+  else
+    read -p "   Limpar tudo e reinstalar? (S/n): " CLEAN
+    if [[ ! "$CLEAN" =~ ^[nN]$ ]]; then
+      echo -e "${BLUE}🗑️  Removendo containers e volumes...${NC}"
+      docker compose down -v --remove-orphans 2>/dev/null || true
+    fi
   fi
 fi
 
