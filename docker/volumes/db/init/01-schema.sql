@@ -15,6 +15,35 @@ CREATE TYPE public.transaction_type AS ENUM ('receita', 'despesa');
 CREATE TYPE public.app_role AS ENUM ('admin', 'moderator', 'user');
 
 -- ============================================================
+-- Auth helper functions (necessárias para políticas RLS)
+-- ============================================================
+CREATE SCHEMA IF NOT EXISTS auth;
+
+CREATE OR REPLACE FUNCTION auth.uid()
+RETURNS uuid
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT NULLIF(current_setting('request.jwt.claim.sub', true), '')::uuid;
+$$;
+
+CREATE OR REPLACE FUNCTION auth.role()
+RETURNS text
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT NULLIF(current_setting('request.jwt.claim.role', true), '')::text;
+$$;
+
+CREATE OR REPLACE FUNCTION auth.email()
+RETURNS text
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT NULLIF(current_setting('request.jwt.claim.email', true), '')::text;
+$$;
+
+-- ============================================================
 -- Properties
 -- ============================================================
 CREATE TABLE public.properties (

@@ -80,14 +80,47 @@ GRANT anon TO authenticator;
 GRANT authenticated TO authenticator;
 GRANT service_role TO authenticator;
 
+DO $$
+BEGIN
+  EXECUTE format('GRANT CONNECT, TEMP ON DATABASE %I TO anon, authenticated, service_role, authenticator, supabase_auth_admin, supabase_storage_admin', current_database());
+  EXECUTE format('GRANT CREATE ON DATABASE %I TO supabase_auth_admin, supabase_storage_admin', current_database());
+END $$;
+
 CREATE SCHEMA IF NOT EXISTS auth AUTHORIZATION supabase_auth_admin;
 ALTER SCHEMA auth OWNER TO supabase_auth_admin;
+
+CREATE OR REPLACE FUNCTION auth.uid()
+RETURNS uuid
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT NULLIF(current_setting('request.jwt.claim.sub', true), '')::uuid;
+$$;
+
+CREATE OR REPLACE FUNCTION auth.role()
+RETURNS text
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT NULLIF(current_setting('request.jwt.claim.role', true), '')::text;
+$$;
+
+CREATE OR REPLACE FUNCTION auth.email()
+RETURNS text
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT NULLIF(current_setting('request.jwt.claim.email', true), '')::text;
+$$;
 
 GRANT USAGE ON SCHEMA auth TO supabase_auth_admin, authenticator, anon, authenticated, service_role;
 GRANT CREATE ON SCHEMA auth TO supabase_auth_admin;
 GRANT ALL ON ALL TABLES IN SCHEMA auth TO supabase_auth_admin;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA auth TO supabase_auth_admin;
 GRANT ALL ON ALL ROUTINES IN SCHEMA auth TO supabase_auth_admin;
+GRANT EXECUTE ON FUNCTION auth.uid() TO anon, authenticated, service_role, authenticator;
+GRANT EXECUTE ON FUNCTION auth.role() TO anon, authenticated, service_role, authenticator;
+GRANT EXECUTE ON FUNCTION auth.email() TO anon, authenticated, service_role, authenticator;
 ALTER DEFAULT PRIVILEGES FOR ROLE supabase_auth_admin IN SCHEMA auth GRANT ALL ON TABLES TO supabase_auth_admin;
 ALTER DEFAULT PRIVILEGES FOR ROLE supabase_auth_admin IN SCHEMA auth GRANT ALL ON SEQUENCES TO supabase_auth_admin;
 ALTER DEFAULT PRIVILEGES FOR ROLE supabase_auth_admin IN SCHEMA auth GRANT ALL ON ROUTINES TO supabase_auth_admin;
