@@ -13,8 +13,14 @@ const handler = async (req: Request): Promise<Response> => {
 
   try {
     const { messages, propertyId } = await req.json();
+
+    // Detectar ambiente: Lovable AI (Cloud) ou Groq (self-hosted)
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
-    if (!GROQ_API_KEY) throw new Error("GROQ_API_KEY is not configured");
+
+    const useLovableAI = !!LOVABLE_API_KEY;
+    const apiKey = LOVABLE_API_KEY || GROQ_API_KEY;
+    if (!apiKey) throw new Error("Nenhuma API key configurada (LOVABLE_API_KEY ou GROQ_API_KEY)");
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -125,14 +131,22 @@ ${propertiesContext || "Nenhum imóvel cadastrado no momento."}
 
 Se não souber uma informação específica, oriente o cliente a falar diretamente com a Talita pelo WhatsApp.`;
 
-    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    const aiUrl = useLovableAI
+      ? "https://ai.gateway.lovable.dev/v1/chat/completions"
+      : "https://api.groq.com/openai/v1/chat/completions";
+
+    const aiModel = useLovableAI
+      ? "google/gemini-2.5-flash"
+      : "llama-3.3-70b-versatile";
+
+    const response = await fetch(aiUrl, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${GROQ_API_KEY}`,
+        Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
+        model: aiModel,
         messages: [{ role: "system", content: systemPrompt }, ...messages],
         stream: true,
         temperature: 0.7,
@@ -142,7 +156,7 @@ Se não souber uma informação específica, oriente o cliente a falar diretamen
 
     if (!response.ok) {
       const t = await response.text();
-      console.error("Groq API error:", response.status, t);
+      console.error("AI API error:", response.status, t);
       if (response.status === 429) {
         return new Response(JSON.stringify({ error: "Muitas solicitações. Tente novamente em alguns segundos." }), {
           status: 429,
