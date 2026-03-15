@@ -302,18 +302,12 @@ echo -e "${BLUE}⏳ Aguardando init scripts (15s)...${NC}"
 sleep 15
 
 # ════════════════════════════════════════════════════════════
-# ETAPA 8 — Sync passwords + Recovery SQL
+# ETAPA 8 — Bootstrap DB + Storage (pipeline idempotente)
 # ════════════════════════════════════════════════════════════
-echo -e "${BLUE}🔐 Sincronizando credenciais e roles...${NC}"
-bash sync-db-passwords.sh || { echo -e "${RED}❌ Falha nas credenciais${NC}"; exit 1; }
+echo -e "${BLUE}🧱 Aplicando bootstrap do banco e storage...${NC}"
+bash bootstrap-db.sh || { echo -e "${RED}❌ Falha no bootstrap do banco/storage${NC}"; exit 1; }
 
-echo -e "${BLUE}📋 Aplicando recovery SQL (idempotente)...${NC}"
-POSTGRES_PASSWORD=$(read_env "POSTGRES_PASSWORD")
-docker exec -i -e PGPASSWORD="$POSTGRES_PASSWORD" simply-db \
-  psql -v ON_ERROR_STOP=1 -w -h 127.0.0.1 -U supabase_admin -d "$DB_NAME" < sql/selfhosted-admin-recovery.sql || \
-  echo -e "${YELLOW}⚠️  Recovery SQL com warnings (pode ser OK em fresh install)${NC}"
-
-echo -e "   ${GREEN}✅ Schema, policies e triggers aplicados${NC}"
+echo -e "   ${GREEN}✅ Bootstrap DB + Storage aplicado${NC}"
 
 # ════════════════════════════════════════════════════════════
 # ETAPA 9 — Subir todos os serviços
@@ -325,20 +319,14 @@ echo -e "${BLUE}⏳ Aguardando serviços (25s)...${NC}"
 sleep 25
 
 # ════════════════════════════════════════════════════════════
-# ETAPA 10 — Storage Buckets
-# ════════════════════════════════════════════════════════════
-echo -e "${BLUE}🪣 Configurando storage buckets...${NC}"
-bash ensure-storage-buckets.sh || echo -e "${YELLOW}⚠️  Buckets pendentes (serão criados no próximo restart)${NC}"
-
-# ════════════════════════════════════════════════════════════
-# ETAPA 11 — Validação
+# ETAPA 10 — Validação
 # ════════════════════════════════════════════════════════════
 echo -e "\n${BLUE}🧪 Validando instalação...${NC}"
-if ! bash validate-install.sh; then
+if ! bash validate.sh; then
   echo -e "${YELLOW}⚠️  Reiniciando serviços e tentando novamente...${NC}"
   docker compose restart auth rest storage kong functions
   sleep 20
-  bash validate-install.sh || { echo -e "${RED}❌ Validação falhou. Debug: docker compose logs --tail=50${NC}"; exit 1; }
+  bash validate.sh || { echo -e "${RED}❌ Validação falhou. Debug: docker compose logs --tail=50${NC}"; exit 1; }
 fi
 
 # ════════════════════════════════════════════════════════════
