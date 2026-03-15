@@ -72,12 +72,22 @@ if [ "$DB_OK" = "1" ]; then
     -c "SELECT to_regproc('public.has_role') IS NOT NULL;" 2>/dev/null || echo "f")
   [ "$(echo "$HAS_ROLE" | tr -d '[:space:]')" = "t" ] && check "Função has_role" "ok" || check "Função has_role" "fail"
 
+  HAS_ROLE_TEXT=$(docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" simply-db \
+    psql -tA -w -h 127.0.0.1 -U supabase_admin -d "$POSTGRES_DB" \
+    -c "SELECT to_regproc('public.has_role_text') IS NOT NULL;" 2>/dev/null || echo "f")
+  [ "$(echo "$HAS_ROLE_TEXT" | tr -d '[:space:]')" = "t" ] && check "Função has_role_text" "ok" || check "Função has_role_text" "fail"
+
   for tbl in tenants leads properties user_roles; do
     RLS=$(docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" simply-db \
       psql -tA -w -h 127.0.0.1 -U supabase_admin -d "$POSTGRES_DB" \
       -c "SELECT rowsecurity FROM pg_tables WHERE tablename='$tbl' AND schemaname='public';" 2>/dev/null || echo "f")
     [ "$(echo "$RLS" | tr -d '[:space:]')" = "t" ] && check "RLS em $tbl" "ok" || check "RLS em $tbl" "fail"
   done
+
+  STORAGE_POLICIES=$(docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" simply-db \
+    psql -tA -w -h 127.0.0.1 -U supabase_admin -d "$POSTGRES_DB" \
+    -c "SELECT count(*) FROM pg_policies WHERE schemaname = 'storage' AND tablename = 'objects' AND policyname IN ('Admins can upload contract-documents','Admins can upload tenant-documents','Admins can upload inspection-media','Admins can upload sales-documents','Admins can upload property-media','Public can read property-media');" 2>/dev/null || echo "0")
+  [ "$STORAGE_POLICIES" -ge 6 ] && check "Policies storage ($STORAGE_POLICIES)" "ok" || check "Policies storage ($STORAGE_POLICIES)" "fail"
 
   TRIGGERS=$(docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" simply-db \
     psql -tA -w -h 127.0.0.1 -U supabase_admin -d "$POSTGRES_DB" \
