@@ -62,6 +62,14 @@ fi
 
 echo "👤 Criando/atualizando admin: ${EMAIL}..."
 
+# Limpa usuário corrompido (criado via SQL direto) se existir sem identity
+SAFE_EMAIL=$(sql_escape "$EMAIL")
+run_sql_cmd -c "
+  DELETE FROM auth.users
+  WHERE lower(email) = lower('${SAFE_EMAIL}')
+    AND id NOT IN (SELECT user_id FROM auth.identities);
+" 2>/dev/null || true
+
 EMAIL_JSON=$(json_escape "$EMAIL")
 PASS_JSON=$(json_escape "$PASSWORD")
 CREATE_BODY="{\"email\":\"${EMAIL_JSON}\",\"password\":\"${PASS_JSON}\",\"email_confirm\":true}"
