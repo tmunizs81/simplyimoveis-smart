@@ -39,8 +39,9 @@ services:
       GOTRUE_API_PORT: 9999
       API_EXTERNAL_URL: https://${SITE_DOMAIN}
       GOTRUE_DB_DRIVER: postgres
-      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-simply_db}
+      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-simply_db}?search_path=auth
       GOTRUE_DB_NAMESPACE: auth
+      DB_NAMESPACE: auth
       GOTRUE_SITE_URL: https://${SITE_DOMAIN}
       GOTRUE_URI_ALLOW_LIST: "*"
       GOTRUE_JWT_SECRET: ${JWT_SECRET}
@@ -156,7 +157,8 @@ services:
       SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
       SUPABASE_DB_URL: postgres://supabase_admin:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-simply_db}
       GROQ_API_KEY: ${GROQ_API_KEY}
-      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_API_KEY: ${TELEGRAM_API_KEY:-}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID}
     volumes:
       - ./volumes/functions:/home/deno/functions:ro

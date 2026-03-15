@@ -45,6 +45,12 @@ for _ in {1..30}; do
   sleep 2
 done
 
+AUTH_USERS_EXISTS=$(run_psql -tA -c "SELECT to_regclass('auth.users') IS NOT NULL;" | tr -d '[:space:]')
+if [ "$AUTH_USERS_EXISTS" != "t" ]; then
+  echo "❌ auth.users não existe. Rode: bash sync-db-passwords.sh && docker compose restart auth"
+  exit 1
+fi
+
 echo "👤 Criando/atualizando admin: ${EMAIL}..."
 
 TMP_SQL=$(mktemp /tmp/create-admin-XXXXXX.sql)

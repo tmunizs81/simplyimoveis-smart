@@ -13,10 +13,12 @@ serve(async (req) => {
 
   try {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
-
     const TELEGRAM_API_KEY = Deno.env.get("TELEGRAM_API_KEY");
-    if (!TELEGRAM_API_KEY) throw new Error("TELEGRAM_API_KEY is not configured");
+    const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN");
+
+    if (!TELEGRAM_API_KEY && !TELEGRAM_BOT_TOKEN) {
+      throw new Error("Configure TELEGRAM_API_KEY (connector) ou TELEGRAM_BOT_TOKEN (.env)");
+    }
 
     const { visit } = await req.json();
 
@@ -42,22 +44,30 @@ ${visit.notes ? `📝 <b>Obs:</b> ${visit.notes}` : ""}`;
       });
     }
 
-    const response = await fetch(`${GATEWAY_URL}/sendMessage`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "X-Connection-Api-Key": TELEGRAM_API_KEY,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text,
-        parse_mode: "HTML",
-      }),
-    });
+    const payload = {
+      chat_id: chatId,
+      text,
+      parse_mode: "HTML",
+    };
+
+    const response = TELEGRAM_API_KEY && LOVABLE_API_KEY
+      ? await fetch(`${GATEWAY_URL}/sendMessage`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            "X-Connection-Api-Key": TELEGRAM_API_KEY,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        })
+      : await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
 
     const data = await response.json();
-    if (!response.ok) {
+    if (!response.ok || data?.ok === false) {
       throw new Error(`Telegram API failed [${response.status}]: ${JSON.stringify(data)}`);
     }
 

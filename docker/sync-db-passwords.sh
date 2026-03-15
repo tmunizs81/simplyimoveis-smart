@@ -3,7 +3,7 @@
 # Sincroniza senhas e permissões dos roles internos do Supabase
 # Corrige ownership do schema auth (causa raiz do erro 500)
 # Uso: bash sync-db-passwords.sh [--quiet]
-# Versão: 2026-03-15-v3
+# Versão: 2026-03-15-v4
 # ============================================================
 
 set -euo pipefail
@@ -56,14 +56,23 @@ DO $$
 DECLARE
   r RECORD;
 BEGIN
-  -- Se auth.users não existe, recria schema para GoTrue migrar do zero
-  IF to_regclass('auth.users') IS NULL THEN
-    IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'auth') THEN
-      EXECUTE 'DROP SCHEMA auth CASCADE';
-    END IF;
+  -- Garante schema auth sem destruir objetos (evita inconsistência de migrações)
+  IF NOT EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'auth') THEN
     EXECUTE 'CREATE SCHEMA auth AUTHORIZATION supabase_auth_admin';
-    RAISE NOTICE 'Schema auth recriado do zero (GoTrue irá migrar ao subir)';
-    RETURN;
+  END IF;
+
+  -- Se auth.users estiver ausente, força reexecução de migrações do GoTrue
+  IF to_regclass('auth.users') IS NULL THEN
+    FOR r IN
+      SELECT schemaname, tablename
+      FROM pg_tables
+      WHERE schemaname IN ('auth', 'public')
+        AND tablename IN ('schema_migrations', 'gorp_migrations')
+    LOOP
+      EXECUTE format('TRUNCATE TABLE %I.%I', r.schemaname, r.tablename);
+    END LOOP;
+
+    RAISE NOTICE 'auth.users ausente: migrações do GoTrue serão reexecutadas no próximo start do auth.';
   END IF;
 
   -- Schema ownership
@@ -91,12 +100,13 @@ BEGIN
     EXECUTE format('ALTER VIEW auth.%I OWNER TO supabase_auth_admin', r.viewname);
   END LOOP;
 
-  -- Types (EXCLUIR row types de tabelas e composite types internos)
+  -- Types (somente enums reais; exclui row types de tabelas)
   FOR r IN SELECT t.typname
            FROM pg_type t
            JOIN pg_namespace n ON t.typnamespace = n.oid
            WHERE n.nspname = 'auth'
-             AND t.typtype = 'e'  -- apenas enums
+             AND t.typtype = 'e'
+             AND t.typrelid = 0
   LOOP
     EXECUTE format('ALTER TYPE auth.%I OWNER TO supabase_auth_admin', r.typname);
   END LOOP;
