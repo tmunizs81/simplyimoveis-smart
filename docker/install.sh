@@ -142,8 +142,12 @@ echo -e "   ${GREEN}✅ Docker Compose: $(docker compose version --short)${NC}"
 # ETAPA 4 — Copiar projeto para /opt/simply-imoveis
 # ════════════════════════════════════════════════════════════
 INSTALL_DIR="/opt/simply-imoveis"
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Capture source paths BEFORE cd, since cwd may have been deleted by full-wipe
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd || echo "/opt/simply-imoveis/docker")"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+
+# Reset cwd to a safe location (full-wipe may have deleted our cwd)
+cd /
 
 mkdir -p "$INSTALL_DIR"
 echo -e "${BLUE}📋 Copiando projeto para $INSTALL_DIR...${NC}"
