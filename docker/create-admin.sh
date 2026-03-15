@@ -236,37 +236,27 @@ if ! wait_auth_ready "$SERVICE_ROLE_KEY"; then
   exit 1
 fi
 
-echo "👤 Criando usuário admin: ${EMAIL}..."
+echo "👤 Criando/atualizando usuário admin: ${EMAIL}..."
 
-RESPONSE_WITH_STATUS=$(curl -sS -w "\n%{http_code}" -X POST "http://localhost:${KONG_PORT}/auth/v1/admin/users" \
-  -H "Authorization: Bearer ${SERVICE_ROLE_KEY}" \
+# Estratégia definitiva: grava direto no banco (idempotente), sem depender do endpoint admin/users
+upsert_admin_direct_sql
+USER_ID=$(get_user_id_by_email)
+
+# Valida o login real via endpoint de senha para detectar problemas de schema/permissão no auth
+LOGIN_STATUS=$(curl -sS -o /tmp/simply_admin_login_check.json -w "%{http_code}" -X POST "http://localhost:${KONG_PORT}/auth/v1/token?grant_type=password" \
   -H "apikey: ${SERVICE_ROLE_KEY}" \
   -H "Content-Type: application/json" \
   -d "{
     \"email\": \"${EMAIL}\",
-    \"password\": \"${PASSWORD}\",
-    \"email_confirm\": true
-  }" || printf "\n000")
+    \"password\": \"${PASSWORD}\"
+  }" || echo "000")
 
-HTTP_STATUS=$(echo "$RESPONSE_WITH_STATUS" | tail -n1)
-USER_RESPONSE=$(echo "$RESPONSE_WITH_STATUS" | sed '$d')
-USER_ID=""
-
-if [ "$HTTP_STATUS" -ge 200 ] 2>/dev/null && [ "$HTTP_STATUS" -lt 300 ] 2>/dev/null; then
-  if command -v jq >/dev/null 2>&1; then
-    USER_ID=$(echo "$USER_RESPONSE" | jq -r '.id // .user.id // empty' 2>/dev/null || true)
-  fi
-
-  if [ -z "$USER_ID" ]; then
-    USER_ID=$(echo "$USER_RESPONSE" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4 || true)
-  fi
-else
-  echo "⚠️  Auth API retornou HTTP ${HTTP_STATUS}. Aplicando fallback SQL resiliente..."
-fi
-
-if [ -z "$USER_ID" ]; then
-  upsert_admin_direct_sql
-  USER_ID=$(get_user_id_by_email)
+if [ "$LOGIN_STATUS" -ge 500 ] 2>/dev/null || [ "$LOGIN_STATUS" = "000" ]; then
+  echo "⚠️  Usuário criado, mas o Auth local ainda responde erro interno no login (HTTP ${LOGIN_STATUS})."
+  echo "📋 Resposta:"
+  cat /tmp/simply_admin_login_check.json 2>/dev/null || true
+  echo ""
+  echo "💡 Execute: bash sync-db-passwords.sh && docker compose up -d --force-recreate auth kong"
 fi
 
 if [ -z "$USER_ID" ]; then
