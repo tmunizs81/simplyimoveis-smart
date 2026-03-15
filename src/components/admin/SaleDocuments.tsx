@@ -34,11 +34,10 @@ const SaleDocuments = ({ saleId, onClose }: { saleId: string; onClose: () => voi
   const [files, setFiles] = useState<File[]>([]);
 
   const fetchDocs = async () => {
-    const { data, error } = await supabase
-      .from("sales_documents")
-      .select("*")
-      .eq("sale_id", saleId)
-      .order("created_at", { ascending: false });
+    const { data, error } = await adminSelect("sales_documents", {
+      match: { sale_id: saleId },
+      order: { column: "created_at", ascending: false },
+    });
     if (!error) setDocs((data as SaleDoc[]) || []);
     setLoading(false);
   };

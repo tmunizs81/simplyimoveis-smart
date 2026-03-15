@@ -231,7 +231,7 @@ const InspectionsTab = () => {
   const downloadPdf = async (ins: Inspection) => {
     toast.info("Gerando PDF...");
     try {
-      const { data: mediaData } = await supabase.from("inspection_media").select("*").eq("inspection_id", ins.id);
+      const { data: mediaData } = await adminSelect("inspection_media", { match: { inspection_id: ins.id } });
       await generateInspectionPdf(
         {
           id: ins.id,
