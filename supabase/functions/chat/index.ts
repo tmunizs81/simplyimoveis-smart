@@ -156,17 +156,40 @@ Se não souber uma informação específica, oriente o cliente a falar diretamen
 
     if (!response.ok) {
       const t = await response.text();
-      console.error("AI API error:", response.status, t);
+      const provider = useLovableAI ? "Lovable AI" : "Groq";
+      console.error(`[chat] ${provider} API error:`, response.status, t);
+
+      if (response.status === 401 || response.status === 403) {
+        return new Response(
+          JSON.stringify({
+            error: useLovableAI
+              ? "Falha de autenticação no provedor de IA."
+              : "GROQ_API_KEY inválida ou sem permissão. Verifique a chave no servidor self-hosted.",
+          }),
+          {
+            status: 401,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          },
+        );
+      }
+
       if (response.status === 429) {
         return new Response(JSON.stringify({ error: "Muitas solicitações. Tente novamente em alguns segundos." }), {
           status: 429,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      return new Response(JSON.stringify({ error: "Erro no serviço de IA" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+
+      return new Response(
+        JSON.stringify({
+          error: `Erro no serviço de IA (${provider}).`,
+          details: t.slice(0, 500),
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
     }
 
     return new Response(response.body, {

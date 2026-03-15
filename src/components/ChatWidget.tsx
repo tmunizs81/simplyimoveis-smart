@@ -164,7 +164,18 @@ const ChatWidget = ({ propertyId }: { propertyId?: string }) => {
         body: JSON.stringify({ messages: allMessages, propertyId }),
       });
 
-      if (!resp.ok || !resp.body) throw new Error("Erro ao conectar");
+      if (!resp.ok) {
+        let errorMessage = "Erro ao conectar";
+        try {
+          const errorData = await resp.json();
+          if (errorData?.error) errorMessage = String(errorData.error);
+        } catch {
+          // ignore json parse failures
+        }
+        throw new Error(errorMessage);
+      }
+
+      if (!resp.body) throw new Error("Resposta sem stream");
 
       const reader = resp.body.getReader();
       const decoder = new TextDecoder();
@@ -215,13 +226,14 @@ const ChatWidget = ({ propertyId }: { propertyId?: string }) => {
       // After stream ends, check for scheduled visit or contact
       await processSchedule(assistantSoFar, allMessages);
       await processContact(assistantSoFar, allMessages);
-    } catch {
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Erro desconhecido";
       setMessages((prev) => [
         ...prev,
         {
           role: "assistant",
           content:
-            "Desculpe, ocorreu um erro. Tente novamente ou fale pelo WhatsApp: **(85) 99999-0000**.",
+            `Desculpe, ocorreu um erro no atendimento automático: **${message}**.\n\nTente novamente ou fale pelo WhatsApp: **(85) 99999-0000**.`,
         },
       ]);
     } finally {
