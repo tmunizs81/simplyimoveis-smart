@@ -202,10 +202,10 @@ const InspectionsTab = () => {
       const path = `${user.id}/${inspectionId}/${crypto.randomUUID()}.${ext}`;
       const { error } = await supabase.storage.from("inspection-media").upload(path, file);
       if (error) { toast.error(`Erro: ${file.name}`); continue; }
-      await supabase.from("inspection_media").insert({
+      await adminInsert("inspection_media", {
         inspection_id: inspectionId, file_path: path, file_name: file.name,
         file_type: file.type, media_category: uploadCategory, user_id: user.id,
-      } as any);
+      });
     }
     toast.success("Mídias enviadas!");
     setUploadFiles([]);
