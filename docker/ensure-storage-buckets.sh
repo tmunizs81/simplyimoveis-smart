@@ -30,12 +30,13 @@ ROLE_DEPS_OK=$(docker compose exec -T -e PGPASSWORD="$POSTGRES_PASSWORD" db \
   psql -tA -w -h 127.0.0.1 -U "$DB_ADMIN_USER" -d "$POSTGRES_DB" -c "
   SELECT CASE WHEN
     to_regclass('public.user_roles') IS NOT NULL
-    AND to_regprocedure('public.has_role_text(uuid,text)') IS NOT NULL
+    AND to_regtype('public.app_role') IS NOT NULL
+    AND to_regprocedure('public.has_role(uuid,public.app_role)') IS NOT NULL
   THEN 'ok' ELSE 'fail' END;" 2>/dev/null || echo "fail")
 
 if [ "$(echo "$ROLE_DEPS_OK" | tr -d '[:space:]')" != "ok" ]; then
-  echo -e "${RED}❌ Dependências ausentes: user_roles e/ou has_role_text()${NC}"
-  echo -e "${YELLOW}   Execute bootstrap-db.sh primeiro.${NC}"
+  echo -e "${RED}❌ Dependências ausentes: user_roles/app_role/has_role(uuid,app_role)${NC}"
+  echo -e "${YELLOW}   Dependência é criada por sql/selfhosted-admin-recovery.sql via bootstrap-db.sh.${NC}"
   exit 1
 fi
 
