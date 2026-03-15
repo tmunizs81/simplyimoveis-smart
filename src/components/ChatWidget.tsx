@@ -174,10 +174,7 @@ const ChatWidget = ({ propertyId }: { propertyId?: string }) => {
       const fallbackUrl = resolveFunctionUrl("chat", true);
       const requestOptions: RequestInit = {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-        },
+        headers: getFunctionHeaders(),
         body: JSON.stringify({ messages: allMessages, propertyId }),
       };
 
