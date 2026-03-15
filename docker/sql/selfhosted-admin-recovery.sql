@@ -709,8 +709,6 @@ GRANT EXECUTE ON ALL ROUTINES IN SCHEMA public TO anon, authenticated, service_r
 
 GRANT EXECUTE ON FUNCTION public.has_role(uuid, public.app_role)
 TO anon, authenticated, service_role, authenticator;
-GRANT EXECUTE ON FUNCTION public.has_role_text(uuid, text)
-TO anon, authenticated, service_role, authenticator;
 
 ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public
   GRANT ALL ON TABLES TO anon, authenticated, service_role;
