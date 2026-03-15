@@ -58,7 +58,7 @@ ALTER ROLE supabase_auth_admin WITH PASSWORD '${POSTGRES_PASSWORD}';
 ALTER ROLE authenticator WITH PASSWORD '${POSTGRES_PASSWORD}';
 ALTER ROLE supabase_storage_admin WITH PASSWORD '${POSTGRES_PASSWORD}';
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
-DO $$
+DO \$\$
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'auth') THEN
     EXECUTE 'GRANT USAGE ON SCHEMA auth TO supabase_auth_admin, authenticator, anon, authenticated, service_role';
@@ -75,7 +75,7 @@ BEGIN
     EXECUTE 'GRANT USAGE ON SCHEMA extensions TO supabase_auth_admin, authenticator';
   END IF;
 END
-$$;"
+\$\$;"
 
 docker compose exec -T -e PGPASSWORD="${POSTGRES_PASSWORD}" db psql \
   -v ON_ERROR_STOP=1 \
