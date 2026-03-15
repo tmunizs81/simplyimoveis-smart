@@ -84,7 +84,7 @@ server {
 }
 EOF
 
-rm -f /etc/nginx/sites-enabled/default
+# NUNCA remover default ou outros configs — apenas adicionar o nosso
 ln -sf "$NGINX_CONF" /etc/nginx/sites-enabled/simplyimoveis.conf
 
 nginx -t
