@@ -103,7 +103,7 @@ const HeroSection = () => {
             </span>
           </h1>
 
-          <p className="text-white/70 text-lg sm:text-xl mb-10 font-body leading-relaxed max-w-xl">
+          <p className="text-white/70 text-base sm:text-xl mb-6 sm:mb-10 font-body leading-relaxed max-w-xl">
             Comprometimento absoluto com a sua tranquilidade. Da busca inicial à entrega das chaves, garantimos uma jornada segura e impecável nos melhores endereços.
           </p>
 
