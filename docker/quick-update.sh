@@ -34,7 +34,26 @@ if [ -d ".git" ]; then
   git reset --hard "origin/$BRANCH" 2>/dev/null
   echo -e "   ${GREEN}✅ Código atualizado (branch: $BRANCH)${NC}"
 else
-  echo -e "   ${YELLOW}⚠️  Sem repositório git. Pulando pull.${NC}"
+  echo -e "   ${YELLOW}⚠️  Sem .git — inicializando repositório...${NC}"
+  command -v git &>/dev/null || { apt-get update -qq >/dev/null 2>&1; apt-get install -y -qq git >/dev/null 2>&1; }
+  git init
+  # Tenta detectar remote do GitHub
+  REPO_URL=""
+  if [ -f "$SCRIPT_DIR/.env" ]; then
+    REPO_URL=$(grep -E "^GITHUB_REPO=" "$SCRIPT_DIR/.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'" || true)
+  fi
+  if [ -z "$REPO_URL" ]; then
+    read -p "   URL do repositório GitHub (ex: https://github.com/user/repo.git): " REPO_URL
+  fi
+  if [ -n "$REPO_URL" ]; then
+    git remote add origin "$REPO_URL"
+    BRANCH="main"
+    git fetch origin 2>/dev/null
+    git reset --hard "origin/$BRANCH" 2>/dev/null || git reset --hard "origin/master" 2>/dev/null
+    echo -e "   ${GREEN}✅ Repositório inicializado e código atualizado${NC}"
+  else
+    echo -e "   ${RED}❌ URL não informada. Pulando pull.${NC}"
+  fi
 fi
 
 # ── Restaurar .env (git reset pode sobrescrever) ──

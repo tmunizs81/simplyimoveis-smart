@@ -162,7 +162,7 @@ SAFE_SOURCE="/tmp/simply-install-source"
 rm -rf "$SAFE_SOURCE"
 echo -e "${BLUE}Snapshot do projeto em $SAFE_SOURCE...${NC}"
 mkdir -p "$SAFE_SOURCE"
-rsync -a --exclude='node_modules' --exclude='.git' "$_ORIG_PROJECT_DIR/" "$SAFE_SOURCE/" 2>/dev/null || \
+rsync -a --exclude='node_modules' "$_ORIG_PROJECT_DIR/" "$SAFE_SOURCE/" 2>/dev/null || \
   cp -r "$_ORIG_PROJECT_DIR/." "$SAFE_SOURCE/" 2>/dev/null || true
 
 if [ ! -f "$SAFE_SOURCE/docker/docker-compose.yml" ]; then
@@ -208,7 +208,7 @@ echo -e "   ${GREEN}OK: Docker Compose: $(docker compose version --short)${NC}"
 cd /
 mkdir -p "$INSTALL_DIR"
 echo -e "${BLUE}Copiando para $INSTALL_DIR...${NC}"
-rsync -a --delete --exclude='node_modules' --exclude='.git' --exclude='docker/.env' \
+rsync -a --delete --exclude='node_modules' --exclude='docker/.env' \
   "$SAFE_SOURCE/" "$INSTALL_DIR/"
 
 cd "$INSTALL_DIR/docker"
