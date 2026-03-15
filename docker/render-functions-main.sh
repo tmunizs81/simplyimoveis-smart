@@ -28,6 +28,7 @@ import * as chatModule from "../chat/index.ts";
 import * as createAdminUserModule from "../create-admin-user/index.ts";
 import * as notifyTelegramModule from "../notify-telegram/index.ts";
 import * as adminCrudModule from "../admin-crud/index.ts";
+import * as aiInsightsModule from "../ai-insights/index.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
