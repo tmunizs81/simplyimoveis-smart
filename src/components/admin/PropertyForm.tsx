@@ -94,7 +94,7 @@ const PropertyForm = ({ editingProperty, userId, onSaved, onCancel }: PropertyFo
     setSaving(true);
     try {
       if (editingProperty) {
-        const { error } = await supabase.from("properties").update({
+        const { error } = await adminUpdate("properties", {
           title: form.title, address: form.address,
           neighborhood: form.neighborhood || null, city: form.city || null,
           price: form.price, bedrooms: form.bedrooms, suites: form.suites,
@@ -102,12 +102,12 @@ const PropertyForm = ({ editingProperty, userId, onSaved, onCancel }: PropertyFo
           pool_size: form.pool_size, nearby_points: form.nearby_points || null,
           type: form.type, status: form.status, description: form.description,
           featured: form.featured, active: form.active,
-        } as any).eq("id", editingProperty.id);
-        if (error) throw error;
+        }, { id: editingProperty.id });
+        if (error) throw new Error(error.message);
         if (mediaFiles.length) await uploadMedia(editingProperty.id);
         toast.success("Imóvel atualizado!");
       } else {
-        const { data, error } = await supabase.from("properties").insert({
+        const { data, error } = await adminInsert("properties", {
           user_id: userId, title: form.title, address: form.address,
           neighborhood: form.neighborhood || null, city: form.city || null,
           price: form.price, bedrooms: form.bedrooms, suites: form.suites,
@@ -115,9 +115,9 @@ const PropertyForm = ({ editingProperty, userId, onSaved, onCancel }: PropertyFo
           area: form.area, pool_size: form.pool_size, nearby_points: form.nearby_points || null,
           type: form.type, status: form.status,
           description: form.description, featured: form.featured, active: form.active,
-        } as any).select().single();
-        if (error) throw error;
-        if (mediaFiles.length && data) await uploadMedia(data.id);
+        });
+        if (error) throw new Error(error.message);
+        if (mediaFiles.length && data?.[0]) await uploadMedia(data[0].id);
         toast.success("Imóvel cadastrado!");
       }
       onSaved();

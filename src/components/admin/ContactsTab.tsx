@@ -56,8 +56,7 @@ const ContactsTab = () => {
   };
 
   const deleteContact = async (id: string) => {
-    // Note: DELETE policy not created, so this may fail
-    const { error } = await supabase.from("contact_submissions").delete().eq("id", id);
+    const { error } = await adminDelete("contact_submissions", { id });
     if (error) {
       toast.error("Erro ao excluir contato.");
     } else {

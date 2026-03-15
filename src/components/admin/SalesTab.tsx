@@ -93,7 +93,7 @@ const SalesTab = () => {
 
   const deleteSale = async (id: string) => {
     if (!confirm("Excluir esta venda?")) return;
-    await supabase.from("sales").delete().eq("id", id);
+    await adminDelete("sales", { id });
     toast.success("Venda excluída");
     fetchSales();
   };

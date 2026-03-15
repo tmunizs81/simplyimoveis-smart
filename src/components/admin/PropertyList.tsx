@@ -41,7 +41,7 @@ const PropertyList = ({ properties, onEdit, onRefresh, onNew }: PropertyListProp
   };
 
   const toggleFeatured = async (p: Property) => {
-    await supabase.from("properties").update({ featured: !p.featured }).eq("id", p.id);
+    await adminUpdate("properties", { featured: !p.featured }, { id: p.id });
     toast.success(p.featured ? "Removido dos destaques" : "Adicionado aos destaques");
     onRefresh();
   };

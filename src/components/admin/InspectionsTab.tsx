@@ -214,7 +214,7 @@ const InspectionsTab = () => {
 
   const deleteMediaItem = async (item: InspectionMedia) => {
     await supabase.storage.from("inspection-media").remove([item.file_path]);
-    await supabase.from("inspection_media").delete().eq("id", item.id);
+    await adminDelete("inspection_media", { id: item.id });
     toast.success("Mídia removida");
     if (viewingMedia) fetchMedia(viewingMedia);
   };

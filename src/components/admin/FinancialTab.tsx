@@ -101,9 +101,9 @@ const FinancialTab = () => {
   };
 
   const markAsPaid = async (id: string) => {
-    await supabase.from("financial_transactions").update({
-      status: "pago" as any, paid_date: new Date().toISOString().slice(0, 10),
-    } as any).eq("id", id);
+    await adminUpdate("financial_transactions", {
+      status: "pago", paid_date: new Date().toISOString().slice(0, 10),
+    }, { id });
     toast.success("Marcado como pago!");
     fetchTransactions();
   };
