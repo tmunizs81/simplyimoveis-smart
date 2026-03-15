@@ -61,7 +61,7 @@ const Footer = () => {
           </div>
         </div>
         <div className="border-t border-accent-foreground/20 mt-12 pt-8 text-center text-accent-foreground/50 text-sm">
-          © {new Date().getFullYear()} Simply Imóveis. Todos os direitos reservados. | CRECI: XXXXX
+          © {new Date().getFullYear()} Simply Imóveis. Todos os direitos reservados. | Software por T2 Systems LTDA.
         </div>
       </div>
     </footer>
