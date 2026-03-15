@@ -45,7 +45,7 @@ const BackupTab = () => {
       };
 
       for (const table of BACKUP_TABLES) {
-        const { data, error } = await supabase.from(table).select("*");
+        const { data, error } = await adminSelect(table);
         if (error) {
           console.error(`Erro ao exportar ${table}:`, error.message);
           backup.tables[table] = [];
