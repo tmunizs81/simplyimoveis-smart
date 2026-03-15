@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { adminSelect } from "@/lib/adminCrud";
 import { motion } from "framer-motion";
 import {
   Building2, Users, TrendingUp, DollarSign, Home, ClipboardCheck,
