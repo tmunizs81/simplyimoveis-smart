@@ -15,9 +15,9 @@ mkdir -p "$FUNC_DIR/main"
 
 cat > "$FUNC_DIR/main/index.ts" <<'MAINEOF'
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import chatHandler from "../chat/index.ts";
-import createAdminUserHandler from "../create-admin-user/index.ts";
-import notifyTelegramHandler from "../notify-telegram/index.ts";
+import * as chatModule from "../chat/index.ts";
+import * as createAdminUserModule from "../create-admin-user/index.ts";
+import * as notifyTelegramModule from "../notify-telegram/index.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -27,10 +27,20 @@ const corsHeaders = {
 
 const jsonHeaders = { ...corsHeaders, "Content-Type": "application/json" };
 
-const handlers: Record<string, (req: Request) => Promise<Response> | Response> = {
-  "chat": chatHandler,
-  "create-admin-user": createAdminUserHandler,
-  "notify-telegram": notifyTelegramHandler,
+type Handler = (req: Request) => Promise<Response> | Response;
+
+const modules: Record<string, Record<string, unknown>> = {
+  "chat": chatModule,
+  "create-admin-user": createAdminUserModule,
+  "notify-telegram": notifyTelegramModule,
+};
+
+const getHandler = (functionName: string): Handler | null => {
+  const mod = modules[functionName];
+  if (!mod) return null;
+
+  const candidate = mod.default ?? mod.handler;
+  return typeof candidate === "function" ? (candidate as Handler) : null;
 };
 
 serve(async (req) => {
@@ -39,7 +49,7 @@ serve(async (req) => {
   const functionName = parts[0] || "";
 
   if (!functionName) {
-    return new Response(JSON.stringify({ status: "ok", version: "3.0" }), {
+    return new Response(JSON.stringify({ status: "ok", version: "3.1" }), {
       headers: jsonHeaders,
     });
   }
@@ -48,11 +58,18 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const handler = handlers[functionName];
-  if (!handler) {
+  if (!(functionName in modules)) {
     return new Response(
       JSON.stringify({ error: `Function '${functionName}' not found` }),
       { status: 404, headers: jsonHeaders }
+    );
+  }
+
+  const handler = getHandler(functionName);
+  if (!handler) {
+    return new Response(
+      JSON.stringify({ error: `Function '${functionName}' is missing export default/handler` }),
+      { status: 500, headers: jsonHeaders }
     );
   }
 
