@@ -100,12 +100,13 @@ BEGIN
     EXECUTE format('ALTER VIEW auth.%I OWNER TO supabase_auth_admin', r.viewname);
   END LOOP;
 
-  -- Types (EXCLUIR row types de tabelas e composite types internos)
+  -- Types (somente enums reais; exclui row types de tabelas)
   FOR r IN SELECT t.typname
            FROM pg_type t
            JOIN pg_namespace n ON t.typnamespace = n.oid
            WHERE n.nspname = 'auth'
-             AND t.typtype = 'e'  -- apenas enums
+             AND t.typtype = 'e'
+             AND t.typrelid = 0
   LOOP
     EXECUTE format('ALTER TYPE auth.%I OWNER TO supabase_auth_admin', r.typname);
   END LOOP;
