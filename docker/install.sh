@@ -108,15 +108,31 @@ done
 # ════════════════════════════════════════════════════════════
 # ETAPA 2 — Full Wipe (se --clean ou instalação anterior)
 # ════════════════════════════════════════════════════════════
+
+# Before any wipe, snapshot the project source to /tmp so we don't lose it
+SAFE_SOURCE="/tmp/simply-install-source"
+rm -rf "$SAFE_SOURCE"
+echo -e "${BLUE}📋 Criando snapshot do projeto em $SAFE_SOURCE...${NC}"
+mkdir -p "$SAFE_SOURCE"
+rsync -a --exclude='node_modules' --exclude='.git' "$_ORIG_PROJECT_DIR/" "$SAFE_SOURCE/" 2>/dev/null || \
+  cp -r "$_ORIG_PROJECT_DIR/." "$SAFE_SOURCE/" 2>/dev/null || true
+
+# Validate snapshot
+if [ ! -f "$SAFE_SOURCE/docker/docker-compose.yml" ]; then
+  echo -e "${RED}❌ Falha ao criar snapshot do projeto. Verifique o caminho: $_ORIG_PROJECT_DIR${NC}"
+  exit 1
+fi
+echo -e "   ${GREEN}✅ Snapshot criado${NC}"
+
 EXISTING=$(docker ps -a --filter "name=simply-" -q 2>/dev/null | wc -l || echo "0")
 if [ "$FORCE_CLEAN" = "true" ]; then
   echo -e "${BLUE}🧹 Full wipe solicitado...${NC}"
-  bash "$(dirname "$0")/full-wipe.sh" --force 2>/dev/null || true
+  bash "$SAFE_SOURCE/docker/full-wipe.sh" --force 2>/dev/null || true
 elif [ "$EXISTING" -gt 0 ]; then
   echo -e "${YELLOW}⚠️  Instalação anterior detectada ($EXISTING containers).${NC}"
   read -p "Limpar tudo e reinstalar do zero? (S/n): " DO_CLEAN
   if [[ ! "$DO_CLEAN" =~ ^[nN]$ ]]; then
-    bash "$(dirname "$0")/full-wipe.sh" --force 2>/dev/null || true
+    bash "$SAFE_SOURCE/docker/full-wipe.sh" --force 2>/dev/null || true
   fi
 fi
 
@@ -147,34 +163,18 @@ echo -e "   ${GREEN}✅ Docker Compose: $(docker compose version --short)${NC}"
 # ════════════════════════════════════════════════════════════
 INSTALL_DIR="/opt/simply-imoveis"
 
-# Use paths captured at script start (before full-wipe could delete them)
-SCRIPT_DIR="$_ORIG_SCRIPT_DIR"
-PROJECT_DIR="$_ORIG_PROJECT_DIR"
-
-# Reset cwd to a safe location (full-wipe may have deleted our cwd)
+# Reset cwd to safe location
 cd /
 
 mkdir -p "$INSTALL_DIR"
 echo -e "${BLUE}📋 Copiando projeto para $INSTALL_DIR...${NC}"
 
-# Check if source dir still exists (full-wipe may have deleted it if running from INSTALL_DIR)
-if [ ! -d "$PROJECT_DIR/docker" ]; then
-  echo -e "${RED}❌ Diretório fonte foi removido pelo full-wipe.${NC}"
-  echo -e "${YELLOW}   Execute o install.sh a partir do repositório clonado, não de /opt/simply-imoveis.${NC}"
-  echo -e "${YELLOW}   Exemplo: cd ~/simply-imoveis/docker && sudo bash install.sh --clean${NC}"
-  exit 1
-fi
-
-# Copy project to INSTALL_DIR (skip if already there and intact)
-if [ "$(realpath "$PROJECT_DIR")" = "$(realpath "$INSTALL_DIR")" ] && [ -d "$INSTALL_DIR/docker" ]; then
-  echo -e "   ${GREEN}✅ Já executando de $INSTALL_DIR, rsync não necessário${NC}"
-else
-  rsync -av --delete \
-    --exclude='node_modules' \
-    --exclude='.git' \
-    --exclude='docker/.env' \
-    "$PROJECT_DIR/" "$INSTALL_DIR/"
-fi
+# Always rsync from the safe snapshot (guaranteed to exist)
+rsync -a --delete \
+  --exclude='node_modules' \
+  --exclude='.git' \
+  --exclude='docker/.env' \
+  "$SAFE_SOURCE/" "$INSTALL_DIR/"
 
 cd "$INSTALL_DIR/docker"
 chmod +x *.sh 2>/dev/null || true
