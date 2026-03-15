@@ -2,7 +2,6 @@
 # ============================================================
 # Simply Imóveis - Redeploy (rebuild + restart sem perder dados)
 # Uso: sudo bash redeploy.sh [--full]
-# --full: rebuild TODAS as imagens (não apenas frontend)
 # ============================================================
 set -euo pipefail
 
@@ -20,12 +19,7 @@ INSTALL_DIR="/opt/simply-imoveis"
 
 echo -e "${BLUE}🔄 Redeploy Simply Imóveis${NC}"
 
-# Sync functions
-echo -e "${BLUE}📦 Sincronizando functions...${NC}"
 bash sync-functions.sh "$INSTALL_DIR/supabase/functions" "volumes/functions"
-
-# Render Kong config
-echo -e "${BLUE}🔧 Renderizando Kong config...${NC}"
 bash render-kong-config.sh
 
 if [ "$FULL" = "true" ]; then
@@ -39,18 +33,12 @@ else
   docker compose up -d --force-recreate functions
 fi
 
-echo -e "${BLUE}⏳ Aguardando serviços (15s)...${NC}"
+echo -e "${BLUE}⏳ Aguardando (15s)...${NC}"
 sleep 15
 
-# Sync passwords (garante roles e grants)
-echo -e "${BLUE}🔐 Sincronizando credenciais...${NC}"
 bash sync-db-passwords.sh || echo -e "${YELLOW}⚠️  sync-db-passwords falhou${NC}"
-
-# Buckets
 bash ensure-storage-buckets.sh || echo -e "${YELLOW}⚠️  ensure-storage-buckets falhou${NC}"
 
-# Validate
-echo -e "${BLUE}🧪 Validando...${NC}"
 bash validate-install.sh || echo -e "${YELLOW}⚠️  Validação com alertas${NC}"
 
 echo -e "${GREEN}✅ Redeploy concluído!${NC}"
