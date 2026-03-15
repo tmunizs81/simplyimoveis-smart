@@ -2,7 +2,7 @@
 # ============================================================
 # Cria ou atualiza admin via SQL direto (100% idempotente)
 # Uso: bash create-admin.sh email senha
-# Versão: 2026-03-15-v6
+# Versão: 2026-03-15-v9
 # ============================================================
 
 set -euo pipefail
@@ -19,32 +19,23 @@ cd "$SCRIPT_DIR"
 
 POSTGRES_DB=$(grep -E '^POSTGRES_DB=' .env | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")
 POSTGRES_DB="${POSTGRES_DB:-simply_db}"
-
 POSTGRES_PASSWORD=$(grep -E '^POSTGRES_PASSWORD=' .env | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")
 
 run_sql() {
-  timeout 60s docker compose exec -T -e PGPASSWORD="$POSTGRES_PASSWORD" db psql -v ON_ERROR_STOP=1 -w -U postgres -d "$POSTGRES_DB" "$@"
+  timeout 30s docker compose exec -T -e PGPASSWORD="$POSTGRES_PASSWORD" \
+    db psql -v ON_ERROR_STOP=1 -w -U postgres -d "$POSTGRES_DB" "$@"
 }
-
-# Espera banco
-docker compose up -d db >/dev/null 2>&1
-for i in {1..30}; do
-  timeout 8s docker compose exec -T -e PGPASSWORD="$POSTGRES_PASSWORD" db pg_isready -U postgres -q -t 2 >/dev/null 2>&1 && break
-  [ "$i" = "30" ] && echo "❌ Banco não respondeu em 60s" && exit 1
-  sleep 2
-done
 
 # Verifica se auth.users existe
 AUTH_OK=$(run_sql -tA -c "SELECT to_regclass('auth.users') IS NOT NULL;" 2>/dev/null | tr -d '[:space:]')
 if [ "$AUTH_OK" != "t" ]; then
-  echo "❌ auth.users não existe. O GoTrue ainda não migrou."
-  echo "   Rode: docker compose up -d auth && sleep 15 && bash create-admin.sh $EMAIL $PASSWORD"
+  echo "❌ auth.users não existe. GoTrue ainda não migrou."
+  echo "   Aguarde mais 30s e tente novamente."
   exit 1
 fi
 
 echo "👤 Criando admin: ${EMAIL}..."
 
-# Escapa aspas simples no password para SQL
 SAFE_PASS=$(printf '%s' "$PASSWORD" | sed "s/'/''/g")
 
 run_sql <<EOSQL
@@ -54,7 +45,6 @@ DO \$\$
 DECLARE
   v_uid uuid;
 BEGIN
-  -- Busca ou cria usuário
   SELECT id INTO v_uid FROM auth.users WHERE email = '${EMAIL}' LIMIT 1;
 
   IF v_uid IS NULL THEN
@@ -83,7 +73,6 @@ BEGIN
     RAISE NOTICE 'Usuário atualizado: %', v_uid;
   END IF;
 
-  -- Identity (idempotente) - id é uuid
   INSERT INTO auth.identities (id, user_id, identity_data, provider, provider_id, created_at, updated_at, last_sign_in_at)
   VALUES (
     v_uid, v_uid,
@@ -95,7 +84,6 @@ BEGIN
     identity_data = EXCLUDED.identity_data,
     updated_at = now();
 
-  -- Role admin
   INSERT INTO public.user_roles (user_id, role) VALUES (v_uid, 'admin')
   ON CONFLICT (user_id, role) DO NOTHING;
 
