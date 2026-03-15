@@ -169,10 +169,14 @@ BEGIN
       now(),
       now()
     )
-    ON CONFLICT (provider, provider_id) DO UPDATE
-      SET user_id = EXCLUDED.user_id,
-          identity_data = EXCLUDED.identity_data,
-          updated_at = now();
+    ON CONFLICT DO NOTHING;
+
+    UPDATE auth.identities
+    SET user_id = v_user_id,
+        identity_data = jsonb_build_object('sub', v_user_id::text, 'email', :'user_email'),
+        updated_at = now()
+    WHERE provider = 'email'
+      AND provider_id = :'user_email';
   EXCEPTION
     WHEN undefined_column THEN
       INSERT INTO auth.identities (
