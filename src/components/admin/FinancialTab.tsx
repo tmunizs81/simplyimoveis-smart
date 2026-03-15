@@ -42,7 +42,7 @@ const FinancialTab = () => {
   });
 
   const fetchTransactions = async () => {
-    const { data, error } = await supabase.from("financial_transactions").select("*").order("date", { ascending: false });
+    const { data, error } = await adminSelect("financial_transactions", { order: { column: "date", ascending: false } });
     if (error) toast.error("Erro ao carregar transações");
     else setTransactions((data as Transaction[]) || []);
     setLoading(false);

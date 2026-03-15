@@ -36,7 +36,7 @@ const SalesTab = () => {
   });
 
   const fetchSales = async () => {
-    const { data, error } = await supabase.from("sales").select("*").order("created_at", { ascending: false });
+    const { data, error } = await adminSelect("sales", { order: { column: "created_at", ascending: false } });
     if (error) toast.error("Erro ao carregar vendas");
     else setSales((data as Sale[]) || []);
     setLoading(false);

@@ -25,12 +25,7 @@ const ContactsTab = () => {
   const [filter, setFilter] = useState<"all" | "unread" | "read">("all");
 
   const fetchContacts = async () => {
-    const query = supabase
-      .from("contact_submissions")
-      .select("*")
-      .order("created_at", { ascending: false });
-
-    const { data, error } = await query;
+    const { data, error } = await adminSelect("contact_submissions", { order: { column: "created_at", ascending: false } });
     if (error) {
       toast.error("Erro ao carregar contatos.");
       console.error(error);

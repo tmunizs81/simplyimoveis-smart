@@ -44,14 +44,14 @@ const TenantsTab = () => {
   });
 
   const fetchTenants = async () => {
-    const { data, error } = await supabase.from("tenants").select("*").order("name");
+    const { data, error } = await adminSelect("tenants", { order: { column: "name", ascending: true } });
     if (error) toast.error("Erro ao carregar inquilinos");
     else setTenants((data as Tenant[]) || []);
     setLoading(false);
   };
 
   const fetchDocs = async (tenantId: string) => {
-    const { data } = await supabase.from("tenant_documents").select("*").eq("tenant_id", tenantId).order("created_at", { ascending: false });
+    const { data } = await adminSelect("tenant_documents", { match: { tenant_id: tenantId }, order: { column: "created_at", ascending: false } });
     setDocuments((data as TenantDoc[]) || []);
   };
 
