@@ -72,14 +72,10 @@ docker compose up -d --force-recreate frontend functions kong
 echo -e "   ${GREEN}✅ Serviços reiniciados${NC}"
 
 # ── Bootstrap DB ──
-echo -e "\n${BLUE}5️⃣  Aplicando bootstrap DB + Storage...${NC}"
-bash sync-db-passwords.sh || echo -e "${YELLOW}⚠️  sync-db-passwords com alertas${NC}"
-
-docker compose exec -T -e PGPASSWORD="$POSTGRES_PASSWORD" db \
-  psql -v ON_ERROR_STOP=1 -w -h 127.0.0.1 -U "$DB_USER" -d "$POSTGRES_DB" \
-  < sql/selfhosted-admin-recovery.sql || echo -e "${YELLOW}⚠️  Recovery SQL com alertas${NC}"
-
-bash ensure-storage-buckets.sh || echo -e "${YELLOW}⚠️  ensure-storage-buckets com alertas${NC}"
+echo -e "\n${BLUE}5️⃣  Aplicando pipeline determinístico de bootstrap...${NC}"
+if ! bash bootstrap-db.sh; then
+  echo -e "${YELLOW}⚠️  bootstrap-db falhou. Debug: docker compose logs --tail=120 db rest storage${NC}"
+fi
 
 # ── Restart final ──
 echo -e "\n${BLUE}6️⃣  Restart final...${NC}"

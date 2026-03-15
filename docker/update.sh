@@ -32,22 +32,10 @@ docker compose build --no-cache frontend
 docker compose up -d frontend
 docker compose up -d --force-recreate functions kong
 
-echo -e "${BLUE}🔐 Sincronizando credenciais...${NC}"
-bash sync-db-passwords.sh || echo -e "${YELLOW}⚠️  sync-db-passwords falhou${NC}"
-
-# Recovery SQL via stdin (arquivo no host)
-read_env() { grep -E "^${1}=" .env 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'"; }
-POSTGRES_PASSWORD=$(read_env "POSTGRES_PASSWORD")
-POSTGRES_DB=$(read_env "POSTGRES_DB"); POSTGRES_DB="${POSTGRES_DB:-simply_db}"
-DB_USER=$(read_env "POSTGRES_USER"); DB_USER="${DB_USER:-supabase_admin}"
-
-if [ -f "$SCRIPT_DIR/sql/selfhosted-admin-recovery.sql" ]; then
-  docker compose exec -T -e PGPASSWORD="$POSTGRES_PASSWORD" db \
-    psql -v ON_ERROR_STOP=1 -w -h 127.0.0.1 -U "$DB_USER" -d "$POSTGRES_DB" \
-    < "$SCRIPT_DIR/sql/selfhosted-admin-recovery.sql" 2>/dev/null || echo -e "${YELLOW}⚠️  Recovery SQL com alertas${NC}"
+echo -e "${BLUE}🧱 Reaplicando pipeline de bootstrap (DB + Storage)...${NC}"
+if ! bash bootstrap-db.sh; then
+  echo -e "${YELLOW}⚠️  bootstrap-db falhou. Debug: docker compose logs --tail=120 db rest storage${NC}"
 fi
-
-bash ensure-storage-buckets.sh || echo -e "${YELLOW}⚠️  ensure-storage-buckets falhou${NC}"
 
 echo -e "${BLUE}🧪 Validando...${NC}"
 if ! bash validate-install.sh; then
