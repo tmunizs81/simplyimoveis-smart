@@ -299,7 +299,7 @@ fi
 
 # ── 12. Criar admin ─────────────────────────────────────────
 echo -e "${BLUE}👤 Criando admin...${NC}"
-bash create-admin.sh "tmunizs89@proton.me" "10203040"
+bash create-admin.sh "$ADMIN_LOGIN_EMAIL" "$ADMIN_LOGIN_PASSWORD"
 
 # ── 13. SSL ──────────────────────────────────────────────────
 SITE_DOMAIN=$(read_env "SITE_DOMAIN")
