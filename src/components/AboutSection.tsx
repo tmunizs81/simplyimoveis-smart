@@ -4,8 +4,8 @@ import { HardHat, Briefcase, Target } from "lucide-react";
 import talitaImg from "@/assets/talita-portrait.png";
 
 const stats = [
-  { icon: Home, value: "200+", label: "Imóveis Vendidos" },
-  { icon: Users, value: "500+", label: "Clientes Satisfeitos" },
+  { icon: Home, value: "30+", label: "Imóveis Vendidos" },
+  { icon: Users, value: "100+", label: "Clientes Satisfeitos" },
   { icon: Award, value: "5+", label: "Anos de Experiência" },
   { icon: Heart, value: "100%", label: "Dedicação" },
 ];
