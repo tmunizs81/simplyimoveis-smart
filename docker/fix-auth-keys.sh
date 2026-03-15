@@ -67,12 +67,27 @@ echo "⏳ Aguardando GoTrue iniciar..."
 KONG_PORT=$(read_env "KONG_HTTP_PORT")
 KONG_PORT="${KONG_PORT:-8000}"
 
-for i in $(seq 1 30); do
-  HTTP=$(curl -sS -o /dev/null -w "%{http_code}" \
-    "http://127.0.0.1:${KONG_PORT}/auth/v1/health" 2>/dev/null || echo "000")
-  [ "$HTTP" = "200" ] && break
+AUTH_READY=false
+for i in $(seq 1 45); do
+  HTTP=$(curl -sS -m 8 -o /dev/null -w "%{http_code}" \
+    "http://127.0.0.1:${KONG_PORT}/auth/v1/settings" \
+    -H "apikey: ${NEW_ANON}" 2>/dev/null || echo "000")
+
+  if [ "$HTTP" = "200" ]; then
+    AUTH_READY=true
+    echo "   ✅ GoTrue pronto (HTTP 200)"
+    break
+  fi
+
+  echo "   ... tentativa ${i}/45 (HTTP ${HTTP})"
   sleep 2
 done
+
+if [ "$AUTH_READY" != "true" ]; then
+  echo "❌ GoTrue não ficou pronto a tempo. Logs recentes:"
+  docker compose logs --tail=80 auth kong || true
+  exit 1
+fi
 
 # Testar acesso admin API
 echo "🧪 Testando SERVICE_ROLE_KEY..."
