@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================
-# Gera ANON_KEY e SERVICE_ROLE_KEY para Supabase
+# Gera ANON_KEY e SERVICE_ROLE_KEY
 # Uso: bash generate-keys.sh
 # ============================================================
 
@@ -14,8 +14,11 @@ if [ ! -f .env ]; then
   exit 1
 fi
 
-# Lê JWT_SECRET do .env de forma segura (sem source)
-JWT_SECRET=$(grep -E '^JWT_SECRET=' .env | head -1 | sed 's/^JWT_SECRET=//' | tr -d '"' | tr -d "'")
+read_env_var() {
+  grep -E "^${1}=" .env 2>/dev/null | head -1 | sed "s/^${1}=//" | tr -d '"' | tr -d "'"
+}
+
+JWT_SECRET=$(read_env_var "JWT_SECRET")
 
 if [ -z "$JWT_SECRET" ] || [ "$JWT_SECRET" = "super-secret-jwt-token-with-at-least-32-characters-long" ]; then
   echo "❌ Configure JWT_SECRET no .env primeiro."
@@ -49,9 +52,12 @@ if [ -z "$ANON" ] || [ -z "$SERVICE" ]; then
   exit 1
 fi
 
-# Atualiza o .env
 sed -i "s|^ANON_KEY=.*|ANON_KEY=\"${ANON}\"|" .env
 sed -i "s|^SERVICE_ROLE_KEY=.*|SERVICE_ROLE_KEY=\"${SERVICE}\"|" .env
+
+if [ -f render-kong-config.sh ]; then
+  bash render-kong-config.sh >/dev/null
+fi
 
 echo "✅ Chaves geradas e salvas no .env!"
 echo ""
