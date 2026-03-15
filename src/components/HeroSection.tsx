@@ -96,14 +96,14 @@ const HeroSection = () => {
             {slides[current].location}
           </motion.span>
 
-          <h1 className="font-display text-4xl sm:text-5xl lg:text-7xl font-bold text-white leading-[1.1] mb-6">
+          <h1 className="font-display text-3xl sm:text-5xl lg:text-7xl font-bold text-white leading-[1.1] mb-4 sm:mb-6">
             A excelência que o seu{" "}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-yellow-400">
               patrimônio exige.
             </span>
           </h1>
 
-          <p className="text-white/70 text-lg sm:text-xl mb-10 font-body leading-relaxed max-w-xl">
+          <p className="text-white/70 text-base sm:text-xl mb-6 sm:mb-10 font-body leading-relaxed max-w-xl">
             Comprometimento absoluto com a sua tranquilidade. Da busca inicial à entrega das chaves, garantimos uma jornada segura e impecável nos melhores endereços.
           </p>
 
@@ -139,7 +139,7 @@ const HeroSection = () => {
           </div>
 
           {/* Animated counters */}
-          <div className="flex gap-8 sm:gap-12">
+          <div className="flex gap-5 sm:gap-12">
             {[
               { target: 30, suffix: "+", label: "Imóveis Vendidos" },
               { target: 100, suffix: "+", label: "Clientes Satisfeitos" },

@@ -81,7 +81,7 @@ const ContactSection = () => {
               </div>
               <div>
                 <h3 className="font-semibold text-foreground">Endereço</h3>
-                <p className="text-muted-foreground text-sm">Av. Yolanda Pontes Vidal Queiroz, 57, Torre 1, Sala 309 — Jereissati Setor A, Maracanaú - CE, 61900-410 — Edifício Business Place</p>
+                <p className="text-muted-foreground text-sm break-words">Av. Yolanda Pontes Vidal Queiroz, 57, Torre 1, Sala 309 — Jereissati Setor A, Maracanaú - CE, 61900-410 — Edifício Business Place</p>
               </div>
             </div>
           </motion.div>

@@ -40,7 +40,7 @@ const AboutSection = () => {
             transition={{ duration: 0.6 }}
             className="relative"
           >
-            <div className="relative w-80 mx-auto lg:mx-0">
+            <div className="relative w-64 sm:w-80 mx-auto lg:mx-0">
               <div className="absolute -inset-4 gradient-primary rounded-2xl rotate-3 opacity-20" />
               <img
                 src={talitaImg}
