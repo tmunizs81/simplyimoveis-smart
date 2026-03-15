@@ -28,8 +28,9 @@ run_sql() {
 
 # Espera banco
 docker compose up -d db >/dev/null 2>&1
-for _ in {1..30}; do
-  docker compose exec -T db pg_isready -U postgres -q 2>/dev/null && break
+for i in {1..30}; do
+  timeout 8s docker compose exec -T -e PGPASSWORD="$POSTGRES_PASSWORD" db pg_isready -U postgres -q -t 2 >/dev/null 2>&1 && break
+  [ "$i" = "30" ] && echo "❌ Banco não respondeu em 60s" && exit 1
   sleep 2
 done
 
