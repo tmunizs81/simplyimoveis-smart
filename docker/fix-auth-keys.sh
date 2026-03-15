@@ -59,6 +59,10 @@ if [ -f render-kong-config.sh ]; then
 fi
 
 # Recriar containers que dependem das chaves
+# Sincronizar grants do banco antes de reiniciar auth
+echo "🔧 Sincronizando grants do banco..."
+bash sync-db-passwords.sh || { echo "⚠️  sync-db-passwords falhou, continuando..."; }
+
 echo "🔄 Reiniciando containers (kong, auth, rest, storage, functions)..."
 docker compose up -d --force-recreate kong auth rest storage functions
 
