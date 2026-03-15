@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -28,7 +28,16 @@ const ALLOWED_TABLES = [
   "property_code_sequences",
   "contact_submissions",
   "scheduled_visits",
-];
+  "user_roles",
+] as const;
+
+const getEnv = (name: string): string => {
+  const value = Deno.env.get(name);
+  if (!value) {
+    throw new Error(`Variável de ambiente obrigatória ausente: ${name}`);
+  }
+  return value;
+};
 
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
@@ -37,8 +46,8 @@ const handler = async (req: Request): Promise<Response> => {
 
   try {
     const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+      getEnv("SUPABASE_URL"),
+      getEnv("SUPABASE_SERVICE_ROLE_KEY")
     );
 
     // Verify caller is authenticated admin
@@ -77,12 +86,14 @@ const handler = async (req: Request): Promise<Response> => {
     };
 
     if (!action || !table) return json({ error: "action e table obrigatórios" }, 400);
-    if (!ALLOWED_TABLES.includes(table)) return json({ error: `Tabela '${table}' não permitida` }, 400);
+    if (!ALLOWED_TABLES.includes(table as (typeof ALLOWED_TABLES)[number])) {
+      return json({ error: `Tabela '${table}' não permitida` }, 400);
+    }
 
     // Execute with service_role (bypasses RLS)
     if (action === "insert") {
       if (!data) return json({ error: "data obrigatório para insert" }, 400);
-      const q = supabaseAdmin.from(table).insert(data as any);
+      const q = supabaseAdmin.from(table).insert(data as never);
       const result = selectCols !== undefined
         ? await q.select(selectCols || "*")
         : await q.select("*");
@@ -92,9 +103,9 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (action === "update") {
       if (!data || !match) return json({ error: "data e match obrigatórios para update" }, 400);
-      let q = supabaseAdmin.from(table).update(data as any);
+      let q = supabaseAdmin.from(table).update(data as never);
       for (const [k, v] of Object.entries(match)) {
-        q = q.eq(k, v as any);
+        q = q.eq(k, v as never);
       }
       const result = await q.select("*");
       if (result.error) return json({ error: result.error.message }, 400);
@@ -105,7 +116,7 @@ const handler = async (req: Request): Promise<Response> => {
       if (!match) return json({ error: "match obrigatório para delete" }, 400);
       let q = supabaseAdmin.from(table).delete();
       for (const [k, v] of Object.entries(match)) {
-        q = q.eq(k, v as any);
+        q = q.eq(k, v as never);
       }
       const result = await q;
       if (result.error) return json({ error: result.error.message }, 400);
@@ -116,7 +127,7 @@ const handler = async (req: Request): Promise<Response> => {
       let q = supabaseAdmin.from(table).select(selectCols || "*");
       if (match) {
         for (const [k, v] of Object.entries(match)) {
-          q = q.eq(k, v as any);
+          q = q.eq(k, v as never);
         }
       }
       if (order && order.column) {
