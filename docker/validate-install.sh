@@ -78,6 +78,30 @@ else
   echo "✅ REST: HTTP $REST_ST"
 fi
 
+echo "── Privilégios SQL ──"
+check_priv() {
+  local role="$1"
+  local table="$2"
+  local priv="$3"
+  local ok
+  ok=$(docker compose exec -T -e PGPASSWORD="$POSTGRES_PASSWORD" db \
+    psql -tA -w -h 127.0.0.1 -U "$DB_ADMIN_USER" -d "$POSTGRES_DB" \
+    -c "SELECT has_table_privilege('${role}', '${table}', '${priv}');" 2>/dev/null | tr -d '[:space:]')
+
+  if [ "$ok" != "t" ]; then
+    echo "❌ ${role} sem ${priv} em ${table}"; ERRORS=$((ERRORS+1))
+  else
+    echo "✅ ${role} ${priv} ${table}"
+  fi
+}
+
+check_priv authenticated public.properties SELECT
+check_priv authenticated public.properties INSERT
+check_priv authenticated public.properties UPDATE
+check_priv authenticated public.properties DELETE
+check_priv authenticated public.tenants INSERT
+check_priv service_role public.user_roles SELECT
+
 echo ""
 if [ "$ERRORS" -gt 0 ]; then
   echo "❌ $ERRORS problema(s)"

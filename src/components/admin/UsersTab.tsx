@@ -49,7 +49,15 @@ const UsersTab = () => {
       },
     });
 
-    if (error) throw new Error(error.message || "Falha ao executar ação de usuários");
+    if (error) {
+      const response = (error as { context?: Response }).context;
+      if (response) {
+        const payload = await response.json().catch(() => null) as { error?: string } | null;
+        throw new Error(payload?.error || error.message || "Falha ao executar ação de usuários");
+      }
+      throw new Error(error.message || "Falha ao executar ação de usuários");
+    }
+
     if ((data as { error?: string })?.error) throw new Error((data as { error: string }).error);
 
     return data;

@@ -90,11 +90,11 @@ const TenantsTab = () => {
 
     if (editing) {
       const { error } = await supabase.from("tenants").update(payload as any).eq("id", editing.id);
-      if (error) { toast.error("Erro ao atualizar"); return; }
+      if (error) { toast.error(error.message || "Erro ao atualizar"); return; }
       tenantId = editing.id;
     } else {
       const { data: inserted, error } = await supabase.from("tenants").insert(payload as any).select("id").single();
-      if (error || !inserted) { toast.error("Erro ao cadastrar"); return; }
+      if (error || !inserted) { toast.error(error?.message || "Erro ao cadastrar"); return; }
       tenantId = inserted.id;
     }
 

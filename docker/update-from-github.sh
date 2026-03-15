@@ -102,6 +102,9 @@ echo -e "   ${GREEN}✅ Frontend atualizado${NC}"
 docker compose up -d --force-recreate functions
 echo -e "   ${GREEN}✅ Edge Functions atualizadas${NC}"
 
+echo -e "   ${BLUE}🔐 Reaplicando grants e credenciais internas...${NC}"
+bash sync-db-passwords.sh || echo -e "   ${YELLOW}⚠️  Não foi possível reaplicar grants agora${NC}"
+
 echo -e "   ${BLUE}🔐 Reaplicando buckets e políticas de storage...${NC}"
 bash ensure-storage-buckets.sh || echo -e "   ${YELLOW}⚠️  Não foi possível reaplicar políticas agora${NC}"
 
