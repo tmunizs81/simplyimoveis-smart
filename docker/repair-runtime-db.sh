@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================
-# Reparo do banco para resolver loops auth/storage sem reinstalar
+# Reparo completo: permissões + auth.uid() + edge functions
 # Uso: bash repair-runtime-db.sh
 # ============================================================
 
@@ -9,14 +9,110 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-echo "🛠️ Aplicando reparo de permissões e search_path..."
+[ ! -f .env ] && echo "❌ .env não encontrado" && exit 1
+
+read_env() { grep -E "^${1}=" .env 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'"; }
+
+POSTGRES_PASSWORD=$(read_env "POSTGRES_PASSWORD")
+POSTGRES_DB=$(read_env "POSTGRES_DB")
+POSTGRES_DB="${POSTGRES_DB:-simply_db}"
+DB_CONTAINER="simply-db"
+
+run_sql() {
+  docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" "$DB_CONTAINER" \
+    psql -v ON_ERROR_STOP=1 -w -h 127.0.0.1 -U supabase_admin -d "$POSTGRES_DB" -c "$1"
+}
+
+run_sql_quiet() {
+  docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" "$DB_CONTAINER" \
+    psql -tA -w -h 127.0.0.1 -U supabase_admin -d "$POSTGRES_DB" -c "$1" 2>/dev/null | tr -d '[:space:]'
+}
+
+echo "🛠️  Etapa 1/5: Sincronizando credenciais e permissões..."
 bash sync-db-passwords.sh
 
-echo "🔄 Reiniciando serviços dependentes..."
-docker compose restart auth rest storage kong
-sleep 20
+echo ""
+echo "🛠️  Etapa 2/5: Sincronizando Edge Functions..."
+bash sync-functions.sh
 
-echo "🧪 Validando stack..."
+echo ""
+echo "🛠️  Etapa 3/5: Testando auth.uid() com JWT simulado..."
+
+# Simula como PostgREST seta os GUCs (legacy mode = true)
+TEST_UID=$(run_sql_quiet "
+  BEGIN;
+  SET LOCAL role TO 'authenticated';
+  SET LOCAL request.jwt.claim.sub TO 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
+  SET LOCAL request.jwt.claim.role TO 'authenticated';
+  SELECT auth.uid();
+  COMMIT;
+")
+
+if [ "$TEST_UID" = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee" ]; then
+  echo "   ✅ auth.uid() funciona corretamente!"
+else
+  echo "   ❌ auth.uid() retornou: '$TEST_UID' (esperado: aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee)"
+  echo "   Tentando recriar..."
+  docker exec -i -e PGPASSWORD="$POSTGRES_PASSWORD" "$DB_CONTAINER" \
+    psql -v ON_ERROR_STOP=1 -w -h 127.0.0.1 -U supabase_admin -d "$POSTGRES_DB" <<'EOSQL'
+DROP FUNCTION IF EXISTS auth.uid() CASCADE;
+DROP FUNCTION IF EXISTS auth.role() CASCADE;
+DROP FUNCTION IF EXISTS auth.email() CASCADE;
+
+CREATE OR REPLACE FUNCTION auth.uid()
+RETURNS uuid LANGUAGE sql STABLE
+SET search_path = ''
+AS $$
+  SELECT COALESCE(
+    NULLIF(current_setting('request.jwt.claim.sub', true), ''),
+    (NULLIF(current_setting('request.jwt.claims', true), '')::jsonb ->> 'sub')
+  )::uuid;
+$$;
+
+CREATE OR REPLACE FUNCTION auth.role()
+RETURNS text LANGUAGE sql STABLE
+SET search_path = ''
+AS $$
+  SELECT COALESCE(
+    NULLIF(current_setting('request.jwt.claim.role', true), ''),
+    (NULLIF(current_setting('request.jwt.claims', true), '')::jsonb ->> 'role')
+  )::text;
+$$;
+
+CREATE OR REPLACE FUNCTION auth.email()
+RETURNS text LANGUAGE sql STABLE
+SET search_path = ''
+AS $$
+  SELECT COALESCE(
+    NULLIF(current_setting('request.jwt.claim.email', true), ''),
+    (NULLIF(current_setting('request.jwt.claims', true), '')::jsonb ->> 'email')
+  )::text;
+$$;
+
+GRANT EXECUTE ON FUNCTION auth.uid() TO anon, authenticated, service_role, authenticator;
+GRANT EXECUTE ON FUNCTION auth.role() TO anon, authenticated, service_role, authenticator;
+GRANT EXECUTE ON FUNCTION auth.email() TO anon, authenticated, service_role, authenticator;
+EOSQL
+  echo "   Retestando..."
+  TEST_UID2=$(run_sql_quiet "BEGIN; SET LOCAL role TO 'authenticated'; SET LOCAL request.jwt.claim.sub TO 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'; SELECT auth.uid(); COMMIT;")
+  if [ "$TEST_UID2" = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee" ]; then
+    echo "   ✅ auth.uid() agora funciona!"
+  else
+    echo "   ❌ auth.uid() AINDA falha: '$TEST_UID2'"
+    echo "   Verifique manualmente."
+  fi
+fi
+
+echo ""
+echo "🛠️  Etapa 4/5: Reiniciando serviços..."
+docker compose restart rest
+sleep 5
+docker compose up -d --force-recreate functions
+sleep 10
+
+echo ""
+echo "🛠️  Etapa 5/5: Validando..."
 bash validate-install.sh
 
-echo "✅ Reparo concluído"
+echo ""
+echo "✅ Reparo concluído!"
