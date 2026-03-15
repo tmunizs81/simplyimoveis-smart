@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { adminSelect } from "@/lib/adminCrud";
 import { motion } from "framer-motion";
 import {
   Building2, Users, TrendingUp, DollarSign, Home, ClipboardCheck,
@@ -74,12 +74,12 @@ const DashboardTab = () => {
         { data: inspections },
         { data: transactions },
       ] = await Promise.all([
-        supabase.from("properties").select("id, status, active"),
-        supabase.from("leads").select("id, name, status, source, created_at").order("created_at", { ascending: false }),
-        supabase.from("tenants").select("id"),
-        supabase.from("rental_contracts").select("id, status"),
-        supabase.from("property_inspections").select("id, status"),
-        supabase.from("financial_transactions").select("id, description, amount, type, status, date, category").order("date", { ascending: false }),
+        adminSelect("properties", { select: "id, status, active" }),
+        adminSelect("leads", { select: "id, name, status, source, created_at", order: { column: "created_at", ascending: false } }),
+        adminSelect("tenants", { select: "id" }),
+        adminSelect("rental_contracts", { select: "id, status" }),
+        adminSelect("property_inspections", { select: "id, status" }),
+        adminSelect("financial_transactions", { select: "id, description, amount, type, status, date, category", order: { column: "date", ascending: false } }),
       ]);
 
       const allProps = props || [];

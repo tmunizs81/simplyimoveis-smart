@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { adminUpdate, adminDelete } from "@/lib/adminCrud";
+import { adminUpdate, adminDelete, adminSelect } from "@/lib/adminCrud";
 import { toast } from "sonner";
 import { Mail, Phone, Clock, Eye, EyeOff, Trash2, ChevronDown, ChevronUp, MessageCircle, Calendar, Bot } from "lucide-react";
 
@@ -25,12 +25,7 @@ const ContactsTab = () => {
   const [filter, setFilter] = useState<"all" | "unread" | "read">("all");
 
   const fetchContacts = async () => {
-    const query = supabase
-      .from("contact_submissions")
-      .select("*")
-      .order("created_at", { ascending: false });
-
-    const { data, error } = await query;
+    const { data, error } = await adminSelect("contact_submissions", { order: { column: "created_at", ascending: false } });
     if (error) {
       toast.error("Erro ao carregar contatos.");
       console.error(error);

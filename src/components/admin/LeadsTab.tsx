@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { adminInsert, adminUpdate, adminDelete } from "@/lib/adminCrud";
+import { adminInsert, adminUpdate, adminDelete, adminSelect } from "@/lib/adminCrud";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { Plus, Search, Phone, Mail, Calendar, ChevronDown, Edit, Trash2, Users, Filter, X, Save, ArrowRight } from "lucide-react";
@@ -42,7 +42,7 @@ const LeadsTab = () => {
   });
 
   const fetchLeads = async () => {
-    const { data, error } = await supabase.from("leads").select("*").order("created_at", { ascending: false });
+    const { data, error } = await adminSelect("leads", { order: { column: "created_at", ascending: false } });
     if (error) { toast.error("Erro ao carregar leads"); console.error(error); }
     else setLeads((data as Lead[]) || []);
     setLoading(false);

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { adminSelect, adminInsert, adminDelete } from "@/lib/adminCrud";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
@@ -45,7 +45,7 @@ const BackupTab = () => {
       };
 
       for (const table of BACKUP_TABLES) {
-        const { data, error } = await supabase.from(table).select("*");
+        const { data, error } = await adminSelect(table);
         if (error) {
           console.error(`Erro ao exportar ${table}:`, error.message);
           backup.tables[table] = [];
@@ -100,8 +100,14 @@ const BackupTab = () => {
 
       for (const table of deleteOrder) {
         setImportProgress(`Limpando ${table}...`);
-        const { error } = await supabase.from(table).delete().neq("id", "00000000-0000-0000-0000-000000000000");
-        if (error) console.warn(`Aviso ao limpar ${table}:`, error.message);
+        // Delete all rows via admin-crud (use a match that catches everything)
+        // We need to fetch IDs first, then delete one by one or in batch
+        const { data: rows } = await adminSelect(table, { select: "id" });
+        if (rows && rows.length > 0) {
+          for (const row of rows) {
+            await adminDelete(table, { id: (row as any).id });
+          }
+        }
       }
 
       for (const table of BACKUP_TABLES) {
@@ -113,7 +119,7 @@ const BackupTab = () => {
         // Insert in batches of 100
         for (let i = 0; i < rows.length; i += 100) {
           const batch = rows.slice(i, i + 100);
-          const { error } = await supabase.from(table).insert(batch as any);
+          const { error } = await adminInsert(table, batch);
           if (error) {
             console.error(`Erro ao restaurar ${table}:`, error.message);
             toast.error(`Erro ao restaurar ${table}: ${error.message}`);

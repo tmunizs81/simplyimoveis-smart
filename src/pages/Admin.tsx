@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { adminSelect } from "@/lib/adminCrud";
 import { toast } from "sonner";
 import Navbar from "@/components/Navbar";
 import AdminLogin from "@/components/admin/AdminLogin";
@@ -90,18 +91,14 @@ const Admin = () => {
 
   const fetchProperties = useCallback(async () => {
     if (!user) return;
-    const { data } = await supabase
-      .from("properties")
-      .select("*")
-      .order("created_at", { ascending: false });
+    const { data } = await adminSelect("properties", { order: { column: "created_at", ascending: false } });
     if (!data) return;
     const withMedia = await Promise.all(
-      data.map(async (p) => {
-        const { data: media } = await supabase
-          .from("property_media")
-          .select("*")
-          .eq("property_id", p.id)
-          .order("sort_order");
+      (data as any[]).map(async (p: any) => {
+        const { data: media } = await adminSelect("property_media", {
+          match: { property_id: p.id },
+          order: { column: "sort_order", ascending: true },
+        });
         return { ...p, media: media || [] };
       })
     );

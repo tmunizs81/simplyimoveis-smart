@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { adminInsert, adminUpdate, adminDelete } from "@/lib/adminCrud";
+import { adminInsert, adminUpdate, adminDelete, adminSelect } from "@/lib/adminCrud";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { Plus, Search, ClipboardCheck, Calendar, Home, Edit, Trash2, X, Save, Upload, FileText, Eye, Camera, Video, File, Download } from "lucide-react";
@@ -72,10 +72,10 @@ const InspectionsTab = () => {
 
   const fetchAll = async () => {
     const [{ data: ins }, { data: props }, { data: ten }, { data: con }] = await Promise.all([
-      supabase.from("property_inspections").select("*").order("inspection_date", { ascending: false }),
-      supabase.from("properties").select("id, title, address").order("title"),
-      supabase.from("tenants").select("id, name").order("name"),
-      supabase.from("rental_contracts").select("id, property_id, tenant_id"),
+      adminSelect("property_inspections", { order: { column: "inspection_date", ascending: false } }),
+      adminSelect("properties", { select: "id, title, address", order: { column: "title", ascending: true } }),
+      adminSelect("tenants", { select: "id, name", order: { column: "name", ascending: true } }),
+      adminSelect("rental_contracts", { select: "id, property_id, tenant_id" }),
     ]);
     setInspections((ins as Inspection[]) || []);
     setProperties((props as Property[]) || []);
@@ -85,7 +85,7 @@ const InspectionsTab = () => {
   };
 
   const fetchMedia = async (inspectionId: string) => {
-    const { data } = await supabase.from("inspection_media").select("*").eq("inspection_id", inspectionId).order("created_at", { ascending: false });
+    const { data } = await adminSelect("inspection_media", { match: { inspection_id: inspectionId }, order: { column: "created_at", ascending: false } });
     setMedia((data as InspectionMedia[]) || []);
   };
 
@@ -231,7 +231,7 @@ const InspectionsTab = () => {
   const downloadPdf = async (ins: Inspection) => {
     toast.info("Gerando PDF...");
     try {
-      const { data: mediaData } = await supabase.from("inspection_media").select("*").eq("inspection_id", ins.id);
+      const { data: mediaData } = await adminSelect("inspection_media", { match: { inspection_id: ins.id } });
       await generateInspectionPdf(
         {
           id: ins.id,

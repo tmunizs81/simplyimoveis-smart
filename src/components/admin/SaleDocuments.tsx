@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { adminInsert, adminDelete } from "@/lib/adminCrud";
+import { adminInsert, adminDelete, adminSelect } from "@/lib/adminCrud";
 import { toast } from "sonner";
 import { Upload, Trash2, FileText, Download, X, Eye } from "lucide-react";
 
@@ -34,11 +34,10 @@ const SaleDocuments = ({ saleId, onClose }: { saleId: string; onClose: () => voi
   const [files, setFiles] = useState<File[]>([]);
 
   const fetchDocs = async () => {
-    const { data, error } = await supabase
-      .from("sales_documents")
-      .select("*")
-      .eq("sale_id", saleId)
-      .order("created_at", { ascending: false });
+    const { data, error } = await adminSelect("sales_documents", {
+      match: { sale_id: saleId },
+      order: { column: "created_at", ascending: false },
+    });
     if (!error) setDocs((data as SaleDoc[]) || []);
     setLoading(false);
   };

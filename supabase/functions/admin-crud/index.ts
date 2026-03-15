@@ -67,12 +67,13 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Parse request
     const body = await req.json().catch(() => ({}));
-    const { action, table, data, match, select: selectCols } = body as {
+    const { action, table, data, match, select: selectCols, order } = body as {
       action: "insert" | "update" | "delete" | "select";
       table: string;
       data?: Record<string, unknown> | Record<string, unknown>[];
       match?: Record<string, unknown>;
       select?: string;
+      order?: { column: string; ascending?: boolean };
     };
 
     if (!action || !table) return json({ error: "action e table obrigatórios" }, 400);
@@ -117,6 +118,9 @@ const handler = async (req: Request): Promise<Response> => {
         for (const [k, v] of Object.entries(match)) {
           q = q.eq(k, v as any);
         }
+      }
+      if (order && order.column) {
+        q = q.order(order.column, { ascending: order.ascending ?? true });
       }
       const result = await q;
       if (result.error) return json({ error: result.error.message }, 400);

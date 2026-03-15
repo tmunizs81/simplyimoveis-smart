@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { adminInsert, adminUpdate, adminDelete } from "@/lib/adminCrud";
+import { adminInsert, adminUpdate, adminDelete, adminSelect } from "@/lib/adminCrud";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { Plus, Search, Home, Calendar, DollarSign, Edit, Trash2, X, Save, Upload, FileText, Eye, Download } from "lucide-react";
@@ -59,9 +59,9 @@ const RentalsTab = () => {
 
   const fetchAll = async () => {
     const [{ data: c }, { data: t }, { data: p }] = await Promise.all([
-      supabase.from("rental_contracts").select("*").order("created_at", { ascending: false }),
-      supabase.from("tenants").select("id, name").order("name"),
-      supabase.from("properties").select("id, title").order("title"),
+      adminSelect("rental_contracts", { order: { column: "created_at", ascending: false } }),
+      adminSelect("tenants", { select: "id, name", order: { column: "name", ascending: true } }),
+      adminSelect("properties", { select: "id, title", order: { column: "title", ascending: true } }),
     ]);
     setContracts((c as RentalContract[]) || []);
     setTenants((t as Tenant[]) || []);
@@ -70,7 +70,7 @@ const RentalsTab = () => {
   };
 
   const fetchDocs = async (contractId: string) => {
-    const { data } = await supabase.from("contract_documents").select("*").eq("contract_id", contractId).order("created_at", { ascending: false });
+    const { data } = await adminSelect("contract_documents", { match: { contract_id: contractId }, order: { column: "created_at", ascending: false } });
     setDocuments((data as ContractDoc[]) || []);
   };
 

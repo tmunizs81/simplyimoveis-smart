@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { adminInsert, adminUpdate, adminDelete } from "@/lib/adminCrud";
+import { adminInsert, adminUpdate, adminDelete, adminSelect } from "@/lib/adminCrud";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { Plus, TrendingUp, DollarSign, Calendar, Edit, Trash2, X, Save, Search, FileText } from "lucide-react";
@@ -36,7 +36,7 @@ const SalesTab = () => {
   });
 
   const fetchSales = async () => {
-    const { data, error } = await supabase.from("sales").select("*").order("created_at", { ascending: false });
+    const { data, error } = await adminSelect("sales", { order: { column: "created_at", ascending: false } });
     if (error) toast.error("Erro ao carregar vendas");
     else setSales((data as Sale[]) || []);
     setLoading(false);

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { adminSelect } from "@/lib/adminCrud";
 import { BarChart3, TrendingUp, TrendingDown, DollarSign, Home, Users, FileText, Calendar } from "lucide-react";
 
 type MonthlyData = { month: string; receitas: number; despesas: number };
@@ -22,12 +22,12 @@ const ReportsTab = () => {
         { data: properties }, { data: leads }, { data: contracts },
         { data: tenants }, { data: sales }, { data: transactions },
       ] = await Promise.all([
-        supabase.from("properties").select("id, active"),
-        supabase.from("leads").select("id, status"),
-        supabase.from("rental_contracts").select("id, status, monthly_rent"),
-        supabase.from("tenants").select("id"),
-        supabase.from("sales").select("id, status, sale_value, commission_value"),
-        supabase.from("financial_transactions").select("*"),
+        adminSelect("properties", { select: "id, active" }),
+        adminSelect("leads", { select: "id, status" }),
+        adminSelect("rental_contracts", { select: "id, status, monthly_rent" }),
+        adminSelect("tenants", { select: "id" }),
+        adminSelect("sales", { select: "id, status, sale_value, commission_value" }),
+        adminSelect("financial_transactions"),
       ]);
 
       const txs = (transactions || []) as any[];
