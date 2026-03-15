@@ -5,13 +5,21 @@
 - Domínio apontando para o IP da VPS (DNS tipo A)
 - Acesso root (sudo)
 
-## Instalação (1 comando)
+## Instalação (produção)
 
 ```bash
 # Conecte na VPS e execute:
 git clone https://github.com/tmunizs81/simplyimoveis-smart.git /opt/simply-imoveis
 cd /opt/simply-imoveis/docker
-sudo bash deploy.sh
+sudo bash install.sh
+```
+
+## Instalação limpa (apaga banco e volumes)
+
+```bash
+cd /opt/simply-imoveis/docker
+sudo bash install-clean.sh
+# ou: sudo bash install.sh --clean
 ```
 
 O script faz **tudo automaticamente**:

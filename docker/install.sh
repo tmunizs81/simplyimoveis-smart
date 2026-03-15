@@ -18,6 +18,16 @@ echo -e "${NC}"
 
 [ "$EUID" -ne 0 ] && echo -e "${RED}❌ Execute com sudo${NC}" && exit 1
 
+FORCE_CLEAN=false
+for arg in "$@"; do
+  if [ "$arg" = "--clean" ]; then
+    FORCE_CLEAN=true
+  fi
+done
+
+ADMIN_LOGIN_EMAIL=""
+ADMIN_LOGIN_PASSWORD=""
+
 # ── 1. Dependências ──────────────────────────────────────────
 echo -e "${BLUE}📦 Dependências do sistema...${NC}"
 apt-get update -qq >/dev/null 2>&1
@@ -150,6 +160,28 @@ prompt_config "GROQ_API_KEY"     "Chave API do Groq (chat IA Luma)" "" "true"
 prompt_config "TELEGRAM_BOT_TOKEN" "Telegram Bot Token (notificações, ENTER p/ pular)" ""
 prompt_config "TELEGRAM_CHAT_ID"   "Telegram Chat ID" ""
 
+default_admin_email="$(read_env "SMTP_ADMIN_EMAIL")"
+default_admin_email="${default_admin_email:-admin@simplyimoveis.com.br}"
+
+echo ""
+read -p "🧑‍💼 E-mail do usuário admin inicial [${default_admin_email}]: " ADMIN_LOGIN_EMAIL
+ADMIN_LOGIN_EMAIL="${ADMIN_LOGIN_EMAIL:-$default_admin_email}"
+
+while [[ ! "$ADMIN_LOGIN_EMAIL" =~ ^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$ ]]; do
+  echo -e "${YELLOW}⚠️  E-mail inválido. Tente novamente.${NC}"
+  read -p "🧑‍💼 E-mail do usuário admin inicial: " ADMIN_LOGIN_EMAIL
+done
+
+echo ""
+while true; do
+  read -s -p "🔐 Senha do usuário admin inicial (mínimo 8 caracteres): " ADMIN_LOGIN_PASSWORD
+  echo ""
+  if [ ${#ADMIN_LOGIN_PASSWORD} -ge 8 ]; then
+    break
+  fi
+  echo -e "${YELLOW}⚠️  Senha muito curta.${NC}"
+done
+
 # ── 7. Kong config ──────────────────────────────────────────
 echo -e "${BLUE}🔧 Renderizando Kong config...${NC}"
 bash render-kong-config.sh
@@ -181,10 +213,15 @@ echo ""
 EXISTING=$(docker compose ps -q 2>/dev/null | wc -l)
 if [ "$EXISTING" -gt 0 ]; then
   echo -e "${YELLOW}⚠️  Instalação anterior detectada.${NC}"
-  read -p "   Limpar tudo e reinstalar? (S/n): " CLEAN
-  if [[ ! "$CLEAN" =~ ^[nN]$ ]]; then
-    echo -e "${BLUE}🗑️  Removendo containers e volumes...${NC}"
+  if [ "$FORCE_CLEAN" = "true" ]; then
+    echo -e "${BLUE}🧹 Modo --clean ativado: removendo containers e volumes...${NC}"
     docker compose down -v --remove-orphans 2>/dev/null || true
+  else
+    read -p "   Limpar tudo e reinstalar? (S/n): " CLEAN
+    if [[ ! "$CLEAN" =~ ^[nN]$ ]]; then
+      echo -e "${BLUE}🗑️  Removendo containers e volumes...${NC}"
+      docker compose down -v --remove-orphans 2>/dev/null || true
+    fi
   fi
 fi
 
@@ -262,7 +299,7 @@ fi
 
 # ── 12. Criar admin ─────────────────────────────────────────
 echo -e "${BLUE}👤 Criando admin...${NC}"
-bash create-admin.sh "tmunizs89@proton.me" "10203040"
+bash create-admin.sh "$ADMIN_LOGIN_EMAIL" "$ADMIN_LOGIN_PASSWORD"
 
 # ── 13. SSL ──────────────────────────────────────────────────
 SITE_DOMAIN=$(read_env "SITE_DOMAIN")
@@ -326,7 +363,7 @@ echo -e "${GREEN}║  Frontend: http://localhost:${FRONTEND_PORT}               
 echo -e "${GREEN}║  API:      http://localhost:${KONG_PORT}                     ║${NC}"
 echo -e "${GREEN}║  Admin:    https://${SITE_DOMAIN}/admin              ║${NC}"
 echo -e "${GREEN}╠══════════════════════════════════════════════════════╣${NC}"
-echo -e "${GREEN}║  Login:    tmunizs89@proton.me / 10203040           ║${NC}"
+echo -e "${GREEN}║  Login:    ${ADMIN_LOGIN_EMAIL} / ${ADMIN_LOGIN_PASSWORD}           ║${NC}"
 echo -e "${GREEN}╚══════════════════════════════════════════════════════╝${NC}"
 echo ""
 echo -e "${YELLOW}⚠️  Altere a senha do admin no primeiro acesso!${NC}"

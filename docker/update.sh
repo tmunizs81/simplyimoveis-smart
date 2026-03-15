@@ -29,6 +29,7 @@ git reset --hard origin/main 2>/dev/null || git reset --hard origin/master
 # Atualizar edge functions
 echo -e "${BLUE}📦 Atualizando Edge Functions...${NC}"
 cp supabase/functions/chat/index.ts docker/volumes/functions/chat/index.ts
+cp supabase/functions/notify-telegram/index.ts docker/volumes/functions/notify-telegram/index.ts
 cp supabase/functions/create-admin-user/index.ts docker/volumes/functions/create-admin-user/index.ts
 
 # Rebuild e restart
@@ -36,8 +37,15 @@ cd docker
 echo -e "${BLUE}🔨 Reconstruindo frontend...${NC}"
 docker compose build --no-cache frontend
 
-echo -e "${BLUE}🔄 Reiniciando serviços...${NC}"
-docker compose up -d
+echo -e "${BLUE}🔧 Renderizando configuração do gateway...${NC}"
+bash render-kong-config.sh
+
+echo -e "${BLUE}🔄 Reiniciando frontend/functions...${NC}"
+docker compose up -d frontend
+docker compose up -d --force-recreate functions
+
+echo -e "${BLUE}🔐 Reaplicando buckets e políticas de storage...${NC}"
+bash ensure-storage-buckets.sh || echo -e "${YELLOW}⚠️  Não foi possível reaplicar políticas agora${NC}"
 
 echo ""
 echo -e "${GREEN}✅ Atualização concluída!${NC}"

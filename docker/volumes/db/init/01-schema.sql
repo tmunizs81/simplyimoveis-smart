@@ -93,6 +93,7 @@ CREATE TABLE public.property_media (
 ALTER TABLE public.property_media ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Anyone can view property media" ON public.property_media FOR SELECT USING (true);
 CREATE POLICY "Users can insert media for own properties" ON public.property_media FOR INSERT TO authenticated WITH CHECK (EXISTS (SELECT 1 FROM properties WHERE properties.id = property_media.property_id AND properties.user_id = auth.uid()));
+CREATE POLICY "Users can update media for own properties" ON public.property_media FOR UPDATE TO authenticated USING (EXISTS (SELECT 1 FROM properties WHERE properties.id = property_media.property_id AND properties.user_id = auth.uid()));
 CREATE POLICY "Users can delete media for own properties" ON public.property_media FOR DELETE TO authenticated USING (EXISTS (SELECT 1 FROM properties WHERE properties.id = property_media.property_id AND properties.user_id = auth.uid()));
 
 -- ============================================================
@@ -126,7 +127,6 @@ CREATE TABLE public.user_roles (
 );
 
 ALTER TABLE public.user_roles ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Admins can view roles" ON public.user_roles FOR SELECT TO authenticated USING (true);
 
 -- ============================================================
 -- has_role function
@@ -139,9 +139,32 @@ AS $$
 $$;
 
 -- Admin RLS policies using has_role
-CREATE POLICY "Admins can view contacts" ON public.contact_submissions FOR SELECT TO authenticated USING (has_role(auth.uid(), 'admin'));
-CREATE POLICY "Admins can update contacts" ON public.contact_submissions FOR UPDATE TO authenticated USING (has_role(auth.uid(), 'admin'));
-CREATE POLICY "Admins can delete contacts" ON public.contact_submissions FOR DELETE TO authenticated USING (has_role(auth.uid(), 'admin'));
+CREATE POLICY "Admins can manage all properties" ON public.properties FOR ALL TO authenticated
+  USING (has_role(auth.uid(), 'admin'::app_role))
+  WITH CHECK (has_role(auth.uid(), 'admin'::app_role));
+
+CREATE POLICY "Admins can insert property media" ON public.property_media FOR INSERT TO authenticated
+  WITH CHECK (has_role(auth.uid(), 'admin'::app_role));
+CREATE POLICY "Admins can update property media" ON public.property_media FOR UPDATE TO authenticated
+  USING (has_role(auth.uid(), 'admin'::app_role))
+  WITH CHECK (has_role(auth.uid(), 'admin'::app_role));
+CREATE POLICY "Admins can delete property media" ON public.property_media FOR DELETE TO authenticated
+  USING (has_role(auth.uid(), 'admin'::app_role));
+
+
+CREATE POLICY "Admins can view roles" ON public.user_roles FOR SELECT TO authenticated
+  USING (has_role(auth.uid(), 'admin'::app_role));
+CREATE POLICY "Admins can insert roles" ON public.user_roles FOR INSERT TO authenticated
+  WITH CHECK (has_role(auth.uid(), 'admin'::app_role));
+CREATE POLICY "Admins can update roles" ON public.user_roles FOR UPDATE TO authenticated
+  USING (has_role(auth.uid(), 'admin'::app_role))
+  WITH CHECK (has_role(auth.uid(), 'admin'::app_role));
+CREATE POLICY "Admins can delete roles" ON public.user_roles FOR DELETE TO authenticated
+  USING (has_role(auth.uid(), 'admin'::app_role));
+
+CREATE POLICY "Admins can view contacts" ON public.contact_submissions FOR SELECT TO authenticated USING (has_role(auth.uid(), 'admin'::app_role));
+CREATE POLICY "Admins can update contacts" ON public.contact_submissions FOR UPDATE TO authenticated USING (has_role(auth.uid(), 'admin'::app_role));
+CREATE POLICY "Admins can delete contacts" ON public.contact_submissions FOR DELETE TO authenticated USING (has_role(auth.uid(), 'admin'::app_role));
 
 -- ============================================================
 -- Leads
@@ -388,6 +411,10 @@ CREATE TABLE public.property_code_sequences (
   prefix text PRIMARY KEY,
   last_number integer NOT NULL DEFAULT 0
 );
+ALTER TABLE public.property_code_sequences ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Admins can manage property code sequences" ON public.property_code_sequences FOR ALL TO authenticated
+  USING (has_role(auth.uid(), 'admin'::app_role))
+  WITH CHECK (has_role(auth.uid(), 'admin'::app_role));
 INSERT INTO public.property_code_sequences (prefix) VALUES ('A'), ('V');
 
 -- ============================================================
