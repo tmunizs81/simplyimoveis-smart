@@ -127,7 +127,6 @@ CREATE TABLE public.user_roles (
 );
 
 ALTER TABLE public.user_roles ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Admins can view roles" ON public.user_roles FOR SELECT TO authenticated USING (true);
 
 -- ============================================================
 -- has_role function
