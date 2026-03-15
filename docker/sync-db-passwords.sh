@@ -114,12 +114,18 @@ GRANT service_role TO authenticator;
 
 DO $$
 BEGIN
+  EXECUTE format('ALTER DATABASE %I OWNER TO supabase_admin', current_database());
   EXECUTE format('GRANT CONNECT, TEMP ON DATABASE %I TO anon, authenticated, service_role, authenticator, supabase_auth_admin, supabase_storage_admin', current_database());
   EXECUTE format('GRANT CREATE ON DATABASE %I TO supabase_auth_admin, supabase_storage_admin', current_database());
+  EXECUTE format('ALTER ROLE supabase_auth_admin IN DATABASE %I SET search_path = auth, public', current_database());
+  EXECUTE format('ALTER ROLE supabase_storage_admin IN DATABASE %I SET search_path = storage, public', current_database());
+  EXECUTE format('ALTER ROLE authenticator IN DATABASE %I SET search_path = public, auth, storage', current_database());
 END $$;
 
 CREATE SCHEMA IF NOT EXISTS auth AUTHORIZATION supabase_auth_admin;
 ALTER SCHEMA auth OWNER TO supabase_auth_admin;
+CREATE SCHEMA IF NOT EXISTS storage AUTHORIZATION supabase_storage_admin;
+ALTER SCHEMA storage OWNER TO supabase_storage_admin;
 
 CREATE OR REPLACE FUNCTION auth.uid()
 RETURNS uuid
@@ -156,6 +162,9 @@ GRANT EXECUTE ON FUNCTION auth.email() TO anon, authenticated, service_role, aut
 ALTER DEFAULT PRIVILEGES FOR ROLE supabase_auth_admin IN SCHEMA auth GRANT ALL ON TABLES TO supabase_auth_admin;
 ALTER DEFAULT PRIVILEGES FOR ROLE supabase_auth_admin IN SCHEMA auth GRANT ALL ON SEQUENCES TO supabase_auth_admin;
 ALTER DEFAULT PRIVILEGES FOR ROLE supabase_auth_admin IN SCHEMA auth GRANT ALL ON ROUTINES TO supabase_auth_admin;
+
+GRANT USAGE, CREATE ON SCHEMA storage TO supabase_storage_admin;
+GRANT USAGE ON SCHEMA storage TO authenticator, service_role;
 
 GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role, authenticator;
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO anon, authenticated;
