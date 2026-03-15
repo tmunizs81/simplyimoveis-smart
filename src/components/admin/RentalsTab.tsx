@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { adminInsert, adminUpdate, adminDelete } from "@/lib/adminCrud";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { Plus, Search, Home, Calendar, DollarSign, Edit, Trash2, X, Save, Upload, FileText, Eye, Download } from "lucide-react";
