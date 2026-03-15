@@ -56,14 +56,23 @@ DO $$
 DECLARE
   r RECORD;
 BEGIN
-  -- Se auth.users não existe, recria schema para GoTrue migrar do zero
-  IF to_regclass('auth.users') IS NULL THEN
-    IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'auth') THEN
-      EXECUTE 'DROP SCHEMA auth CASCADE';
-    END IF;
+  -- Garante schema auth sem destruir objetos (evita inconsistência de migrações)
+  IF NOT EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'auth') THEN
     EXECUTE 'CREATE SCHEMA auth AUTHORIZATION supabase_auth_admin';
-    RAISE NOTICE 'Schema auth recriado do zero (GoTrue irá migrar ao subir)';
-    RETURN;
+  END IF;
+
+  -- Se auth.users estiver ausente, força reexecução de migrações do GoTrue
+  IF to_regclass('auth.users') IS NULL THEN
+    FOR r IN
+      SELECT schemaname, tablename
+      FROM pg_tables
+      WHERE schemaname IN ('auth', 'public')
+        AND tablename IN ('schema_migrations', 'gorp_migrations')
+    LOOP
+      EXECUTE format('TRUNCATE TABLE %I.%I', r.schemaname, r.tablename);
+    END LOOP;
+
+    RAISE NOTICE 'auth.users ausente: migrações do GoTrue serão reexecutadas no próximo start do auth.';
   END IF;
 
   -- Schema ownership
