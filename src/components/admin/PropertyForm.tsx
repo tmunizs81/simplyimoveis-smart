@@ -82,7 +82,7 @@ const PropertyForm = ({ editingProperty, userId, onSaved, onCancel }: PropertyFo
       const { error } = await supabase.storage.from("property-media").upload(path, file);
       if (error) { toast.error(`Erro ao enviar ${file.name}`); continue; }
       const fileType = file.type.startsWith("video") ? "video" : "image";
-      await supabase.from("property_media").insert({
+      await adminInsert("property_media", {
         property_id: propertyId, file_path: path, file_type: fileType,
         sort_order: existingMedia.length + i,
       });
