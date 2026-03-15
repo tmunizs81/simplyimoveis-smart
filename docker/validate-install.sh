@@ -1,7 +1,7 @@
 #!/bin/bash
 # ============================================================
 # Valida stack Docker — retorna 0 se tudo OK, 1 se problemas
-# Versão: 2026-03-15-v9
+# Versão: 2026-03-15-v10
 # ============================================================
 
 set -euo pipefail
@@ -18,6 +18,7 @@ ANON_KEY=$(read_env "ANON_KEY")
 SERVICE_ROLE_KEY=$(read_env "SERVICE_ROLE_KEY")
 POSTGRES_DB=$(read_env "POSTGRES_DB"); POSTGRES_DB="${POSTGRES_DB:-simply_db}"
 POSTGRES_PASSWORD=$(read_env "POSTGRES_PASSWORD")
+DB_ADMIN_USER=$(read_env "POSTGRES_USER"); DB_ADMIN_USER="${DB_ADMIN_USER:-supabase_admin}"
 
 [ -z "$ANON_KEY" ] || [ -z "$SERVICE_ROLE_KEY" ] && echo "❌ Chaves JWT não definidas" && exit 1
 
@@ -25,8 +26,10 @@ ERRORS=0
 
 check_container() {
   local c="$1"
-  local st=$(docker inspect -f '{{.State.Status}}' "$c" 2>/dev/null || echo "missing")
-  local rs=$(docker inspect -f '{{.State.Restarting}}' "$c" 2>/dev/null || echo "false")
+  local st
+  local rs
+  st=$(docker inspect -f '{{.State.Status}}' "$c" 2>/dev/null || echo "missing")
+  rs=$(docker inspect -f '{{.State.Restarting}}' "$c" 2>/dev/null || echo "false")
   if [ "$st" != "running" ] || [ "$rs" = "true" ]; then
     echo "❌ $c ($st, restarting=$rs)"; ERRORS=$((ERRORS+1)); return 1
   fi
@@ -40,7 +43,7 @@ done
 
 echo "── Schema auth ──"
 AUTH_OK=$(docker compose exec -T -e PGPASSWORD="$POSTGRES_PASSWORD" db \
-  psql -tA -w -U supabase_admin -d "$POSTGRES_DB" \
+  psql -tA -w -U "$DB_ADMIN_USER" -d "$POSTGRES_DB" \
   -c "SELECT to_regclass('auth.users') IS NOT NULL;" 2>/dev/null | tr -d '[:space:]')
 if [ "$AUTH_OK" != "t" ]; then
   echo "❌ auth.users não existe"; ERRORS=$((ERRORS+1))
@@ -76,5 +79,10 @@ else
 fi
 
 echo ""
-[ "$ERRORS" -gt 0 ] && echo "❌ $ERRORS problema(s)" && exit 1
+if [ "$ERRORS" -gt 0 ]; then
+  echo "❌ $ERRORS problema(s)"
+  echo "   Debug rápido: docker compose logs --tail=80 db auth rest storage"
+  exit 1
+fi
+
 echo "🎉 Tudo OK!"
