@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { adminInsert, adminDelete } from "@/lib/adminCrud";
+import { adminInsert, adminDelete, adminSelect } from "@/lib/adminCrud";
 import { toast } from "sonner";
 import { Upload, Trash2, FileText, Download, X, Eye } from "lucide-react";
 
