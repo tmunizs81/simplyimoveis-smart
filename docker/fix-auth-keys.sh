@@ -91,7 +91,7 @@ fi
 
 # Testar acesso admin API
 echo "🧪 Testando SERVICE_ROLE_KEY..."
-TEST_HTTP=$(curl -sS -o /tmp/fix-auth-test.json -w "%{http_code}" \
+TEST_HTTP=$(curl -sS -m 10 -o /tmp/fix-auth-test.json -w "%{http_code}" \
   -H "apikey: ${NEW_SRK}" \
   -H "Authorization: Bearer ${NEW_SRK}" \
   "http://127.0.0.1:${KONG_PORT}/auth/v1/admin/users" 2>/dev/null || echo "000")
