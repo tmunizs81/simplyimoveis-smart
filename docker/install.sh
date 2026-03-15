@@ -1,7 +1,7 @@
 #!/bin/bash
 # ============================================================
 # Simply Imóveis - Instalador Completo Docker
-# Versão: 2026-03-15-v9-simplified
+# Versão: 2026-03-15-v10-definitive
 # Uso: sudo bash install.sh
 # ============================================================
 
@@ -12,7 +12,7 @@ BLUE='\033[0;34m'; CYAN='\033[0;36m'; NC='\033[0m'
 
 echo -e "${BLUE}"
 echo "╔══════════════════════════════════════════════════════╗"
-echo "║     Simply Imóveis - Instalador Docker v9           ║"
+echo "║     Simply Imóveis - Instalador Docker v10          ║"
 echo "╚══════════════════════════════════════════════════════╝"
 echo -e "${NC}"
 
@@ -40,7 +40,7 @@ echo -e "${BLUE}📋 Copiando projeto...${NC}"
 rsync -av --delete --exclude='node_modules' --exclude='.git' --exclude='docker/.env' "$PROJECT_DIR/" "$INSTALL_DIR/"
 cd "$INSTALL_DIR/docker"
 chmod +x *.sh
-chmod +x volumes/db/init/00-passwords.sh 2>/dev/null || true
+chmod +x volumes/db/init/*.sh 2>/dev/null || true
 
 # ── 3. Helpers ───────────────────────────────────────────────
 read_env() { grep -E "^${1}=" .env 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'"; }
@@ -82,7 +82,6 @@ fi
 # ── 5. Auto-gerar senhas e chaves ────────────────────────────
 echo -e "${BLUE}🔑 Verificando/gerando credenciais...${NC}"
 
-# JWT_SECRET
 CURRENT_JWT=$(read_env "JWT_SECRET")
 if [ -z "$CURRENT_JWT" ] || [ "$CURRENT_JWT" = "super-secret-jwt-token-with-at-least-32-characters-long" ]; then
   NEW_JWT=$(openssl rand -base64 32)
@@ -90,7 +89,6 @@ if [ -z "$CURRENT_JWT" ] || [ "$CURRENT_JWT" = "super-secret-jwt-token-with-at-l
   echo -e "   ${GREEN}✅ JWT_SECRET gerado${NC}"
 fi
 
-# POSTGRES_PASSWORD
 CURRENT_PG=$(read_env "POSTGRES_PASSWORD")
 if [ -z "$CURRENT_PG" ] || [ "$CURRENT_PG" = "SuaSenhaForteAqui123!" ]; then
   NEW_PG=$(openssl rand -base64 24 | tr -d '=/+')
@@ -98,7 +96,6 @@ if [ -z "$CURRENT_PG" ] || [ "$CURRENT_PG" = "SuaSenhaForteAqui123!" ]; then
   echo -e "   ${GREEN}✅ POSTGRES_PASSWORD gerado${NC}"
 fi
 
-# ANON_KEY e SERVICE_ROLE_KEY (inline, sem script externo)
 CURRENT_ANON=$(read_env "ANON_KEY")
 if [ -z "$CURRENT_ANON" ] || [ "$CURRENT_ANON" = "CHANGE_ME" ]; then
   echo -e "   ${BLUE}🔑 Gerando ANON_KEY e SERVICE_ROLE_KEY...${NC}"
@@ -185,32 +182,47 @@ if [ "$EXISTING" -gt 0 ]; then
   fi
 fi
 
-# ── 10. Subir TODA a stack de uma vez ─────────────────────────
-echo -e "${BLUE}🚀 Subindo stack completa...${NC}"
-docker compose up -d --build --force-recreate --remove-orphans
+# ══════════════════════════════════════════════════════════════
+# FASE 1: Subir APENAS o banco de dados
+# ══════════════════════════════════════════════════════════════
+echo ""
+echo -e "${BLUE}🐘 FASE 1: Subindo apenas o banco de dados...${NC}"
+docker compose up -d --build db
 
-echo -e "${BLUE}⏳ Aguardando banco ficar pronto...${NC}"
-for i in {1..40}; do
-  if docker compose exec -T db pg_isready -U postgres -q 2>/dev/null; then
-    echo -e "   ${GREEN}✅ Banco pronto${NC}"
+echo -e "${BLUE}⏳ Aguardando banco aceitar conexões...${NC}"
+for i in {1..60}; do
+  if docker exec simply-db pg_isready -U postgres -q 2>/dev/null; then
+    echo -e "   ${GREEN}✅ Banco aceitando conexões (tentativa $i)${NC}"
     break
   fi
-  [ "$i" = "40" ] && echo -e "${RED}❌ Banco não respondeu${NC}" && exit 1
+  [ "$i" = "60" ] && echo -e "${RED}❌ Banco não respondeu em 120s${NC}" && docker logs --tail=30 simply-db && exit 1
   sleep 2
 done
 
-echo -e "${BLUE}🔧 Sincronizando senhas dos roles internos...${NC}"
+# Aguardar init scripts completarem (roles são criados pela imagem supabase/postgres)
+echo -e "${BLUE}⏳ Aguardando init scripts e roles internos (15s)...${NC}"
+sleep 15
+
+# ══════════════════════════════════════════════════════════════
+# FASE 2: Sincronizar senhas dos roles
+# ══════════════════════════════════════════════════════════════
+echo -e "${BLUE}🔐 FASE 2: Sincronizando senhas dos roles internos...${NC}"
 if ! bash sync-db-passwords.sh; then
-  echo -e "${RED}❌ Falha ao sincronizar credenciais do banco${NC}"
-  echo "   docker compose logs --tail=40 db"
+  echo -e "${RED}❌ Falha ao sincronizar credenciais${NC}"
+  echo -e "${YELLOW}   Logs do banco:${NC}"
+  docker logs --tail=40 simply-db
   exit 1
 fi
 
-echo -e "${BLUE}🔄 Reiniciando auth/rest/storage após sincronização...${NC}"
-docker compose restart auth rest storage >/dev/null 2>&1 || true
+# ══════════════════════════════════════════════════════════════
+# FASE 3: Subir todos os serviços restantes
+# ══════════════════════════════════════════════════════════════
+echo ""
+echo -e "${BLUE}🚀 FASE 3: Subindo serviços restantes...${NC}"
+docker compose up -d --build --remove-orphans
 
-echo -e "${BLUE}⏳ Aguardando serviços estabilizarem (20s)...${NC}"
-sleep 20
+echo -e "${BLUE}⏳ Aguardando serviços estabilizarem (25s)...${NC}"
+sleep 25
 
 # ── 11. Validação ────────────────────────────────────────────
 echo -e "${BLUE}🧪 Validando...${NC}"
