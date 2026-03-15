@@ -2,7 +2,7 @@
 # ============================================================
 # Sincroniza (e repara) roles/senhas internos do banco
 # Uso: bash sync-db-passwords.sh
-# Versão: 2026-03-15-v12
+# Versão: 2026-03-15-v15
 # ============================================================
 
 set -euo pipefail
@@ -62,125 +62,140 @@ if [ -z "$DB_ADMIN_USER" ]; then
   exit 1
 fi
 
-echo "   Aplicando reparo de roles/senhas..."
+# Helper: run single SQL command
+run_sql() {
+  docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" "$DB_CONTAINER" \
+    psql -w -U "$DB_ADMIN_USER" -d "$POSTGRES_DB" -c "$1" 2>&1 || true
+}
+
+# Helper: run SQL file from stdin
+run_sql_file() {
+  docker exec -i -e PGPASSWORD="$POSTGRES_PASSWORD" "$DB_CONTAINER" \
+    psql -w -U "$DB_ADMIN_USER" -d "$POSTGRES_DB" 2>&1 || true
+}
+
 ESCAPED_PASS=$(printf '%s' "$POSTGRES_PASSWORD" | sed "s/'/''/g")
 
-docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" "$DB_CONTAINER" \
-  psql -v ON_ERROR_STOP=1 -w -U "$DB_ADMIN_USER" -d "$POSTGRES_DB" <<EOSQL
-DO \$\$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'postgres') THEN
-    CREATE ROLE postgres WITH LOGIN SUPERUSER CREATEDB CREATEROLE REPLICATION BYPASSRLS;
-  END IF;
+echo "   Criando roles..."
+for role_sql in \
+  "DO \$b\$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='postgres') THEN CREATE ROLE postgres WITH LOGIN SUPERUSER CREATEDB CREATEROLE REPLICATION BYPASSRLS; END IF; END \$b\$;" \
+  "DO \$b\$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='supabase_admin') THEN CREATE ROLE supabase_admin WITH LOGIN SUPERUSER CREATEDB CREATEROLE REPLICATION BYPASSRLS; END IF; END \$b\$;" \
+  "DO \$b\$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='supabase_auth_admin') THEN CREATE ROLE supabase_auth_admin WITH LOGIN NOINHERIT CREATEROLE CREATEDB; END IF; END \$b\$;" \
+  "DO \$b\$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='supabase_storage_admin') THEN CREATE ROLE supabase_storage_admin WITH LOGIN NOINHERIT CREATEROLE CREATEDB; END IF; END \$b\$;" \
+  "DO \$b\$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='authenticator') THEN CREATE ROLE authenticator WITH LOGIN NOINHERIT; END IF; END \$b\$;" \
+  "DO \$b\$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='anon') THEN CREATE ROLE anon NOLOGIN NOINHERIT; END IF; END \$b\$;" \
+  "DO \$b\$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='authenticated') THEN CREATE ROLE authenticated NOLOGIN NOINHERIT; END IF; END \$b\$;" \
+  "DO \$b\$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='service_role') THEN CREATE ROLE service_role NOLOGIN NOINHERIT BYPASSRLS; END IF; END \$b\$;" \
+; do
+  run_sql "$role_sql"
+done
 
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_admin') THEN
-    CREATE ROLE supabase_admin WITH LOGIN SUPERUSER CREATEDB CREATEROLE REPLICATION BYPASSRLS;
-  END IF;
+echo "   Definindo senhas..."
+run_sql "ALTER ROLE postgres WITH PASSWORD '${ESCAPED_PASS}';"
+run_sql "ALTER ROLE supabase_admin WITH PASSWORD '${ESCAPED_PASS}';"
+run_sql "ALTER ROLE supabase_auth_admin WITH PASSWORD '${ESCAPED_PASS}';"
+run_sql "ALTER ROLE supabase_storage_admin WITH PASSWORD '${ESCAPED_PASS}';"
+run_sql "ALTER ROLE authenticator WITH PASSWORD '${ESCAPED_PASS}';"
 
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_auth_admin') THEN
-    CREATE ROLE supabase_auth_admin WITH LOGIN NOINHERIT CREATEROLE CREATEDB;
-  END IF;
+echo "   Configurando grants de roles..."
+run_sql "GRANT anon TO authenticator;"
+run_sql "GRANT authenticated TO authenticator;"
+run_sql "GRANT service_role TO authenticator;"
 
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_storage_admin') THEN
-    CREATE ROLE supabase_storage_admin WITH LOGIN NOINHERIT CREATEROLE CREATEDB;
-  END IF;
+echo "   Configurando ownership e permissões do database..."
+run_sql "ALTER DATABASE \"${POSTGRES_DB}\" OWNER TO supabase_admin;"
+run_sql "GRANT CONNECT, TEMP ON DATABASE \"${POSTGRES_DB}\" TO anon, authenticated, service_role, authenticator, supabase_auth_admin, supabase_storage_admin;"
+run_sql "GRANT CREATE ON DATABASE \"${POSTGRES_DB}\" TO supabase_auth_admin, supabase_storage_admin;"
 
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticator') THEN
-    CREATE ROLE authenticator WITH LOGIN NOINHERIT;
-  END IF;
+echo "   Criando schemas auth e storage..."
+run_sql "CREATE SCHEMA IF NOT EXISTS auth AUTHORIZATION supabase_auth_admin;"
+run_sql "ALTER SCHEMA auth OWNER TO supabase_auth_admin;"
+run_sql "CREATE SCHEMA IF NOT EXISTS storage AUTHORIZATION supabase_storage_admin;"
+run_sql "ALTER SCHEMA storage OWNER TO supabase_storage_admin;"
 
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
-    CREATE ROLE anon NOLOGIN NOINHERIT;
-  END IF;
+echo "   Configurando search_path dos roles..."
+run_sql "ALTER ROLE supabase_auth_admin SET search_path = auth, public;"
+run_sql "ALTER ROLE supabase_storage_admin SET search_path = storage, public;"
+run_sql "ALTER ROLE authenticator SET search_path = public, auth, storage;"
+run_sql "ALTER ROLE supabase_auth_admin IN DATABASE \"${POSTGRES_DB}\" SET search_path = auth, public;"
+run_sql "ALTER ROLE supabase_storage_admin IN DATABASE \"${POSTGRES_DB}\" SET search_path = storage, public;"
+run_sql "ALTER ROLE authenticator IN DATABASE \"${POSTGRES_DB}\" SET search_path = public, auth, storage;"
 
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
-    CREATE ROLE authenticated NOLOGIN NOINHERIT;
-  END IF;
-
-  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
-    CREATE ROLE service_role NOLOGIN NOINHERIT BYPASSRLS;
-  END IF;
-END \$\$;
-
-ALTER ROLE postgres WITH PASSWORD '${ESCAPED_PASS}';
-ALTER ROLE supabase_admin WITH PASSWORD '${ESCAPED_PASS}';
-ALTER ROLE supabase_auth_admin WITH PASSWORD '${ESCAPED_PASS}';
-ALTER ROLE supabase_storage_admin WITH PASSWORD '${ESCAPED_PASS}';
-ALTER ROLE authenticator WITH PASSWORD '${ESCAPED_PASS}';
-
-GRANT anon TO authenticator;
-GRANT authenticated TO authenticator;
-GRANT service_role TO authenticator;
-
-DO \$\$
-BEGIN
-  EXECUTE format('ALTER DATABASE %I OWNER TO supabase_admin', current_database());
-  EXECUTE format('GRANT CONNECT, TEMP ON DATABASE %I TO anon, authenticated, service_role, authenticator, supabase_auth_admin, supabase_storage_admin', current_database());
-  EXECUTE format('GRANT CREATE ON DATABASE %I TO supabase_auth_admin, supabase_storage_admin', current_database());
-END
-\$\$;
-
-ALTER ROLE supabase_auth_admin SET search_path = auth, public;
-ALTER ROLE supabase_storage_admin SET search_path = storage, public;
-ALTER ROLE authenticator SET search_path = public, auth, storage;
-
-DO \$\$
-BEGIN
-  EXECUTE format('ALTER ROLE supabase_auth_admin IN DATABASE %I SET search_path = auth, public', current_database());
-  EXECUTE format('ALTER ROLE supabase_storage_admin IN DATABASE %I SET search_path = storage, public', current_database());
-  EXECUTE format('ALTER ROLE authenticator IN DATABASE %I SET search_path = public, auth, storage', current_database());
-END
-\$\$;
-
-CREATE SCHEMA IF NOT EXISTS auth AUTHORIZATION supabase_auth_admin;
-ALTER SCHEMA auth OWNER TO supabase_auth_admin;
-CREATE SCHEMA IF NOT EXISTS storage AUTHORIZATION supabase_storage_admin;
-ALTER SCHEMA storage OWNER TO supabase_storage_admin;
-
+echo "   Criando funções auth..."
+# Use heredoc with quotes to prevent shell expansion
+docker exec -i -e PGPASSWORD="$POSTGRES_PASSWORD" "$DB_CONTAINER" \
+  psql -w -U "$DB_ADMIN_USER" -d "$POSTGRES_DB" <<'EOSQL'
 CREATE OR REPLACE FUNCTION auth.uid()
 RETURNS uuid
 LANGUAGE sql
 STABLE
-AS \$\$
+AS $$
   SELECT NULLIF(current_setting('request.jwt.claim.sub', true), '')::uuid;
-\$\$;
+$$;
 
 CREATE OR REPLACE FUNCTION auth.role()
 RETURNS text
 LANGUAGE sql
 STABLE
-AS \$\$
+AS $$
   SELECT NULLIF(current_setting('request.jwt.claim.role', true), '')::text;
-\$\$;
+$$;
 
 CREATE OR REPLACE FUNCTION auth.email()
 RETURNS text
 LANGUAGE sql
 STABLE
-AS \$\$
+AS $$
   SELECT NULLIF(current_setting('request.jwt.claim.email', true), '')::text;
-\$\$;
-
-GRANT USAGE ON SCHEMA auth TO supabase_auth_admin, authenticator, anon, authenticated, service_role;
-GRANT CREATE ON SCHEMA auth TO supabase_auth_admin;
-GRANT ALL ON ALL TABLES IN SCHEMA auth TO supabase_auth_admin;
-GRANT ALL ON ALL SEQUENCES IN SCHEMA auth TO supabase_auth_admin;
-GRANT ALL ON ALL ROUTINES IN SCHEMA auth TO supabase_auth_admin;
-GRANT EXECUTE ON FUNCTION auth.uid() TO anon, authenticated, service_role, authenticator;
-GRANT EXECUTE ON FUNCTION auth.role() TO anon, authenticated, service_role, authenticator;
-GRANT EXECUTE ON FUNCTION auth.email() TO anon, authenticated, service_role, authenticator;
-ALTER DEFAULT PRIVILEGES FOR ROLE supabase_auth_admin IN SCHEMA auth GRANT ALL ON TABLES TO supabase_auth_admin;
-ALTER DEFAULT PRIVILEGES FOR ROLE supabase_auth_admin IN SCHEMA auth GRANT ALL ON SEQUENCES TO supabase_auth_admin;
-ALTER DEFAULT PRIVILEGES FOR ROLE supabase_auth_admin IN SCHEMA auth GRANT ALL ON ROUTINES TO supabase_auth_admin;
-
-GRANT USAGE, CREATE ON SCHEMA storage TO supabase_storage_admin;
-GRANT USAGE ON SCHEMA storage TO authenticator, service_role;
-
-GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role, authenticator;
-GRANT SELECT ON ALL TABLES IN SCHEMA public TO anon, authenticated;
-GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role;
-GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO service_role;
-GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;
+$$;
 EOSQL
+
+echo "   Aplicando grants finais..."
+run_sql "GRANT USAGE ON SCHEMA auth TO supabase_auth_admin, authenticator, anon, authenticated, service_role;"
+run_sql "GRANT CREATE ON SCHEMA auth TO supabase_auth_admin;"
+run_sql "GRANT ALL ON ALL TABLES IN SCHEMA auth TO supabase_auth_admin;"
+run_sql "GRANT ALL ON ALL SEQUENCES IN SCHEMA auth TO supabase_auth_admin;"
+run_sql "GRANT ALL ON ALL ROUTINES IN SCHEMA auth TO supabase_auth_admin;"
+run_sql "GRANT EXECUTE ON FUNCTION auth.uid() TO anon, authenticated, service_role, authenticator;"
+run_sql "GRANT EXECUTE ON FUNCTION auth.role() TO anon, authenticated, service_role, authenticator;"
+run_sql "GRANT EXECUTE ON FUNCTION auth.email() TO anon, authenticated, service_role, authenticator;"
+run_sql "ALTER DEFAULT PRIVILEGES FOR ROLE supabase_auth_admin IN SCHEMA auth GRANT ALL ON TABLES TO supabase_auth_admin;"
+run_sql "ALTER DEFAULT PRIVILEGES FOR ROLE supabase_auth_admin IN SCHEMA auth GRANT ALL ON SEQUENCES TO supabase_auth_admin;"
+run_sql "ALTER DEFAULT PRIVILEGES FOR ROLE supabase_auth_admin IN SCHEMA auth GRANT ALL ON ROUTINES TO supabase_auth_admin;"
+
+run_sql "GRANT USAGE, CREATE ON SCHEMA storage TO supabase_storage_admin;"
+run_sql "GRANT ALL ON ALL TABLES IN SCHEMA storage TO supabase_storage_admin;"
+run_sql "GRANT ALL ON ALL SEQUENCES IN SCHEMA storage TO supabase_storage_admin;"
+run_sql "GRANT ALL ON ALL ROUTINES IN SCHEMA storage TO supabase_storage_admin;"
+run_sql "GRANT USAGE ON SCHEMA storage TO authenticator, service_role;"
+
+run_sql "GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role, authenticator;"
+run_sql "GRANT SELECT ON ALL TABLES IN SCHEMA public TO anon, authenticated;"
+run_sql "GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role;"
+run_sql "GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO service_role;"
+run_sql "GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;"
+
+# Verify auth schema exists
+echo "   Verificando schema auth..."
+AUTH_EXISTS=$(docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" "$DB_CONTAINER" \
+  psql -tA -w -U "$DB_ADMIN_USER" -d "$POSTGRES_DB" \
+  -c "SELECT schema_name FROM information_schema.schemata WHERE schema_name = 'auth';" 2>/dev/null || echo "")
+if [ "$AUTH_EXISTS" = "auth" ]; then
+  echo "   ✅ Schema auth existe"
+else
+  echo "   ❌ Schema auth NÃO existe - tentando criação forçada..."
+  run_sql "CREATE SCHEMA auth AUTHORIZATION supabase_auth_admin;"
+fi
+
+# Verify storage schema exists
+STORAGE_EXISTS=$(docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" "$DB_CONTAINER" \
+  psql -tA -w -U "$DB_ADMIN_USER" -d "$POSTGRES_DB" \
+  -c "SELECT schema_name FROM information_schema.schemata WHERE schema_name = 'storage';" 2>/dev/null || echo "")
+if [ "$STORAGE_EXISTS" = "storage" ]; then
+  echo "   ✅ Schema storage existe"
+else
+  echo "   ❌ Schema storage NÃO existe - tentando criação forçada..."
+  run_sql "CREATE SCHEMA storage AUTHORIZATION supabase_storage_admin;"
+fi
 
 echo "✅ Credenciais sincronizadas com sucesso!"
