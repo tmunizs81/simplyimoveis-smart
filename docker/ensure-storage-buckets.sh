@@ -31,6 +31,11 @@ BEGIN
     RETURN;
   END IF;
 
+  -- Ensure app_role enum exists (may not yet if recovery SQL hasn't run)
+  IF NOT EXISTS (SELECT 1 FROM pg_type t JOIN pg_namespace n ON t.typnamespace = n.oid WHERE t.typname = 'app_role' AND n.nspname = 'public') THEN
+    CREATE TYPE public.app_role AS ENUM ('admin', 'moderator', 'user');
+  END IF;
+
   INSERT INTO storage.buckets (id, name, public) VALUES
     ('property-media', 'property-media', true),
     ('contract-documents', 'contract-documents', false),
@@ -41,6 +46,7 @@ BEGIN
 
   ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
 
+  -- Drop all existing project policies first
   DROP POLICY IF EXISTS "Admins can upload contract-documents" ON storage.objects;
   DROP POLICY IF EXISTS "Admins can read contract-documents" ON storage.objects;
   DROP POLICY IF EXISTS "Admins can update contract-documents" ON storage.objects;
@@ -65,6 +71,9 @@ BEGIN
   DROP POLICY IF EXISTS "Admins can update property-media" ON storage.objects;
   DROP POLICY IF EXISTS "Admins can delete property-media" ON storage.objects;
   DROP POLICY IF EXISTS "Public can read property-media" ON storage.objects;
+
+  -- Use text cast to avoid dependency on public.app_role being visible in this context
+  -- has_role function already knows the type internally
 
   CREATE POLICY "Admins can upload contract-documents"
     ON storage.objects FOR INSERT TO authenticated
