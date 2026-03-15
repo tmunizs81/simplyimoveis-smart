@@ -25,6 +25,9 @@ for arg in "$@"; do
   fi
 done
 
+ADMIN_LOGIN_EMAIL=""
+ADMIN_LOGIN_PASSWORD=""
+
 # ── 1. Dependências ──────────────────────────────────────────
 echo -e "${BLUE}📦 Dependências do sistema...${NC}"
 apt-get update -qq >/dev/null 2>&1
