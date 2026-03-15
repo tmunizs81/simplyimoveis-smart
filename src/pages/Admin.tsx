@@ -20,11 +20,12 @@ import FinancialTab from "@/components/admin/FinancialTab";
 import ReportsTab from "@/components/admin/ReportsTab";
 import InspectionsTab from "@/components/admin/InspectionsTab";
 import BackupTab from "@/components/admin/BackupTab";
+import InsightsTab from "@/components/admin/InsightsTab";
 import type { Database } from "@/integrations/supabase/types";
 
 type Property = Database["public"]["Tables"]["properties"]["Row"];
 type MediaRow = Database["public"]["Tables"]["property_media"]["Row"];
-type AdminTab = "dashboard" | "properties" | "contacts" | "password" | "users" | "leads" | "sales" | "tenants" | "rentals" | "inspections" | "financial" | "reports" | "backup";
+type AdminTab = "dashboard" | "properties" | "contacts" | "password" | "users" | "leads" | "sales" | "tenants" | "rentals" | "inspections" | "financial" | "reports" | "backup" | "insights";
 
 const Admin = () => {
   const [user, setUser] = useState<any>(null);
@@ -187,6 +188,7 @@ const Admin = () => {
           {activeTab === "financial" && <FinancialTab />}
           {activeTab === "reports" && <ReportsTab />}
           {activeTab === "backup" && <BackupTab />}
+          {activeTab === "insights" && <InsightsTab />}
         </main>
       </div>
     </div>

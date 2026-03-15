@@ -1,7 +1,7 @@
-import { Building2, KeyRound, UserPlus, LogOut, LayoutDashboard, MessageSquare, Users, TrendingUp, Home, FileText, DollarSign, BarChart3, ChevronDown, ChevronRight, Handshake, ClipboardCheck, DatabaseBackup } from "lucide-react";
+import { Building2, KeyRound, UserPlus, LogOut, LayoutDashboard, MessageSquare, Users, TrendingUp, Home, FileText, DollarSign, BarChart3, ChevronDown, ChevronRight, Handshake, ClipboardCheck, DatabaseBackup, Brain } from "lucide-react";
 import { useState } from "react";
 
-type AdminTab = "dashboard" | "properties" | "contacts" | "password" | "users" | "leads" | "sales" | "tenants" | "rentals" | "inspections" | "financial" | "reports" | "backup";
+type AdminTab = "dashboard" | "properties" | "contacts" | "password" | "users" | "leads" | "sales" | "tenants" | "rentals" | "inspections" | "financial" | "reports" | "backup" | "insights";
 
 interface AdminSidebarProps {
   activeTab: AdminTab;
@@ -24,6 +24,7 @@ const realEstateTabs = [
   { id: "inspections" as AdminTab, label: "Vistorias", icon: ClipboardCheck, description: "Vistorias de imóveis" },
   { id: "financial" as AdminTab, label: "Financeiro", icon: DollarSign, description: "Transações e cobranças" },
   { id: "reports" as AdminTab, label: "Relatórios", icon: BarChart3, description: "Dashboards e análises" },
+  { id: "insights" as AdminTab, label: "Insights IA", icon: Brain, description: "Inteligência artificial" },
 ];
 
 const settingsTabs = [
