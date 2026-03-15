@@ -2,7 +2,7 @@
 # ============================================================
 # Sincroniza senhas dos roles internos do Supabase
 # Uso: bash sync-db-passwords.sh [--quiet]
-# Versão: 2026-03-15-v7
+# Versão: 2026-03-15-v8
 # ============================================================
 
 set -euo pipefail
@@ -24,20 +24,19 @@ POSTGRES_DB="${POSTGRES_DB:-simply_db}"
 log() { [ "$QUIET" = false ] && echo "$1"; }
 
 pg_exec() {
-  timeout 12s docker compose exec -T \
+  timeout 60s docker compose exec -T \
     -e PGPASSWORD="$POSTGRES_PASSWORD" \
     db psql -v ON_ERROR_STOP=1 -w -U postgres -d "$POSTGRES_DB" "$@"
 }
 
 pg_query_trim() {
-  timeout 12s docker compose exec -T \
+  timeout 15s docker compose exec -T \
     -e PGPASSWORD="$POSTGRES_PASSWORD" \
     db psql -tA -w -U postgres -d "$POSTGRES_DB" -c "$1" 2>/dev/null | tr -d '[:space:]'
 }
 
 log "🔧 Sincronizando credenciais..."
 
-# Espera banco aceitar conexões (max 60s)
 log "   Aguardando banco..."
 for i in {1..30}; do
   if timeout 8s docker compose exec -T -e PGPASSWORD="$POSTGRES_PASSWORD" db pg_isready -U postgres -q -t 2 >/dev/null 2>&1; then
@@ -47,7 +46,6 @@ for i in {1..30}; do
   sleep 2
 done
 
-# Espera roles internos existirem
 log "   Aguardando roles internos..."
 for i in {1..20}; do
   ROLE_OK=$(pg_query_trim "SELECT 1 FROM pg_roles WHERE rolname='supabase_auth_admin'" || true)
@@ -58,25 +56,26 @@ done
 
 log "   Aplicando SQL..."
 
+ESCAPED_PASS=$(printf '%s' "$POSTGRES_PASSWORD" | sed "s/'/''/g")
 TMP_SQL=$(mktemp /tmp/sync-db-XXXXXX.sql)
-cat > "$TMP_SQL" <<EOSQL
-ALTER ROLE supabase_admin WITH PASSWORD '${POSTGRES_PASSWORD}';
-ALTER ROLE supabase_auth_admin WITH PASSWORD '${POSTGRES_PASSWORD}';
-ALTER ROLE authenticator WITH PASSWORD '${POSTGRES_PASSWORD}';
-ALTER ROLE supabase_storage_admin WITH PASSWORD '${POSTGRES_PASSWORD}';
+cat > "$TMP_SQL" <<'EOSQL'
+ALTER ROLE supabase_admin WITH PASSWORD '__POSTGRES_PASSWORD__';
+ALTER ROLE supabase_auth_admin WITH PASSWORD '__POSTGRES_PASSWORD__';
+ALTER ROLE authenticator WITH PASSWORD '__POSTGRES_PASSWORD__';
+ALTER ROLE supabase_storage_admin WITH PASSWORD '__POSTGRES_PASSWORD__';
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
-DO \\$body\\$
+DO $body$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'auth') THEN
     CREATE SCHEMA auth AUTHORIZATION supabase_auth_admin;
   ELSE
     ALTER SCHEMA auth OWNER TO supabase_auth_admin;
   END IF;
-END \\$body\\$;
+END $body$;
 
-DO \\$body\\$
+DO $body$
 DECLARE r RECORD;
 BEGIN
   FOR r IN SELECT tablename FROM pg_tables WHERE schemaname = 'auth' LOOP
@@ -108,7 +107,7 @@ BEGIN
   LOOP
     EXECUTE format('ALTER TYPE auth.%I OWNER TO supabase_auth_admin', r.typname);
   END LOOP;
-END \\$body\\$;
+END $body$;
 
 GRANT USAGE ON SCHEMA auth TO supabase_auth_admin, authenticator, anon, authenticated, service_role;
 GRANT CREATE ON SCHEMA auth TO supabase_auth_admin;
@@ -118,6 +117,8 @@ GRANT ALL ON ALL ROUTINES IN SCHEMA auth TO supabase_auth_admin;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA auth TO authenticator;
 GRANT USAGE ON ALL SEQUENCES IN SCHEMA auth TO authenticator;
 EOSQL
+
+sed -i "s/__POSTGRES_PASSWORD__/${ESCAPED_PASS}/g" "$TMP_SQL"
 
 if [ "$QUIET" = true ]; then
   pg_exec -f "$TMP_SQL" >/dev/null
