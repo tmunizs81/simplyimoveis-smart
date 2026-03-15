@@ -346,13 +346,13 @@ sleep 25
 # ==============================================================
 # ETAPA 11 - Validacao
 # ==============================================================
-echo -e "\n${BLUE}Validando instalacao...${NC}"
+echo -e "\n${BLUE}Validando stack interno...${NC}"
 if ! bash validate-install.sh; then
   echo -e "${YELLOW}Reiniciando servicos e tentando novamente...${NC}"
   docker compose restart auth rest storage kong functions
   sleep 20
   if ! bash validate-install.sh; then
-    echo -e "${RED}Erro: Validacao falhou. Debug: docker compose logs --tail=50${NC}"
+    echo -e "${RED}Erro: Validacao do stack interno falhou. Debug: docker compose logs --tail=50${NC}"
     exit 1
   fi
 fi
@@ -388,21 +388,36 @@ fi
 # RESULTADO FINAL
 # ==============================================================
 echo ""
-echo -e "${GREEN}======================================================${NC}"
-echo -e "${GREEN}  Instalacao concluida com sucesso!${NC}"
-echo -e "${GREEN}======================================================${NC}"
-echo -e "${GREEN}  Frontend:  http://localhost:${FRONTEND_PORT}${NC}"
-echo -e "${GREEN}  API:       http://localhost:${KONG_PORT}${NC}"
-echo -e "${GREEN}  Admin:     http://localhost:${FRONTEND_PORT}/admin${NC}"
-echo -e "${GREEN}  Com SSL:   https://${SITE_DOMAIN}${NC}"
-echo -e "${GREEN}------------------------------------------------------${NC}"
-echo -e "${GREEN}  Login: ${ADMIN_EMAIL}${NC}"
-echo -e "${GREEN}------------------------------------------------------${NC}"
-echo -e "${GREEN}  Comandos:${NC}"
-echo -e "${GREEN}    bash status.sh          - status dos servicos${NC}"
-echo -e "${GREEN}    bash logs.sh            - ver logs${NC}"
-echo -e "${GREEN}    bash backup.sh          - backup do banco${NC}"
-echo -e "${GREEN}    bash validate-install.sh - validar saude${NC}"
-echo -e "${GREEN}======================================================${NC}"
-echo -e "\n${YELLOW}Altere a senha do admin no primeiro acesso!${NC}"
-echo -e "${YELLOW}Configure DNS antes de usar SSL.${NC}"
+echo -e "${GREEN}══════════════════════════════════════════════════${NC}"
+echo -e "${GREEN}  Stack interno instalado com sucesso!${NC}"
+echo -e "${GREEN}══════════════════════════════════════════════════${NC}"
+echo ""
+echo -e "${CYAN}  Endpoints INTERNOS (já funcionando):${NC}"
+echo -e "${GREEN}    Frontend:  http://127.0.0.1:${FRONTEND_PORT}${NC}"
+echo -e "${GREEN}    API:       http://127.0.0.1:${KONG_PORT}${NC}"
+echo -e "${GREEN}    Admin:     http://127.0.0.1:${FRONTEND_PORT}/admin${NC}"
+echo -e "${GREEN}    Banco:     127.0.0.1:5432${NC}"
+echo ""
+echo -e "${CYAN}  Login admin:${NC}"
+echo -e "${GREEN}    ${ADMIN_EMAIL}${NC}"
+echo ""
+echo -e "${YELLOW}══════════════════════════════════════════════════${NC}"
+echo -e "${YELLOW}  PUBLICAÇÃO EM DOMÍNIO (passo adicional):${NC}"
+echo -e "${YELLOW}══════════════════════════════════════════════════${NC}"
+echo -e "${YELLOW}  O stack está rodando em 127.0.0.1.${NC}"
+echo -e "${YELLOW}  Para expor via https://${SITE_DOMAIN}:${NC}"
+echo -e "${YELLOW}    1. Configure o nginx do host:${NC}"
+echo -e "${YELLOW}       sudo bash setup-ssl.sh${NC}"
+echo -e "${YELLOW}       (ou copie nginx-site.conf manualmente)${NC}"
+echo -e "${YELLOW}    2. Valide a exposição pública:${NC}"
+echo -e "${YELLOW}       bash validate-install.sh --public${NC}"
+echo -e "${YELLOW}══════════════════════════════════════════════════${NC}"
+echo ""
+echo -e "${GREEN}  Comandos úteis:${NC}"
+echo -e "${GREEN}    bash status.sh               - status dos containers${NC}"
+echo -e "${GREEN}    bash logs.sh                  - ver logs${NC}"
+echo -e "${GREEN}    bash backup.sh                - backup do banco${NC}"
+echo -e "${GREEN}    bash validate-install.sh        - validar stack interno${NC}"
+echo -e "${GREEN}    bash validate-install.sh --public - validar URL pública${NC}"
+echo ""
+echo -e "${YELLOW}Altere a senha do admin no primeiro acesso!${NC}"

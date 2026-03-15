@@ -1,12 +1,16 @@
 #!/bin/bash
 # ============================================================
-# Simply Imóveis - Validação estrutural pós-instalação
-# Uso: bash validate-install.sh
+# Simply Imóveis - Validação pós-instalação
+# Seções: Stack Interno | Endpoints Locais | Banco | Storage | Público (opcional)
+# Uso: bash validate-install.sh [--public]
 # Exit 0: OK | Exit 1: falhas críticas
 # ============================================================
 set -euo pipefail
 
-RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'; NC='\033[0m'
+RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'; CYAN='\033[0;36m'; NC='\033[0m'
+
+CHECK_PUBLIC=false
+for arg in "$@"; do [ "$arg" = "--public" ] && CHECK_PUBLIC=true; done
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ENV_FILE="$SCRIPT_DIR/.env"
@@ -18,8 +22,7 @@ STORAGE_SQL="$SCRIPT_DIR/sql/bootstrap-storage.sql"
 [ -f "$COMPOSE_FILE" ] || { echo -e "${RED}ERRO: docker-compose.yml ausente: $COMPOSE_FILE${NC}"; exit 1; }
 
 read_env() {
-  local key="$1"
-  grep -E "^${key}=" "$ENV_FILE" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'"
+  grep -E "^${1}=" "$ENV_FILE" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'"
 }
 
 compose() {
@@ -33,6 +36,7 @@ SERVICE_ROLE_KEY="$(read_env "SERVICE_ROLE_KEY")"
 POSTGRES_PASSWORD="$(read_env "POSTGRES_PASSWORD")"
 POSTGRES_DB="$(read_env "POSTGRES_DB")"; POSTGRES_DB="${POSTGRES_DB:-simply_db}"
 DB_USER="$(read_env "POSTGRES_USER")"; DB_USER="${DB_USER:-supabase_admin}"
+SITE_DOMAIN="$(read_env "SITE_DOMAIN")"
 
 [ -z "$ANON_KEY" ] || [ -z "$SERVICE_ROLE_KEY" ] && { echo -e "${RED}ERRO: Chaves JWT nao definidas no .env${NC}"; exit 1; }
 [ -z "$POSTGRES_PASSWORD" ] && { echo -e "${RED}ERRO: POSTGRES_PASSWORD ausente no .env${NC}"; exit 1; }
@@ -40,27 +44,18 @@ DB_USER="$(read_env "POSTGRES_USER")"; DB_USER="${DB_USER:-supabase_admin}"
 PASS=0; FAIL=0; WARN=0
 
 check() {
-  local desc="$1"
-  local result="$2"
+  local desc="$1" result="$2"
   if [ "$result" = "ok" ]; then
-    echo -e "   ${GREEN}OK: $desc${NC}"
-    PASS=$((PASS + 1))
+    echo -e "   ${GREEN}✓ $desc${NC}"; PASS=$((PASS + 1))
   elif [ "$result" = "warn" ]; then
-    echo -e "   ${YELLOW}WARN: $desc${NC}"
-    WARN=$((WARN + 1))
+    echo -e "   ${YELLOW}⚠ $desc${NC}"; WARN=$((WARN + 1))
   else
-    echo -e "   ${RED}FAIL: $desc${NC}"
-    FAIL=$((FAIL + 1))
+    echo -e "   ${RED}✗ $desc${NC}"; FAIL=$((FAIL + 1))
   fi
 }
 
 require_file() {
-  local filepath="$1"
-  if [ -f "$filepath" ]; then
-    check "$filepath" "ok"
-  else
-    check "Arquivo ausente: $filepath" "fail"
-  fi
+  [ -f "$1" ] && check "$1" "ok" || check "Arquivo ausente: $1" "fail"
 }
 
 run_sql() {
@@ -68,8 +63,13 @@ run_sql() {
     psql -tA -w -h 127.0.0.1 -U "$DB_USER" -d "$POSTGRES_DB" -c "$1" 2>/dev/null || echo ""
 }
 
-echo -e "${BLUE}=== Validacao Estrutural do Instalador Docker ===${NC}"
+echo -e "${BLUE}══════════════════════════════════════════════════${NC}"
+echo -e "${BLUE}  Simply Imóveis - Validação de Instalação${NC}"
+echo -e "${BLUE}══════════════════════════════════════════════════${NC}"
 
+# ==============================================================
+# SEÇÃO 1 - Arquivos essenciais
+# ==============================================================
 echo -e "\n${BLUE}1. Arquivos essenciais${NC}"
 require_file "$CORE_SQL"
 require_file "$STORAGE_SQL"
@@ -79,18 +79,63 @@ require_file "$SCRIPT_DIR/ensure-storage-buckets.sh"
 require_file "$SCRIPT_DIR/volumes/db/init/00-passwords.sh"
 require_file "$SCRIPT_DIR/volumes/db/init/01-schema.sql"
 
-echo -e "\n${BLUE}2. Containers${NC}"
+# ==============================================================
+# SEÇÃO 2 - Stack Docker interno (containers)
+# ==============================================================
+echo -e "\n${BLUE}2. Stack Docker (containers)${NC}"
 for c in simply-db simply-auth simply-rest simply-storage simply-kong simply-functions simply-frontend; do
   st=$(docker inspect -f '{{.State.Status}}' "$c" 2>/dev/null || echo "missing")
   rs=$(docker inspect -f '{{.State.Restarting}}' "$c" 2>/dev/null || echo "false")
   if [ "$st" = "running" ] && [ "$rs" != "true" ]; then
-    check "$c" "ok"
+    check "$c (running)" "ok"
   else
     check "$c ($st)" "fail"
   fi
 done
 
-echo -e "\n${BLUE}3. Banco (objetos criticos)${NC}"
+# ==============================================================
+# SEÇÃO 3 - Endpoints locais (127.0.0.1)
+# ==============================================================
+echo -e "\n${BLUE}3. Endpoints locais (127.0.0.1)${NC}"
+
+FE_ST=$(curl -sS -m 10 -o /dev/null -w "%{http_code}" "http://127.0.0.1:${FRONTEND_PORT}/" 2>/dev/null || echo "000")
+if [ "$FE_ST" = "200" ]; then
+  check "Frontend local 127.0.0.1:${FRONTEND_PORT} (HTTP $FE_ST)" "ok"
+else
+  check "Frontend local 127.0.0.1:${FRONTEND_PORT} (HTTP $FE_ST)" "fail"
+fi
+
+AUTH_ST=$(curl -sS -m 10 -o /dev/null -w "%{http_code}" "http://127.0.0.1:${KONG_PORT}/auth/v1/settings" -H "apikey: ${ANON_KEY}" 2>/dev/null || echo "000")
+if [ "$AUTH_ST" = "200" ]; then
+  check "Auth API 127.0.0.1:${KONG_PORT}/auth/v1 (HTTP $AUTH_ST)" "ok"
+else
+  check "Auth API 127.0.0.1:${KONG_PORT}/auth/v1 (HTTP $AUTH_ST)" "fail"
+fi
+
+REST_ST=$(curl -sS -m 10 -o /dev/null -w "%{http_code}" "http://127.0.0.1:${KONG_PORT}/rest/v1/" -H "apikey: ${ANON_KEY}" 2>/dev/null || echo "000")
+if [ "$REST_ST" = "200" ]; then
+  check "REST API 127.0.0.1:${KONG_PORT}/rest/v1 (HTTP $REST_ST)" "ok"
+else
+  check "REST API 127.0.0.1:${KONG_PORT}/rest/v1 (HTTP $REST_ST)" "fail"
+fi
+
+STORAGE_ST=$(curl -sS -m 10 -o /dev/null -w "%{http_code}" "http://127.0.0.1:${KONG_PORT}/storage/v1/bucket" -H "apikey: ${ANON_KEY}" -H "Authorization: Bearer ${SERVICE_ROLE_KEY}" 2>/dev/null || echo "000")
+if [ "$STORAGE_ST" = "200" ]; then
+  check "Storage API 127.0.0.1:${KONG_PORT}/storage/v1 (HTTP $STORAGE_ST)" "ok"
+else
+  check "Storage API 127.0.0.1:${KONG_PORT}/storage/v1 (HTTP $STORAGE_ST)" "warn"
+fi
+
+CRUD_ST=$(curl -sS -m 10 -o /dev/null -w "%{http_code}" -X POST "http://127.0.0.1:${KONG_PORT}/functions/v1/admin-crud" -H "apikey: ${ANON_KEY}" -H "Content-Type: application/json" -d '{}' 2>/dev/null || echo "000")
+case "$CRUD_ST" in
+  400|401|403) check "Edge Function admin-crud (HTTP $CRUD_ST)" "ok" ;;
+  *) check "Edge Function admin-crud (HTTP $CRUD_ST)" "warn" ;;
+esac
+
+# ==============================================================
+# SEÇÃO 4 - Banco de dados (objetos críticos)
+# ==============================================================
+echo -e "\n${BLUE}4. Banco de dados${NC}"
 DB_OK=$(run_sql "SELECT 1;")
 if [ "$DB_OK" = "1" ]; then
   check "Conexao PostgreSQL" "ok"
@@ -111,11 +156,7 @@ if [ "$DB_OK" = "1" ]; then
     LEFT JOIN pg_type t ON t.typname = req.name
     LEFT JOIN pg_namespace n ON n.oid=t.typnamespace AND n.nspname='public'
     WHERE n.oid IS NULL;")
-  if [ -z "$(echo "$MISSING_TYPES" | tr -d '[:space:]')" ]; then
-    check "Tipos customizados" "ok"
-  else
-    check "Tipos ausentes: $MISSING_TYPES" "fail"
-  fi
+  [ -z "$(echo "$MISSING_TYPES" | tr -d '[:space:]')" ] && check "Tipos customizados" "ok" || check "Tipos ausentes: $MISSING_TYPES" "fail"
 
   MISSING_TABLES=$(run_sql "
     WITH req(name) AS (
@@ -129,11 +170,7 @@ if [ "$DB_OK" = "1" ]; then
     SELECT COALESCE(string_agg(req.name, ', '), '')
     FROM req
     WHERE to_regclass('public.' || req.name) IS NULL;")
-  if [ -z "$(echo "$MISSING_TABLES" | tr -d '[:space:]')" ]; then
-    check "Tabelas principais" "ok"
-  else
-    check "Tabelas ausentes: $MISSING_TABLES" "fail"
-  fi
+  [ -z "$(echo "$MISSING_TABLES" | tr -d '[:space:]')" ] && check "Tabelas principais" "ok" || check "Tabelas ausentes: $MISSING_TABLES" "fail"
 
   MISSING_FUNCS=$(run_sql "
     WITH req(sig) AS (
@@ -145,11 +182,7 @@ if [ "$DB_OK" = "1" ]; then
       ]::text[])
     )
     SELECT COALESCE(string_agg(sig, ', '), '') FROM req WHERE to_regprocedure(sig) IS NULL;")
-  if [ -z "$(echo "$MISSING_FUNCS" | tr -d '[:space:]')" ]; then
-    check "Funcoes auxiliares" "ok"
-  else
-    check "Funcoes ausentes: $MISSING_FUNCS" "fail"
-  fi
+  [ -z "$(echo "$MISSING_FUNCS" | tr -d '[:space:]')" ] && check "Funcoes auxiliares" "ok" || check "Funcoes ausentes: $MISSING_FUNCS" "fail"
 
   MISSING_RLS=$(run_sql "
     WITH req(tbl) AS (
@@ -164,11 +197,7 @@ if [ "$DB_OK" = "1" ]; then
     FROM req
     LEFT JOIN pg_tables t ON t.schemaname='public' AND t.tablename=req.tbl
     WHERE t.rowsecurity IS DISTINCT FROM true;")
-  if [ -z "$(echo "$MISSING_RLS" | tr -d '[:space:]')" ]; then
-    check "RLS habilitado nas tabelas criticas" "ok"
-  else
-    check "RLS ausente em: $MISSING_RLS" "fail"
-  fi
+  [ -z "$(echo "$MISSING_RLS" | tr -d '[:space:]')" ] && check "RLS habilitado" "ok" || check "RLS ausente em: $MISSING_RLS" "fail"
 
   MISSING_POLICIES=$(run_sql "
     WITH req(name) AS (
@@ -185,11 +214,7 @@ if [ "$DB_OK" = "1" ]; then
     FROM req
     LEFT JOIN pg_policies p ON p.schemaname='public' AND p.policyname=req.name
     WHERE p.policyname IS NULL;")
-  if [ -z "$(echo "$MISSING_POLICIES" | tr -d '[:space:]')" ]; then
-    check "Policies criticas" "ok"
-  else
-    check "Policies ausentes: $MISSING_POLICIES" "fail"
-  fi
+  [ -z "$(echo "$MISSING_POLICIES" | tr -d '[:space:]')" ] && check "Policies criticas" "ok" || check "Policies ausentes: $MISSING_POLICIES" "fail"
 
   MISSING_TRIGGERS=$(run_sql "
     WITH req(name) AS (
@@ -203,20 +228,15 @@ if [ "$DB_OK" = "1" ]; then
     FROM req
     LEFT JOIN pg_trigger t ON t.tgname=req.name AND NOT t.tgisinternal
     WHERE t.oid IS NULL;")
-  if [ -z "$(echo "$MISSING_TRIGGERS" | tr -d '[:space:]')" ]; then
-    check "Triggers criticos" "ok"
-  else
-    check "Triggers ausentes: $MISSING_TRIGGERS" "fail"
-  fi
+  [ -z "$(echo "$MISSING_TRIGGERS" | tr -d '[:space:]')" ] && check "Triggers criticos" "ok" || check "Triggers ausentes: $MISSING_TRIGGERS" "fail"
 fi
 
-echo -e "\n${BLUE}4. Storage${NC}"
+# ==============================================================
+# SEÇÃO 5 - Storage buckets
+# ==============================================================
+echo -e "\n${BLUE}5. Storage${NC}"
 BUCKETS=$(run_sql "SELECT count(*) FROM storage.buckets WHERE id IN ('property-media','contract-documents','tenant-documents','inspection-media','sales-documents');")
-if [ "${BUCKETS:-0}" -eq 5 ]; then
-  check "Buckets obrigatorios (5/5)" "ok"
-else
-  check "Buckets obrigatorios (${BUCKETS:-0}/5)" "fail"
-fi
+[ "${BUCKETS:-0}" -eq 5 ] && check "Buckets obrigatorios (5/5)" "ok" || check "Buckets obrigatorios (${BUCKETS:-0}/5)" "fail"
 
 STORAGE_POLICIES=$(run_sql "SELECT count(*) FROM pg_policies WHERE schemaname='storage' AND tablename='objects' AND policyname IN (
 'Admins can upload contract-documents','Admins can read contract-documents','Admins can update contract-documents','Admins can delete contract-documents',
@@ -224,43 +244,94 @@ STORAGE_POLICIES=$(run_sql "SELECT count(*) FROM pg_policies WHERE schemaname='s
 'Admins can upload inspection-media','Admins can read inspection-media','Admins can update inspection-media','Admins can delete inspection-media',
 'Admins can upload sales-documents','Admins can read sales-documents','Admins can update sales-documents','Admins can delete sales-documents',
 'Admins can upload property-media','Admins can update property-media','Admins can delete property-media','Public can read property-media');")
-if [ "${STORAGE_POLICIES:-0}" -ge 20 ]; then
-  check "Policies storage (${STORAGE_POLICIES}/20)" "ok"
+[ "${STORAGE_POLICIES:-0}" -ge 20 ] && check "Policies storage (${STORAGE_POLICIES}/20)" "ok" || check "Policies storage (${STORAGE_POLICIES:-0}/20)" "fail"
+
+# ==============================================================
+# SEÇÃO 6 - Exposição pública (opcional, com --public)
+# ==============================================================
+echo -e "\n${BLUE}6. Exposição pública${NC}"
+if [ "$CHECK_PUBLIC" = "true" ] && [ -n "$SITE_DOMAIN" ]; then
+  echo -e "   ${CYAN}Verificando dominio: ${SITE_DOMAIN}${NC}"
+
+  # Verificar se nginx do host tem config para este domínio
+  NGINX_HAS_CONF=false
+  if command -v nginx &>/dev/null; then
+    if nginx -T 2>/dev/null | grep -q "server_name.*${SITE_DOMAIN}"; then
+      check "Nginx do host tem config para ${SITE_DOMAIN}" "ok"
+      NGINX_HAS_CONF=true
+    else
+      check "Nginx do host NAO tem config para ${SITE_DOMAIN}" "fail"
+      echo -e "   ${YELLOW}→ O nginx do host não está configurado para este domínio.${NC}"
+      echo -e "   ${YELLOW}→ Copie nginx-site.conf para /etc/nginx/sites-available/ e ative.${NC}"
+    fi
+  else
+    check "Nginx nao instalado no host" "warn"
+  fi
+
+  # Verificar se nginx do host faz proxy para a porta correta
+  if [ "$NGINX_HAS_CONF" = "true" ]; then
+    if nginx -T 2>/dev/null | grep -q "proxy_pass.*127.0.0.1:${FRONTEND_PORT}"; then
+      check "Nginx proxy → 127.0.0.1:${FRONTEND_PORT}" "ok"
+    else
+      check "Nginx proxy NAO aponta para 127.0.0.1:${FRONTEND_PORT}" "fail"
+    fi
+  fi
+
+  # Verificar se URL pública responde com conteúdo deste projeto
+  PUB_ST=$(curl -sS -m 10 -o /dev/null -w "%{http_code}" "https://${SITE_DOMAIN}/" 2>/dev/null || echo "000")
+  PUB_BODY=$(curl -sS -m 10 "https://${SITE_DOMAIN}/" 2>/dev/null | head -50 || echo "")
+
+  if [ "$PUB_ST" = "200" ]; then
+    if echo "$PUB_BODY" | grep -qi "simply\|imoveis\|simplyimoveis"; then
+      check "URL publica https://${SITE_DOMAIN} (HTTP $PUB_ST, conteudo correto)" "ok"
+    else
+      check "URL publica https://${SITE_DOMAIN} (HTTP $PUB_ST, CONTEUDO DE OUTRO SISTEMA)" "fail"
+      echo -e "   ${RED}→ A URL pública está respondendo, mas com conteúdo de outro sistema!${NC}"
+      echo -e "   ${RED}→ O nginx do host provavelmente aponta para outro container/app.${NC}"
+    fi
+  elif [ "$PUB_ST" = "000" ]; then
+    check "URL publica https://${SITE_DOMAIN} (sem resposta)" "warn"
+    echo -e "   ${YELLOW}→ DNS pode não estar apontando para este servidor.${NC}"
+  else
+    check "URL publica https://${SITE_DOMAIN} (HTTP $PUB_ST)" "warn"
+  fi
 else
-  check "Policies storage (${STORAGE_POLICIES:-0}/20)" "fail"
+  echo -e "   ${YELLOW}⊘ Verificação pública pulada.${NC}"
+  echo -e "   ${YELLOW}  Use: bash validate-install.sh --public${NC}"
+  echo -e "   ${YELLOW}  A publicação depende da configuração do nginx do host.${NC}"
 fi
 
-echo -e "\n${BLUE}5. APIs e frontend${NC}"
-AUTH_ST=$(curl -sS -m 10 -o /dev/null -w "%{http_code}" "http://127.0.0.1:${KONG_PORT}/auth/v1/settings" -H "apikey: ${ANON_KEY}" 2>/dev/null || echo "000")
-if [ "$AUTH_ST" = "200" ]; then check "Auth API (HTTP $AUTH_ST)" "ok"; else check "Auth API (HTTP $AUTH_ST)" "fail"; fi
-
-REST_ST=$(curl -sS -m 10 -o /dev/null -w "%{http_code}" "http://127.0.0.1:${KONG_PORT}/rest/v1/" -H "apikey: ${ANON_KEY}" 2>/dev/null || echo "000")
-if [ "$REST_ST" = "200" ]; then check "REST API (HTTP $REST_ST)" "ok"; else check "REST API (HTTP $REST_ST)" "fail"; fi
-
-STORAGE_ST=$(curl -sS -m 10 -o /dev/null -w "%{http_code}" "http://127.0.0.1:${KONG_PORT}/storage/v1/bucket" -H "apikey: ${ANON_KEY}" -H "Authorization: Bearer ${SERVICE_ROLE_KEY}" 2>/dev/null || echo "000")
-if [ "$STORAGE_ST" = "200" ]; then check "Storage API (HTTP $STORAGE_ST)" "ok"; else check "Storage API (HTTP $STORAGE_ST)" "warn"; fi
-
-FE_ST=$(curl -sS -m 10 -o /dev/null -w "%{http_code}" "http://127.0.0.1:${FRONTEND_PORT}/" 2>/dev/null || echo "000")
-if [ "$FE_ST" = "200" ]; then check "Frontend (HTTP $FE_ST)" "ok"; else check "Frontend (HTTP $FE_ST)" "fail"; fi
-
-echo -e "\n${BLUE}6. Function critica (admin-crud)${NC}"
-CRUD_ST=$(curl -sS -m 10 -o /dev/null -w "%{http_code}" -X POST "http://127.0.0.1:${KONG_PORT}/functions/v1/admin-crud" -H "apikey: ${ANON_KEY}" -H "Content-Type: application/json" -d '{}' 2>/dev/null || echo "000")
-case "$CRUD_ST" in
-  400|401|403) check "admin-crud endpoint (HTTP $CRUD_ST)" "ok" ;;
-  *) check "admin-crud endpoint (HTTP $CRUD_ST)" "warn" ;;
-esac
-
+# ==============================================================
+# RESUMO
+# ==============================================================
 echo ""
-echo -e "${BLUE}=== Resumo ===${NC}"
+echo -e "${BLUE}══════════════════════════════════════════════════${NC}"
+echo -e "${BLUE}  Resumo${NC}"
+echo -e "${BLUE}══════════════════════════════════════════════════${NC}"
 echo -e "   ${GREEN}Passed: $PASS${NC}  ${YELLOW}Warnings: $WARN${NC}  ${RED}Failed: $FAIL${NC}"
+echo ""
+echo -e "${CYAN}  Endpoints internos (sempre disponíveis):${NC}"
+echo -e "    Frontend:  http://127.0.0.1:${FRONTEND_PORT}"
+echo -e "    Gateway:   http://127.0.0.1:${KONG_PORT}"
+echo -e "    Banco:     127.0.0.1:5432"
+echo ""
+if [ -n "$SITE_DOMAIN" ]; then
+  echo -e "${CYAN}  Endpoint público (requer nginx do host):${NC}"
+  echo -e "    https://${SITE_DOMAIN}"
+  echo -e "    ${YELLOW}Status: depende da configuração do nginx do host${NC}"
+fi
+echo ""
 
 if [ "$FAIL" -gt 0 ]; then
-  echo -e "\n${RED}Validacao falhou com $FAIL erro(s) critico(s).${NC}"
-  echo -e "${YELLOW}Debug sugerido:${NC}"
+  echo -e "${RED}Validação falhou com $FAIL erro(s) crítico(s).${NC}"
+  echo -e "${YELLOW}Debug:${NC}"
   echo -e "   cd $SCRIPT_DIR && docker compose logs --tail=120 db rest auth storage kong functions"
-  echo -e "   cd $SCRIPT_DIR && bash bootstrap-db.sh"
   exit 1
 fi
 
-echo -e "\n${GREEN}Validacao concluida com sucesso!${NC}"
+echo -e "${GREEN}Stack interno validado com sucesso!${NC}"
+if [ "$CHECK_PUBLIC" != "true" ]; then
+  echo -e "${YELLOW}NOTA: A exposição pública NÃO foi validada.${NC}"
+  echo -e "${YELLOW}      Rode: bash validate-install.sh --public${NC}"
+fi
 exit 0
