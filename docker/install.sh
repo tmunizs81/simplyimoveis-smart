@@ -193,20 +193,7 @@ cp "$INSTALL_DIR/supabase/functions/chat/index.ts" volumes/functions/chat/index.
 cp "$INSTALL_DIR/supabase/functions/notify-telegram/index.ts" volumes/functions/notify-telegram/index.ts 2>/dev/null || true
 cp "$INSTALL_DIR/supabase/functions/create-admin-user/index.ts" volumes/functions/create-admin-user/index.ts 2>/dev/null || true
 
-cat > volumes/functions/main/index.ts << 'MAINEOF'
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-serve(async (req) => {
-  const url = new URL(req.url);
-  const fn = url.pathname.split("/").filter(Boolean)[0];
-  if (!fn) return new Response(JSON.stringify({ status: "ok" }), { headers: { "Content-Type": "application/json" } });
-  try {
-    const mod = await import(`../${fn}/index.ts`);
-    return mod.default ? mod.default(req) : new Response("OK", { status: 200 });
-  } catch {
-    return new Response(JSON.stringify({ error: `Function '${fn}' not found` }), { status: 404, headers: { "Content-Type": "application/json" } });
-  }
-});
-MAINEOF
+bash render-functions-main.sh volumes/functions
 
 # ── 9. Limpar instalação anterior ────────────────────────────
 echo ""

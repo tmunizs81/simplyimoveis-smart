@@ -89,7 +89,7 @@ mkdir -p volumes/functions/{main,chat,notify-telegram,create-admin-user}
 cp "$INSTALL_DIR/supabase/functions/chat/index.ts" volumes/functions/chat/index.ts 2>/dev/null || true
 cp "$INSTALL_DIR/supabase/functions/notify-telegram/index.ts" volumes/functions/notify-telegram/index.ts 2>/dev/null || true
 cp "$INSTALL_DIR/supabase/functions/create-admin-user/index.ts" volumes/functions/create-admin-user/index.ts 2>/dev/null || true
-
+bash render-functions-main.sh volumes/functions
 # Renderizar Kong config
 bash render-kong-config.sh
 
