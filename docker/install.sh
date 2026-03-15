@@ -1,7 +1,7 @@
 #!/bin/bash
 # ============================================================
 # Simply Imóveis - Instalador Completo Docker
-# Versão: 2026-03-15-v5-rewrite
+# Versão: 2026-03-15-v9-simplified
 # Uso: sudo bash install.sh
 # ============================================================
 
@@ -12,7 +12,7 @@ BLUE='\033[0;34m'; CYAN='\033[0;36m'; NC='\033[0m'
 
 echo -e "${BLUE}"
 echo "╔══════════════════════════════════════════════════════╗"
-echo "║     Simply Imóveis - Instalador Docker v5           ║"
+echo "║     Simply Imóveis - Instalador Docker v9           ║"
 echo "╚══════════════════════════════════════════════════════╝"
 echo -e "${NC}"
 
@@ -40,6 +40,7 @@ echo -e "${BLUE}📋 Copiando projeto...${NC}"
 rsync -av --delete --exclude='node_modules' --exclude='.git' --exclude='docker/.env' "$PROJECT_DIR/" "$INSTALL_DIR/"
 cd "$INSTALL_DIR/docker"
 chmod +x *.sh
+chmod +x volumes/db/init/00-passwords.sh 2>/dev/null || true
 
 # ── 3. Helpers ───────────────────────────────────────────────
 read_env() { grep -E "^${1}=" .env 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'"; }
@@ -57,7 +58,6 @@ prompt_config() {
   local var="$1" desc="$2" default="${3:-}" secret="${4:-false}"
   local cur; cur=$(read_env "$var")
 
-  # Pula se já tem valor válido
   [ -n "$cur" ] && [ "$cur" != "CHANGE_ME" ] && [ "$cur" != "gsk_XXXXXXXXXXXXXXXXXXXX" ] \
     && [ "$cur" != "seu-email@gmail.com" ] && [ "$cur" != "sua-senha-de-app" ] && return 0
 
@@ -77,11 +77,62 @@ prompt_config() {
 if [ ! -f .env ]; then
   echo -e "${YELLOW}📝 Criando .env...${NC}"
   cp .env.example .env
-  set_env "JWT_SECRET" "$(openssl rand -base64 32)"
-  set_env "POSTGRES_PASSWORD" "$(openssl rand -base64 24 | tr -d '=/+')"
 fi
 
-# ── 5. Configuração interativa ───────────────────────────────
+# ── 5. Auto-gerar senhas e chaves ────────────────────────────
+echo -e "${BLUE}🔑 Verificando/gerando credenciais...${NC}"
+
+# JWT_SECRET
+CURRENT_JWT=$(read_env "JWT_SECRET")
+if [ -z "$CURRENT_JWT" ] || [ "$CURRENT_JWT" = "super-secret-jwt-token-with-at-least-32-characters-long" ]; then
+  NEW_JWT=$(openssl rand -base64 32)
+  set_env "JWT_SECRET" "$NEW_JWT"
+  echo -e "   ${GREEN}✅ JWT_SECRET gerado${NC}"
+fi
+
+# POSTGRES_PASSWORD
+CURRENT_PG=$(read_env "POSTGRES_PASSWORD")
+if [ -z "$CURRENT_PG" ] || [ "$CURRENT_PG" = "SuaSenhaForteAqui123!" ]; then
+  NEW_PG=$(openssl rand -base64 24 | tr -d '=/+')
+  set_env "POSTGRES_PASSWORD" "$NEW_PG"
+  echo -e "   ${GREEN}✅ POSTGRES_PASSWORD gerado${NC}"
+fi
+
+# ANON_KEY e SERVICE_ROLE_KEY (inline, sem script externo)
+CURRENT_ANON=$(read_env "ANON_KEY")
+if [ -z "$CURRENT_ANON" ] || [ "$CURRENT_ANON" = "CHANGE_ME" ]; then
+  echo -e "   ${BLUE}🔑 Gerando ANON_KEY e SERVICE_ROLE_KEY...${NC}"
+  JWT_SECRET=$(read_env "JWT_SECRET")
+
+  generate_jwt() {
+    local role="$1"
+    local js_code="
+      const crypto = require('crypto');
+      const header = Buffer.from(JSON.stringify({alg:'HS256',typ:'JWT'})).toString('base64url');
+      const payload = Buffer.from(JSON.stringify({ref:'simply',role:'${role}',iss:'supabase',iat:Math.floor(Date.now()/1000),exp:Math.floor(Date.now()/1000)+315360000})).toString('base64url');
+      const sig = crypto.createHmac('sha256','${JWT_SECRET}').update(header+'.'+payload).digest('base64url');
+      console.log(header+'.'+payload+'.'+sig);
+    "
+    if command -v node &> /dev/null; then
+      node -e "$js_code"
+    else
+      docker run --rm node:20-alpine node -e "$js_code"
+    fi
+  }
+
+  ANON=$(generate_jwt "anon")
+  SERVICE=$(generate_jwt "service_role")
+
+  if [ -z "$ANON" ] || [ -z "$SERVICE" ]; then
+    echo -e "${RED}❌ Falha ao gerar chaves JWT${NC}"; exit 1
+  fi
+
+  set_env "ANON_KEY" "$ANON"
+  set_env "SERVICE_ROLE_KEY" "$SERVICE"
+  echo -e "   ${GREEN}✅ ANON_KEY e SERVICE_ROLE_KEY gerados${NC}"
+fi
+
+# ── 6. Configuração interativa ───────────────────────────────
 echo ""
 echo -e "${BLUE}════ Configuração (ENTER = manter atual) ════${NC}"
 
@@ -95,13 +146,6 @@ prompt_config "SMTP_ADMIN_EMAIL" "Email do administrador" "admin@simplyimoveis.c
 prompt_config "GROQ_API_KEY"     "Chave API do Groq (chat IA Luma)" "" "true"
 prompt_config "TELEGRAM_BOT_TOKEN" "Telegram Bot Token (notificações, ENTER p/ pular)" ""
 prompt_config "TELEGRAM_CHAT_ID"   "Telegram Chat ID" ""
-
-# ── 6. Gerar JWT keys ───────────────────────────────────────
-CURRENT_ANON=$(read_env "ANON_KEY")
-if [ -z "$CURRENT_ANON" ] || [ "$CURRENT_ANON" = "CHANGE_ME" ]; then
-  echo -e "${BLUE}🔑 Gerando chaves JWT...${NC}"
-  bash generate-keys.sh
-fi
 
 # ── 7. Kong config ──────────────────────────────────────────
 echo -e "${BLUE}🔧 Renderizando Kong config...${NC}"
@@ -129,41 +173,48 @@ serve(async (req) => {
 });
 MAINEOF
 
-# ── 9. Subir banco e sincronizar ─────────────────────────────
-echo -e "${BLUE}🔨 Subindo banco...${NC}"
-docker compose up -d --build db
+# ── 9. Limpar instalação anterior ────────────────────────────
+echo ""
+EXISTING=$(docker compose ps -q 2>/dev/null | wc -l)
+if [ "$EXISTING" -gt 0 ]; then
+  echo -e "${YELLOW}⚠️  Instalação anterior detectada.${NC}"
+  read -p "   Limpar tudo e reinstalar? (S/n): " CLEAN
+  if [[ ! "$CLEAN" =~ ^[nN]$ ]]; then
+    echo -e "${BLUE}🗑️  Removendo containers e volumes...${NC}"
+    docker compose down -v --remove-orphans 2>/dev/null || true
+  fi
+fi
 
-for _ in {1..40}; do
-  docker compose exec -T db pg_isready -U postgres -q 2>/dev/null && break
+# ── 10. Subir TODA a stack de uma vez ─────────────────────────
+echo -e "${BLUE}🚀 Subindo stack completa...${NC}"
+docker compose up -d --build --force-recreate --remove-orphans
+
+echo -e "${BLUE}⏳ Aguardando banco ficar pronto...${NC}"
+for i in {1..40}; do
+  if docker compose exec -T db pg_isready -U postgres -q 2>/dev/null; then
+    echo -e "   ${GREEN}✅ Banco pronto${NC}"
+    break
+  fi
+  [ "$i" = "40" ] && echo -e "${RED}❌ Banco não respondeu${NC}" && exit 1
   sleep 2
 done
 
-echo -e "${BLUE}🔐 Sincronizando credenciais...${NC}"
-bash sync-db-passwords.sh
-
-# ── 10. Subir stack completa ─────────────────────────────────
-echo -e "${BLUE}🚀 Subindo stack...${NC}"
-docker compose up -d --build --force-recreate auth rest storage functions kong frontend --remove-orphans
-
-echo -e "${BLUE}⏳ Aguardando GoTrue migrar (25s)...${NC}"
-sleep 25
-
-# Re-sync após GoTrue criar tabelas
-echo -e "${BLUE}🔐 Re-sincronizando permissões...${NC}"
-bash sync-db-passwords.sh
-
-# Restart auth para pegar permissões
-docker compose restart auth
-sleep 10
+echo -e "${BLUE}⏳ Aguardando GoTrue migrar (30s)...${NC}"
+sleep 30
 
 # ── 11. Validação ────────────────────────────────────────────
 echo -e "${BLUE}🧪 Validando...${NC}"
 if ! bash validate-install.sh; then
-  echo -e "${YELLOW}⚠️  Tentando re-sync + restart...${NC}"
-  bash sync-db-passwords.sh
-  docker compose up -d --force-recreate auth kong
+  echo -e "${YELLOW}⚠️  Reiniciando auth e kong...${NC}"
+  docker compose restart auth kong
   sleep 15
-  bash validate-install.sh || { echo -e "${RED}❌ Validação falhou. Logs: docker compose logs --tail=50 auth kong${NC}"; exit 1; }
+  bash validate-install.sh || {
+    echo -e "${RED}❌ Validação falhou. Debug:${NC}"
+    echo "   docker compose logs --tail=30 auth"
+    echo "   docker compose logs --tail=30 kong"
+    echo "   docker compose logs --tail=30 db"
+    exit 1
+  }
 fi
 
 # ── 12. Criar admin ─────────────────────────────────────────

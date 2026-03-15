@@ -1,7 +1,7 @@
 #!/bin/bash
 # ============================================================
 # Valida stack Docker — retorna 0 se tudo OK, 1 se problemas
-# Versão: 2026-03-15-v5-rewrite
+# Versão: 2026-03-15-v9
 # ============================================================
 
 set -euo pipefail
@@ -17,6 +17,7 @@ KONG_PORT=$(read_env "KONG_HTTP_PORT"); KONG_PORT="${KONG_PORT:-8000}"
 ANON_KEY=$(read_env "ANON_KEY")
 SERVICE_ROLE_KEY=$(read_env "SERVICE_ROLE_KEY")
 POSTGRES_DB=$(read_env "POSTGRES_DB"); POSTGRES_DB="${POSTGRES_DB:-simply_db}"
+POSTGRES_PASSWORD=$(read_env "POSTGRES_PASSWORD")
 
 [ -z "$ANON_KEY" ] || [ -z "$SERVICE_ROLE_KEY" ] && echo "❌ Chaves JWT não definidas" && exit 1
 
@@ -38,7 +39,8 @@ for c in simply-db simply-auth simply-rest simply-storage simply-functions simpl
 done
 
 echo "── Schema auth ──"
-AUTH_OK=$(docker compose exec -T db psql -tA -U postgres -d "$POSTGRES_DB" \
+AUTH_OK=$(docker compose exec -T -e PGPASSWORD="$POSTGRES_PASSWORD" db \
+  psql -tA -w -U postgres -d "$POSTGRES_DB" \
   -c "SELECT to_regclass('auth.users') IS NOT NULL;" 2>/dev/null | tr -d '[:space:]')
 if [ "$AUTH_OK" != "t" ]; then
   echo "❌ auth.users não existe"; ERRORS=$((ERRORS+1))
