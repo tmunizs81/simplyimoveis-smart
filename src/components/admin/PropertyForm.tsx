@@ -69,7 +69,7 @@ const PropertyForm = ({ editingProperty, userId, onSaved, onCancel }: PropertyFo
 
   const deleteExistingMedia = async (media: MediaRow) => {
     await supabase.storage.from("property-media").remove([media.file_path]);
-    await supabase.from("property_media").delete().eq("id", media.id);
+    await adminDelete("property_media", { id: media.id });
     setExistingMedia((prev) => prev.filter((m) => m.id !== media.id));
     toast.success("Mídia removida!");
   };
