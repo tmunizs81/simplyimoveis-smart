@@ -96,6 +96,12 @@ if [ -z "$CURRENT_PG" ] || [ "$CURRENT_PG" = "SuaSenhaForteAqui123!" ]; then
   echo -e "   ${GREEN}✅ POSTGRES_PASSWORD gerado${NC}"
 fi
 
+CURRENT_PG_USER=$(read_env "POSTGRES_USER")
+if [ -z "$CURRENT_PG_USER" ]; then
+  set_env "POSTGRES_USER" "supabase_admin"
+  echo -e "   ${GREEN}✅ POSTGRES_USER definido (supabase_admin)${NC}"
+fi
+
 CURRENT_ANON=$(read_env "ANON_KEY")
 if [ -z "$CURRENT_ANON" ] || [ "$CURRENT_ANON" = "CHANGE_ME" ]; then
   echo -e "   ${BLUE}🔑 Gerando ANON_KEY e SERVICE_ROLE_KEY...${NC}"
