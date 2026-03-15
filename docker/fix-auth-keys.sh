@@ -110,6 +110,17 @@ fi
 
 echo "   ✅ Auth Admin API OK (HTTP $TEST_HTTP)"
 
+# Sincronizar Edge Functions
+echo "🔄 Sincronizando Edge Functions..."
+INSTALL_DIR="$(dirname "$SCRIPT_DIR")"
+if [ -d "$INSTALL_DIR/supabase/functions" ]; then
+  bash sync-functions.sh "$INSTALL_DIR/supabase/functions" "volumes/functions"
+  docker compose restart functions
+  echo "   ✅ Edge Functions sincronizadas e container reiniciado"
+else
+  echo "   ⚠️  Diretório supabase/functions não encontrado — rode sync-functions.sh manualmente"
+fi
+
 # Criar/atualizar admin
 echo "👤 Criando admin ${ADMIN_EMAIL}..."
 bash create-admin.sh "$ADMIN_EMAIL" "$ADMIN_PASSWORD"
