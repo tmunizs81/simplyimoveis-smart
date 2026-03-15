@@ -3,7 +3,7 @@ _transform: true
 
 ###
 ### Kong API Gateway - Simply Imóveis
-### Este arquivo é gerado automaticamente por render-kong-config.sh
+### Arquivo template: renderizado por render-kong-config.sh
 ###
 
 consumers:

@@ -14,27 +14,23 @@ if [ ! -f .env ]; then
   exit 1
 fi
 
-# Lê variáveis do .env de forma segura (sem source)
 read_env_var() {
   grep -E "^${1}=" .env 2>/dev/null | head -1 | sed "s/^${1}=//" | tr -d '"' | tr -d "'"
 }
 
 KONG_PORT=$(read_env_var "KONG_HTTP_PORT")
 KONG_PORT="${KONG_PORT:-8000}"
-API_KEY=$(read_env_var "SERVICE_ROLE_KEY")
-if [ -z "$API_KEY" ]; then
-  API_KEY=$(read_env_var "ANON_KEY")
-fi
+ANON_KEY=$(read_env_var "ANON_KEY")
+SERVICE_ROLE_KEY=$(read_env_var "SERVICE_ROLE_KEY")
 
-if [ -z "$API_KEY" ]; then
-  echo "❌ SERVICE_ROLE_KEY/ANON_KEY não definidos no .env"
+if [ -z "$ANON_KEY" ] || [ -z "$SERVICE_ROLE_KEY" ]; then
+  echo "❌ ANON_KEY/SERVICE_ROLE_KEY não definidos no .env"
   exit 1
 fi
 
 check_container() {
   local container="$1"
-  local state
-  local restarting
+  local state restarting
 
   state=$(docker inspect -f '{{.State.Status}}' "$container" 2>/dev/null || true)
   restarting=$(docker inspect -f '{{.State.Restarting}}' "$container" 2>/dev/null || true)
@@ -56,20 +52,21 @@ check_container simply-functions
 check_container simply-kong
 check_container simply-frontend
 
-echo "🔍 Validando endpoints..."
-AUTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:${KONG_PORT}/auth/v1/settings" \
-  -H "apikey: ${API_KEY}" 2>/dev/null || echo "000")
+echo "🔍 Validando autenticação no Kong..."
+AUTH_SERVICE_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:${KONG_PORT}/auth/v1/settings" -H "apikey: ${SERVICE_ROLE_KEY}" 2>/dev/null || echo "000")
+AUTH_ANON_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:${KONG_PORT}/auth/v1/settings" -H "apikey: ${ANON_KEY}" 2>/dev/null || echo "000")
 
-if [ "$AUTH_STATUS" != "200" ]; then
-  echo "❌ /auth/v1/settings retornou HTTP $AUTH_STATUS"
+if [ "$AUTH_SERVICE_STATUS" != "200" ] || [ "$AUTH_ANON_STATUS" != "200" ]; then
+  echo "❌ Auth via Kong falhou (service=$AUTH_SERVICE_STATUS, anon=$AUTH_ANON_STATUS)."
+  echo "💡 Execute: bash render-kong-config.sh && docker compose up -d --force-recreate kong"
   exit 1
 fi
 
-echo "✅ Auth respondeu HTTP 200"
+echo "✅ Auth via Kong respondeu HTTP 200 (anon e service)"
 
 REST_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:${KONG_PORT}/rest/v1/" \
-  -H "apikey: ${API_KEY}" \
-  -H "Authorization: Bearer ${API_KEY}" 2>/dev/null || echo "000")
+  -H "apikey: ${SERVICE_ROLE_KEY}" \
+  -H "Authorization: Bearer ${SERVICE_ROLE_KEY}" 2>/dev/null || echo "000")
 
 if [ "$REST_STATUS" -ge 500 ] 2>/dev/null || [ "$REST_STATUS" = "000" ]; then
   echo "❌ /rest/v1/ retornou HTTP $REST_STATUS"
@@ -77,5 +74,4 @@ if [ "$REST_STATUS" -ge 500 ] 2>/dev/null || [ "$REST_STATUS" = "000" ]; then
 fi
 
 echo "✅ REST respondeu HTTP $REST_STATUS"
-
 echo "🎉 Validação concluída com sucesso."
