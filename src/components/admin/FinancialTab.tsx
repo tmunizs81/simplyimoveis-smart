@@ -81,11 +81,11 @@ const FinancialTab = () => {
     };
 
     if (editing) {
-      const { error } = await supabase.from("financial_transactions").update(payload as any).eq("id", editing.id);
+      const { error } = await adminUpdate("financial_transactions", payload, { id: editing.id });
       if (error) { toast.error("Erro ao atualizar"); return; }
       toast.success("Transação atualizada!");
     } else {
-      const { error } = await supabase.from("financial_transactions").insert(payload as any);
+      const { error } = await adminInsert("financial_transactions", payload);
       if (error) { toast.error("Erro ao registrar"); return; }
       toast.success("Transação registrada!");
     }
