@@ -15,7 +15,7 @@ BEGIN
     RAISE EXCEPTION 'Dependência ausente: public.user_roles';
   END IF;
 
-  IF to_regproc('public.has_role_text(uuid,text)') IS NULL THEN
+  IF to_regprocedure('public.has_role_text(uuid,text)') IS NULL THEN
     RAISE EXCEPTION 'Dependência ausente: public.has_role_text(uuid,text)';
   END IF;
 END
