@@ -50,7 +50,9 @@ const HighlightsSection = () => {
 
   if (loading || properties.length === 0) return null;
 
-  const maxScroll = Math.max(0, properties.length - 3);
+  const isMobile = typeof window !== "undefined" && window.innerWidth < 640;
+  const visibleCards = isMobile ? 1 : window.innerWidth < 1024 ? 2 : 3;
+  const maxScroll = Math.max(0, properties.length - visibleCards);
 
   return (
     <section className="section-padding bg-background">

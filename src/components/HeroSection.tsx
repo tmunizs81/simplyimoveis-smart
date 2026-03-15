@@ -139,7 +139,7 @@ const HeroSection = () => {
           </div>
 
           {/* Animated counters */}
-          <div className="flex gap-8 sm:gap-12">
+          <div className="flex gap-5 sm:gap-12">
             {[
               { target: 30, suffix: "+", label: "Imóveis Vendidos" },
               { target: 100, suffix: "+", label: "Clientes Satisfeitos" },

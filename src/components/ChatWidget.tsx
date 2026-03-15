@@ -290,7 +290,7 @@ const ChatWidget = ({ propertyId }: { propertyId?: string }) => {
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="fixed bottom-28 right-4 sm:right-6 z-50 w-[360px] sm:w-[400px] max-h-[550px] bg-card rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-border"
+            className="fixed bottom-0 right-0 sm:bottom-28 sm:right-6 z-50 w-full sm:w-[400px] h-[100dvh] sm:h-auto sm:max-h-[550px] bg-card sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden border-0 sm:border border-border"
           >
             {/* Header */}
             <div className="bg-gradient-to-r from-primary to-primary/80 p-4 flex items-center gap-3">
