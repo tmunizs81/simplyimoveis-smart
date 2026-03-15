@@ -79,11 +79,11 @@ const SalesTab = () => {
     };
 
     if (editingSale) {
-      const { error } = await supabase.from("sales").update(payload as any).eq("id", editingSale.id);
+      const { error } = await adminUpdate("sales", payload, { id: editingSale.id });
       if (error) { toast.error("Erro ao atualizar venda"); return; }
       toast.success("Venda atualizada!");
     } else {
-      const { error } = await supabase.from("sales").insert(payload as any);
+      const { error } = await adminInsert("sales", payload);
       if (error) { toast.error("Erro ao criar venda"); return; }
       toast.success("Venda registrada!");
     }
