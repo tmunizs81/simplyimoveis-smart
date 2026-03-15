@@ -198,8 +198,10 @@ docker compose up -d --build db
 echo -e "${BLUE}⏳ Aguardando banco aceitar conexões...${NC}"
 DB_ADMIN_USER=$(read_env "POSTGRES_USER")
 DB_ADMIN_USER="${DB_ADMIN_USER:-supabase_admin}"
+DB_NAME=$(read_env "POSTGRES_DB")
+DB_NAME="${DB_NAME:-simply_db}"
 for i in {1..60}; do
-  if docker exec simply-db pg_isready -U "$DB_ADMIN_USER" -d "${POSTGRES_DB:-simply_db}" -q 2>/dev/null; then
+  if docker exec simply-db pg_isready -U "$DB_ADMIN_USER" -d "$DB_NAME" -q 2>/dev/null; then
     echo -e "   ${GREEN}✅ Banco aceitando conexões (tentativa $i)${NC}"
     break
   fi
