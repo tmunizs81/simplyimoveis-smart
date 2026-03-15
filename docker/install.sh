@@ -191,7 +191,7 @@ docker compose up -d --build db
 
 echo -e "${BLUE}⏳ Aguardando banco aceitar conexões...${NC}"
 for i in {1..60}; do
-  if docker exec simply-db pg_isready -U postgres -q 2>/dev/null; then
+  if docker exec simply-db pg_isready -U supabase_admin -q 2>/dev/null; then
     echo -e "   ${GREEN}✅ Banco aceitando conexões (tentativa $i)${NC}"
     break
   fi

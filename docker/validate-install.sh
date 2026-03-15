@@ -40,7 +40,7 @@ done
 
 echo "── Schema auth ──"
 AUTH_OK=$(docker compose exec -T -e PGPASSWORD="$POSTGRES_PASSWORD" db \
-  psql -tA -w -U postgres -d "$POSTGRES_DB" \
+  psql -tA -w -U supabase_admin -d "$POSTGRES_DB" \
   -c "SELECT to_regclass('auth.users') IS NOT NULL;" 2>/dev/null | tr -d '[:space:]')
 if [ "$AUTH_OK" != "t" ]; then
   echo "❌ auth.users não existe"; ERRORS=$((ERRORS+1))

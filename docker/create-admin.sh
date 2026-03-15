@@ -23,7 +23,7 @@ POSTGRES_PASSWORD=$(grep -E '^POSTGRES_PASSWORD=' .env | head -1 | cut -d= -f2- 
 
 run_sql() {
   timeout 30s docker compose exec -T -e PGPASSWORD="$POSTGRES_PASSWORD" \
-    db psql -v ON_ERROR_STOP=1 -w -U postgres -d "$POSTGRES_DB" "$@"
+    db psql -v ON_ERROR_STOP=1 -w -U supabase_admin -d "$POSTGRES_DB" "$@"
 }
 
 # Verifica se auth.users existe
