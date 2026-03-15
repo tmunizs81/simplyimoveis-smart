@@ -78,6 +78,17 @@ else
   echo "✅ REST: HTTP $REST_ST"
 fi
 
+echo "── Edge Functions ──"
+FUNC_ST=$(curl -s -o /dev/null -w "%{http_code}" -X POST "http://localhost:${KONG_PORT}/functions/v1/create-admin-user" \
+  -H "apikey: ${ANON_KEY}" -H "Content-Type: application/json" -d '{"action":"list"}' 2>/dev/null || echo "000")
+if [ "$FUNC_ST" = "000" ] || [ "$FUNC_ST" = "404" ]; then
+  echo "❌ create-admin-user: HTTP $FUNC_ST"; ERRORS=$((ERRORS+1))
+elif [ "$FUNC_ST" -ge 500 ] 2>/dev/null; then
+  echo "❌ create-admin-user: HTTP $FUNC_ST"; ERRORS=$((ERRORS+1))
+else
+  echo "✅ create-admin-user: HTTP $FUNC_ST"
+fi
+
 echo "── Privilégios SQL ──"
 check_priv() {
   local role="$1"

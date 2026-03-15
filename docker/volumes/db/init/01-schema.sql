@@ -24,7 +24,10 @@ RETURNS uuid
 LANGUAGE sql
 STABLE
 AS $$
-  SELECT NULLIF(current_setting('request.jwt.claim.sub', true), '')::uuid;
+  SELECT COALESCE(
+    NULLIF(current_setting('request.jwt.claim.sub', true), '')::uuid,
+    NULLIF((NULLIF(current_setting('request.jwt.claims', true), '')::jsonb ->> 'sub'), '')::uuid
+  );
 $$;
 
 CREATE OR REPLACE FUNCTION auth.role()
@@ -32,7 +35,10 @@ RETURNS text
 LANGUAGE sql
 STABLE
 AS $$
-  SELECT NULLIF(current_setting('request.jwt.claim.role', true), '')::text;
+  SELECT COALESCE(
+    NULLIF(current_setting('request.jwt.claim.role', true), '')::text,
+    NULLIF((NULLIF(current_setting('request.jwt.claims', true), '')::jsonb ->> 'role'), '')::text
+  );
 $$;
 
 CREATE OR REPLACE FUNCTION auth.email()
@@ -40,7 +46,10 @@ RETURNS text
 LANGUAGE sql
 STABLE
 AS $$
-  SELECT NULLIF(current_setting('request.jwt.claim.email', true), '')::text;
+  SELECT COALESCE(
+    NULLIF(current_setting('request.jwt.claim.email', true), '')::text,
+    NULLIF((NULLIF(current_setting('request.jwt.claims', true), '')::jsonb ->> 'email'), '')::text
+  );
 $$;
 
 -- ============================================================

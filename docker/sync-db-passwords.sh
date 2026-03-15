@@ -125,15 +125,30 @@ docker exec -i -e PGPASSWORD="$POSTGRES_PASSWORD" "$DB_CONTAINER" \
   psql -v ON_ERROR_STOP=1 -w -h 127.0.0.1 -U supabase_auth_admin -d "$POSTGRES_DB" <<'EOSQL'
 CREATE OR REPLACE FUNCTION auth.uid()
 RETURNS uuid LANGUAGE sql STABLE
-AS $$ SELECT NULLIF(current_setting('request.jwt.claim.sub', true), '')::uuid; $$;
+AS $$
+  SELECT COALESCE(
+    NULLIF(current_setting('request.jwt.claim.sub', true), '')::uuid,
+    NULLIF((NULLIF(current_setting('request.jwt.claims', true), '')::jsonb ->> 'sub'), '')::uuid
+  );
+$$;
 
 CREATE OR REPLACE FUNCTION auth.role()
 RETURNS text LANGUAGE sql STABLE
-AS $$ SELECT NULLIF(current_setting('request.jwt.claim.role', true), '')::text; $$;
+AS $$
+  SELECT COALESCE(
+    NULLIF(current_setting('request.jwt.claim.role', true), '')::text,
+    NULLIF((NULLIF(current_setting('request.jwt.claims', true), '')::jsonb ->> 'role'), '')::text
+  );
+$$;
 
 CREATE OR REPLACE FUNCTION auth.email()
 RETURNS text LANGUAGE sql STABLE
-AS $$ SELECT NULLIF(current_setting('request.jwt.claim.email', true), '')::text; $$;
+AS $$
+  SELECT COALESCE(
+    NULLIF(current_setting('request.jwt.claim.email', true), '')::text,
+    NULLIF((NULLIF(current_setting('request.jwt.claims', true), '')::jsonb ->> 'email'), '')::text
+  );
+$$;
 EOSQL
 
 echo "   Aplicando grants de schema..."
