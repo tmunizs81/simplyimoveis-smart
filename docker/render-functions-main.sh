@@ -45,6 +45,7 @@ const modules: Record<string, Record<string, unknown>> = {
   "create-admin-user": createAdminUserModule,
   "notify-telegram": notifyTelegramModule,
   "admin-crud": adminCrudModule,
+  "ai-insights": aiInsightsModule,
 };
 
 const getHandler = (functionName: string): Handler | null => {

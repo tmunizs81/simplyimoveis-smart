@@ -190,6 +190,7 @@ const Admin = () => {
           {activeTab === "reports" && <ReportsTab />}
           {activeTab === "backup" && <BackupTab />}
           {activeTab === "insights" && <InsightsTab />}
+          {activeTab === "manual" && <ManualTab />}
         </main>
       </div>
     </div>

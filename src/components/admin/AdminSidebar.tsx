@@ -31,6 +31,7 @@ const settingsTabs = [
   { id: "password" as AdminTab, label: "Senha", icon: KeyRound, description: "Alterar credenciais" },
   { id: "users" as AdminTab, label: "Usuários", icon: UserPlus, description: "Cadastrar acessos" },
   { id: "backup" as AdminTab, label: "Backup", icon: DatabaseBackup, description: "Backup e restauração" },
+  { id: "manual" as AdminTab, label: "Manual", icon: BookOpen, description: "Documentação do sistema" },
 ];
 
 const AdminSidebar = ({ activeTab, onTabChange, userEmail, onLogout }: AdminSidebarProps) => {
