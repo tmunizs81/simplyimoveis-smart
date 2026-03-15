@@ -42,6 +42,15 @@ const ChatWidget = ({ propertyId }: { propertyId?: string }) => {
     return `${baseUrl}/functions/v1/${functionName}`;
   };
 
+  const getFunctionHeaders = (): HeadersInit => {
+    const publishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+    return {
+      "Content-Type": "application/json",
+      apikey: publishableKey,
+      Authorization: `Bearer ${publishableKey}`,
+    };
+  };
+
   const saveContactSubmission = async (data: {
     name: string;
     phone: string;
@@ -114,10 +123,7 @@ const ChatWidget = ({ propertyId }: { propertyId?: string }) => {
       const notifyUrl = resolveFunctionUrl("notify-telegram");
       await fetch(notifyUrl, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-        },
+        headers: getFunctionHeaders(),
         body: JSON.stringify({
           visit: {
             ...visitData,
@@ -168,10 +174,7 @@ const ChatWidget = ({ propertyId }: { propertyId?: string }) => {
       const fallbackUrl = resolveFunctionUrl("chat", true);
       const requestOptions: RequestInit = {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-        },
+        headers: getFunctionHeaders(),
         body: JSON.stringify({ messages: allMessages, propertyId }),
       };
 
