@@ -1,5 +1,3 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -8,7 +6,7 @@ const corsHeaders = {
 
 const GATEWAY_URL = "https://connector-gateway.lovable.dev/telegram";
 
-serve(async (req) => {
+const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
@@ -34,8 +32,6 @@ ${visit.client_email ? `📧 <b>Email:</b> ${visit.client_email}\n` : ""}
 🕐 <b>Horário:</b> ${visit.preferred_time}
 ${visit.notes ? `📝 <b>Obs:</b> ${visit.notes}` : ""}`;
 
-    // Send to Talita's chat - she needs to message the bot first with /start
-    // Then get her chat_id. For now use the TELEGRAM_CHAT_ID secret.
     const chatId = Deno.env.get("TELEGRAM_CHAT_ID");
     if (!chatId) {
       console.warn("TELEGRAM_CHAT_ID not set, skipping notification");
@@ -81,4 +77,10 @@ ${visit.notes ? `📝 <b>Obs:</b> ${visit.notes}` : ""}`;
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
-});
+};
+
+if (import.meta.main && typeof Deno !== "undefined" && "serve" in Deno) {
+  Deno.serve(handler);
+}
+
+export default handler;
