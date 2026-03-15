@@ -2,7 +2,7 @@
 # ============================================================
 # Sincroniza senhas dos roles internos do Supabase
 # Uso: bash sync-db-passwords.sh [--quiet]
-# Versão: 2026-03-15-v8
+# Versão: 2026-03-15-v10
 # ============================================================
 
 set -euo pipefail
@@ -18,31 +18,52 @@ cd "$SCRIPT_DIR"
 POSTGRES_PASSWORD=$(grep -E '^POSTGRES_PASSWORD=' .env | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")
 POSTGRES_DB=$(grep -E '^POSTGRES_DB=' .env | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")
 POSTGRES_DB="${POSTGRES_DB:-simply_db}"
+DB_CONTAINER="simply-db"
 
 [ -z "${POSTGRES_PASSWORD:-}" ] && echo "❌ POSTGRES_PASSWORD vazio" && exit 1
 
 log() { [ "$QUIET" = false ] && echo "$1"; }
 
 pg_exec() {
-  timeout 60s docker compose exec -T \
+  timeout 45s docker exec -i \
     -e PGPASSWORD="$POSTGRES_PASSWORD" \
-    db psql -v ON_ERROR_STOP=1 -w -U postgres -d "$POSTGRES_DB" "$@"
+    "$DB_CONTAINER" \
+    psql -v ON_ERROR_STOP=1 -w -U postgres -d "$POSTGRES_DB" "$@"
 }
 
 pg_query_trim() {
-  timeout 15s docker compose exec -T \
+  timeout 15s docker exec -i \
     -e PGPASSWORD="$POSTGRES_PASSWORD" \
-    db psql -tA -w -U postgres -d "$POSTGRES_DB" -c "$1" 2>/dev/null | tr -d '[:space:]'
+    "$DB_CONTAINER" \
+    psql -tA -w -U postgres -d "$POSTGRES_DB" -c "$1" 2>/dev/null | tr -d '[:space:]'
 }
 
 log "🔧 Sincronizando credenciais..."
 
-log "   Aguardando banco..."
+log "   Aguardando banco (container + healthcheck)..."
 for i in {1..30}; do
-  if timeout 8s docker compose exec -T -e PGPASSWORD="$POSTGRES_PASSWORD" db pg_isready -U postgres -q -t 2 >/dev/null 2>&1; then
+  DB_STATUS=$(docker inspect -f '{{.State.Status}}' "$DB_CONTAINER" 2>/dev/null || echo "missing")
+  DB_HEALTH=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$DB_CONTAINER" 2>/dev/null || echo "unknown")
+
+  if [ "$DB_STATUS" = "running" ] && { [ "$DB_HEALTH" = "healthy" ] || [ "$DB_HEALTH" = "none" ]; }; then
+    log "   ✅ Banco pronto (status=$DB_STATUS, health=$DB_HEALTH)"
     break
   fi
-  [ "$i" = "30" ] && echo "❌ Banco não respondeu em 60s" && exit 1
+
+  log "   ⏳ tentativa $i/30 (status=$DB_STATUS, health=$DB_HEALTH)"
+  [ "$i" = "30" ] && echo "❌ Banco não ficou pronto em tempo hábil" && exit 1
+  sleep 2
+done
+
+log "   Validando conexão SQL..."
+for i in {1..20}; do
+  if pg_query_trim "SELECT 1;" >/dev/null 2>&1; then
+    log "   ✅ Conexão SQL OK"
+    break
+  fi
+
+  log "   ⏳ tentativa SQL $i/20"
+  [ "$i" = "20" ] && echo "❌ Não foi possível conectar no PostgreSQL com as credenciais do .env" && exit 1
   sleep 2
 done
 
@@ -50,11 +71,12 @@ log "   Aguardando roles internos..."
 for i in {1..20}; do
   ROLE_OK=$(pg_query_trim "SELECT 1 FROM pg_roles WHERE rolname='supabase_auth_admin'" || true)
   [ "$ROLE_OK" = "1" ] && break
+  log "   ⏳ tentativa roles $i/20"
   [ "$i" = "20" ] && echo "❌ Roles internos não foram criados" && exit 1
   sleep 3
 done
 
-log "   Aplicando SQL..."
+log "   Aplicando SQL de sincronização..."
 
 ESCAPED_PASS=$(printf '%s' "$POSTGRES_PASSWORD" | sed "s/'/''/g")
 TMP_SQL=$(mktemp /tmp/sync-db-XXXXXX.sql)
