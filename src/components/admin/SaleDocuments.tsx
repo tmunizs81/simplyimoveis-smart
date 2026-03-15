@@ -57,14 +57,14 @@ const SaleDocuments = ({ saleId, onClose }: { saleId: string; onClose: () => voi
       const { error: uploadErr } = await supabase.storage.from("sales-documents").upload(path, file);
       if (uploadErr) { toast.error(`Erro ao enviar ${file.name}`); continue; }
 
-      await supabase.from("sales_documents").insert({
+      await adminInsert("sales_documents", {
         sale_id: saleId,
         user_id: user.id,
         document_type: docType,
         file_name: file.name,
         file_path: path,
         file_type: file.type || "application/octet-stream",
-      } as any);
+      });
     }
     toast.success("Documentos enviados!");
     setFiles([]);
