@@ -363,7 +363,7 @@ echo -e "${GREEN}║  Frontend: http://localhost:${FRONTEND_PORT}               
 echo -e "${GREEN}║  API:      http://localhost:${KONG_PORT}                     ║${NC}"
 echo -e "${GREEN}║  Admin:    https://${SITE_DOMAIN}/admin              ║${NC}"
 echo -e "${GREEN}╠══════════════════════════════════════════════════════╣${NC}"
-echo -e "${GREEN}║  Login:    tmunizs89@proton.me / 10203040           ║${NC}"
+echo -e "${GREEN}║  Login:    ${ADMIN_LOGIN_EMAIL} / ${ADMIN_LOGIN_PASSWORD}           ║${NC}"
 echo -e "${GREEN}╚══════════════════════════════════════════════════════╝${NC}"
 echo ""
 echo -e "${YELLOW}⚠️  Altere a senha do admin no primeiro acesso!${NC}"
