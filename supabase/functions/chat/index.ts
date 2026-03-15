@@ -13,8 +13,14 @@ const handler = async (req: Request): Promise<Response> => {
 
   try {
     const { messages, propertyId } = await req.json();
+
+    // Detectar ambiente: Lovable AI (Cloud) ou Groq (self-hosted)
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
-    if (!GROQ_API_KEY) throw new Error("GROQ_API_KEY is not configured");
+
+    const useLovableAI = !!LOVABLE_API_KEY;
+    const apiKey = LOVABLE_API_KEY || GROQ_API_KEY;
+    if (!apiKey) throw new Error("Nenhuma API key configurada (LOVABLE_API_KEY ou GROQ_API_KEY)");
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
