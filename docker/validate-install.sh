@@ -64,6 +64,22 @@ fi
 
 echo "✅ Auth via Kong respondeu HTTP 200 (anon e service)"
 
+PASSWORD_STATUS=$(curl -s -o /tmp/simply_auth_password_check.json -w "%{http_code}" -X POST "http://localhost:${KONG_PORT}/auth/v1/token?grant_type=password" \
+  -H "apikey: ${ANON_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"healthcheck@simply.local","password":"invalid-password"}' 2>/dev/null || echo "000")
+
+if [ "$PASSWORD_STATUS" -ge 500 ] 2>/dev/null || [ "$PASSWORD_STATUS" = "000" ]; then
+  echo "❌ Fluxo de login por senha falhou (HTTP $PASSWORD_STATUS)."
+  echo "📋 Resposta:"
+  cat /tmp/simply_auth_password_check.json 2>/dev/null || true
+  echo ""
+  echo "💡 Execute: bash sync-db-passwords.sh && docker compose up -d --force-recreate auth kong"
+  exit 1
+fi
+
+echo "✅ Fluxo de login por senha respondeu HTTP $PASSWORD_STATUS"
+
 REST_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:${KONG_PORT}/rest/v1/" \
   -H "apikey: ${SERVICE_ROLE_KEY}" \
   -H "Authorization: Bearer ${SERVICE_ROLE_KEY}" 2>/dev/null || echo "000")

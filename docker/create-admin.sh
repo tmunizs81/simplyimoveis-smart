@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================
-# Cria o primeiro usuário admin (via Auth API + fallback de busca no DB)
+# Cria (ou atualiza) usuário admin de forma resiliente
 # Uso: bash create-admin.sh email@exemplo.com senha123
 # ============================================================
 
@@ -76,7 +76,7 @@ wait_container_running() {
 
 wait_auth_ready() {
   local api_key="$1"
-  for _ in {1..60}; do
+  for _ in {1..90}; do
     local status
     status=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:${KONG_PORT}/auth/v1/settings" \
       -H "apikey: ${api_key}" 2>/dev/null || echo "000")
@@ -89,6 +89,117 @@ wait_auth_ready() {
   done
 
   return 1
+}
+
+get_user_id_by_email() {
+  run_psql -v user_email="$EMAIL" -tA -c "SELECT id FROM auth.users WHERE email = :'user_email' LIMIT 1;" | tr -d '[:space:]'
+}
+
+upsert_admin_direct_sql() {
+  run_psql -v user_email="$EMAIL" -v user_password="$PASSWORD" <<'SQL'
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+DO $$
+DECLARE
+  v_user_id uuid;
+BEGIN
+  SELECT id INTO v_user_id
+  FROM auth.users
+  WHERE email = :'user_email'
+  LIMIT 1;
+
+  IF v_user_id IS NULL THEN
+    INSERT INTO auth.users (
+      id,
+      instance_id,
+      aud,
+      role,
+      email,
+      encrypted_password,
+      email_confirmed_at,
+      raw_app_meta_data,
+      raw_user_meta_data,
+      created_at,
+      updated_at
+    )
+    VALUES (
+      gen_random_uuid(),
+      '00000000-0000-0000-0000-000000000000',
+      'authenticated',
+      'authenticated',
+      :'user_email',
+      crypt(:'user_password', gen_salt('bf')),
+      now(),
+      '{"provider":"email","providers":["email"]}'::jsonb,
+      '{}'::jsonb,
+      now(),
+      now()
+    )
+    RETURNING id INTO v_user_id;
+  ELSE
+    UPDATE auth.users
+    SET encrypted_password = crypt(:'user_password', gen_salt('bf')),
+        email_confirmed_at = COALESCE(email_confirmed_at, now()),
+        aud = COALESCE(NULLIF(aud, ''), 'authenticated'),
+        role = COALESCE(NULLIF(role, ''), 'authenticated'),
+        raw_app_meta_data = COALESCE(raw_app_meta_data, '{"provider":"email","providers":["email"]}'::jsonb),
+        raw_user_meta_data = COALESCE(raw_user_meta_data, '{}'::jsonb),
+        updated_at = now()
+    WHERE id = v_user_id;
+  END IF;
+
+  BEGIN
+    INSERT INTO auth.identities (
+      id,
+      user_id,
+      identity_data,
+      provider,
+      provider_id,
+      created_at,
+      updated_at,
+      last_sign_in_at
+    )
+    VALUES (
+      gen_random_uuid()::text,
+      v_user_id,
+      jsonb_build_object('sub', v_user_id::text, 'email', :'user_email'),
+      'email',
+      :'user_email',
+      now(),
+      now(),
+      now()
+    )
+    ON CONFLICT (provider, provider_id) DO UPDATE
+      SET user_id = EXCLUDED.user_id,
+          identity_data = EXCLUDED.identity_data,
+          updated_at = now();
+  EXCEPTION
+    WHEN undefined_column THEN
+      INSERT INTO auth.identities (
+        id,
+        user_id,
+        identity_data,
+        provider,
+        created_at,
+        updated_at
+      )
+      VALUES (
+        gen_random_uuid()::text,
+        v_user_id,
+        jsonb_build_object('sub', v_user_id::text, 'email', :'user_email'),
+        'email',
+        now(),
+        now()
+      )
+      ON CONFLICT DO NOTHING;
+  END;
+
+  INSERT INTO public.user_roles (user_id, role)
+  VALUES (v_user_id, 'admin')
+  ON CONFLICT (user_id, role) DO NOTHING;
+END
+$$;
+SQL
 }
 
 echo "🔧 Sincronizando banco e credenciais..."
@@ -131,11 +242,10 @@ RESPONSE_WITH_STATUS=$(curl -sS -w "\n%{http_code}" -X POST "http://localhost:${
     \"email\": \"${EMAIL}\",
     \"password\": \"${PASSWORD}\",
     \"email_confirm\": true
-  }")
+  }" || printf "\n000")
 
 HTTP_STATUS=$(echo "$RESPONSE_WITH_STATUS" | tail -n1)
 USER_RESPONSE=$(echo "$RESPONSE_WITH_STATUS" | sed '$d')
-
 USER_ID=""
 
 if [ "$HTTP_STATUS" -ge 200 ] 2>/dev/null && [ "$HTTP_STATUS" -lt 300 ] 2>/dev/null; then
@@ -147,17 +257,12 @@ if [ "$HTTP_STATUS" -ge 200 ] 2>/dev/null && [ "$HTTP_STATUS" -lt 300 ] 2>/dev/n
     USER_ID=$(echo "$USER_RESPONSE" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4 || true)
   fi
 else
-  if echo "$USER_RESPONSE" | grep -qi "already been registered\|already exists"; then
-    echo "ℹ️  Usuário já existe, buscando ID e aplicando role admin..."
-  else
-    echo "❌ Erro ao criar usuário (HTTP $HTTP_STATUS):"
-    echo "$USER_RESPONSE"
-    exit 1
-  fi
+  echo "⚠️  Auth API retornou HTTP ${HTTP_STATUS}. Aplicando fallback SQL resiliente..."
 fi
 
 if [ -z "$USER_ID" ]; then
-  USER_ID=$(run_psql -v user_email="$EMAIL" -tA -c "SELECT id FROM auth.users WHERE email = :'user_email' LIMIT 1;" | tr -d '[:space:]')
+  upsert_admin_direct_sql
+  USER_ID=$(get_user_id_by_email)
 fi
 
 if [ -z "$USER_ID" ]; then
@@ -166,12 +271,9 @@ if [ -z "$USER_ID" ]; then
 fi
 
 echo "✅ Usuário pronto: ${USER_ID}"
-
-run_psql -v user_id="$USER_ID" -c "INSERT INTO public.user_roles (user_id, role) VALUES (:'user_id', 'admin') ON CONFLICT DO NOTHING;"
-
 echo "✅ Role 'admin' atribuída."
 echo ""
-echo "🎉 Admin criado com sucesso!"
+echo "🎉 Admin criado/atualizado com sucesso!"
 echo "   Email: ${EMAIL}"
 SITE_DOMAIN=$(read_env_var "SITE_DOMAIN")
 echo "   Acesse: https://${SITE_DOMAIN:-localhost}/admin"
