@@ -44,18 +44,15 @@ wait_container_running() {
   local timeout="${2:-60}"
 
   for _ in $(seq 1 "$timeout"); do
-    local state
-    local restarting
+    local state restarting
     state=$(docker inspect -f '{{.State.Status}}' "$container" 2>/dev/null || true)
     restarting=$(docker inspect -f '{{.State.Restarting}}' "$container" 2>/dev/null || true)
 
     if [ "$state" = "running" ] && [ "$restarting" != "true" ]; then
       return 0
     fi
-
     sleep 1
   done
-
   return 1
 }
 
@@ -65,15 +62,26 @@ wait_auth_ready() {
     local status
     status=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:${KONG_PORT}/auth/v1/settings" \
       -H "apikey: ${api_key}" 2>/dev/null || echo "000")
-
     if [ "$status" = "200" ]; then
       return 0
     fi
-
     sleep 1
   done
-
   return 1
+}
+
+# Helper para rodar psql sem prompt de senha
+run_psql() {
+  docker compose exec -T -e PGPASSWORD="${POSTGRES_PASSWORD}" db psql \
+    -v ON_ERROR_STOP=1 \
+    -U supabase_admin \
+    -d "$POSTGRES_DB" \
+    "$@" 2>/dev/null || \
+  docker compose exec -T db psql \
+    -v ON_ERROR_STOP=1 \
+    -U postgres \
+    -d "$POSTGRES_DB" \
+    "$@"
 }
 
 # 1) Garantir DB + roles internos sincronizados
@@ -81,7 +89,7 @@ echo "🔧 Sincronizando banco e credenciais..."
 docker compose up -d db >/dev/null 2>&1
 bash "$SCRIPT_DIR/sync-db-passwords.sh" --quiet
 
-# 2) Recriar serviços dependentes para usar senha atualizada
+# 2) Recriar serviços dependentes
 echo "🔄 Reiniciando serviços..."
 docker compose up -d --force-recreate auth rest storage functions kong >/dev/null 2>&1
 
@@ -98,7 +106,7 @@ if ! wait_container_running simply-kong 60; then
   exit 1
 fi
 
-# Usa a chave ativa do container Kong (evita mismatch com .env local)
+# Usa a chave ativa do container Kong
 RUNTIME_SERVICE_KEY=$(docker compose exec -T kong printenv SUPABASE_SERVICE_KEY 2>/dev/null | tr -d '\r' || true)
 API_SERVICE_KEY="${RUNTIME_SERVICE_KEY:-${SERVICE_ROLE_KEY:-}}"
 
@@ -107,13 +115,8 @@ if [ -z "$API_SERVICE_KEY" ]; then
   exit 1
 fi
 
-if [ -n "$RUNTIME_SERVICE_KEY" ] && [ "${SERVICE_ROLE_KEY:-}" != "$RUNTIME_SERVICE_KEY" ]; then
-  echo "⚠️  Detectado desencontro entre .env e chave ativa do Kong. Usando chave ativa do container."
-fi
-
 if ! wait_auth_ready "$API_SERVICE_KEY"; then
-  echo "❌ Auth não respondeu corretamente após sincronização."
-  echo "📋 Logs recentes:"
+  echo "❌ Auth não respondeu. Logs:"
   docker compose logs --tail=30 auth
   exit 1
 fi
@@ -128,7 +131,7 @@ RESPONSE_WITH_STATUS=$(curl -sS -w "\n%{http_code}" -X POST "http://localhost:${
     \"email\": \"${EMAIL}\",
     \"password\": \"${PASSWORD}\",
     \"email_confirm\": true
-  }")
+  }" 2>/dev/null)
 
 HTTP_STATUS=$(echo "$RESPONSE_WITH_STATUS" | tail -n1)
 USER_RESPONSE=$(echo "$RESPONSE_WITH_STATUS" | sed '$d')
@@ -141,24 +144,15 @@ else
   echo "⚠️  Resposta HTTP $HTTP_STATUS ao criar usuário."
 
   if echo "$USER_RESPONSE" | grep -qi "already been registered\|already exists"; then
-    echo "ℹ️  Usuário já existe, buscando ID para atribuir role admin..."
+    echo "ℹ️  Usuário já existe, buscando ID..."
   else
     echo "❌ Erro: $USER_RESPONSE"
-    if echo "$USER_RESPONSE" | grep -qi "Invalid authentication credentials"; then
-      echo ""
-      echo "💡 Dica: As chaves podem estar desatualizadas no Kong."
-      echo "   Rode: docker compose down && bash install.sh"
-    fi
     exit 1
   fi
 fi
 
 if [ -z "$USER_ID" ]; then
-  USER_ID=$(docker compose exec -T db psql \
-    -v ON_ERROR_STOP=1 \
-    -U supabase_admin \
-    -d "$POSTGRES_DB" \
-    -tA -c "SELECT id FROM auth.users WHERE email = '${EMAIL}' LIMIT 1;" | tr -d '[:space:]')
+  USER_ID=$(run_psql -tA -c "SELECT id FROM auth.users WHERE email = '${EMAIL}' LIMIT 1;" | tr -d '[:space:]')
 fi
 
 if [ -z "$USER_ID" ]; then
@@ -169,11 +163,7 @@ fi
 echo "✅ Usuário pronto: ${USER_ID}"
 
 # Adiciona role admin
-docker compose exec -T db psql \
-  -v ON_ERROR_STOP=1 \
-  -U supabase_admin \
-  -d "$POSTGRES_DB" \
-  -c "INSERT INTO public.user_roles (user_id, role) VALUES ('${USER_ID}', 'admin') ON CONFLICT DO NOTHING;"
+run_psql -c "INSERT INTO public.user_roles (user_id, role) VALUES ('${USER_ID}', 'admin') ON CONFLICT DO NOTHING;"
 
 echo "✅ Role 'admin' atribuída."
 echo ""
