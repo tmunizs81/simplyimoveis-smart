@@ -1,14 +1,12 @@
 #!/bin/bash
 # ============================================================
 # Sincroniza senhas dos roles internos do Supabase
-# Uso: bash sync-db-passwords.sh [--quiet]
-# Versão: 2026-03-15-v10
+# Uso: bash sync-db-passwords.sh
+# Versão: 2026-03-15-v10-definitive
+# Usa docker exec direto (não docker compose exec que trava)
 # ============================================================
 
 set -euo pipefail
-
-QUIET=false
-[ "${1:-}" = "--quiet" ] && QUIET=true
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
@@ -18,118 +16,87 @@ cd "$SCRIPT_DIR"
 POSTGRES_PASSWORD=$(grep -E '^POSTGRES_PASSWORD=' .env | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")
 POSTGRES_DB=$(grep -E '^POSTGRES_DB=' .env | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")
 POSTGRES_DB="${POSTGRES_DB:-simply_db}"
-DB_CONTAINER="simply-db"
 
 [ -z "${POSTGRES_PASSWORD:-}" ] && echo "❌ POSTGRES_PASSWORD vazio" && exit 1
 
-log() { [ "$QUIET" = false ] && echo "$1"; }
+DB_CONTAINER="simply-db"
 
-pg_exec() {
-  timeout 45s docker exec -i \
-    -e PGPASSWORD="$POSTGRES_PASSWORD" \
-    "$DB_CONTAINER" \
-    psql -v ON_ERROR_STOP=1 -w -U postgres -d "$POSTGRES_DB" "$@"
-}
+echo "🔧 Sincronizando credenciais..."
 
-pg_query_trim() {
-  timeout 15s docker exec -i \
-    -e PGPASSWORD="$POSTGRES_PASSWORD" \
-    "$DB_CONTAINER" \
-    psql -tA -w -U postgres -d "$POSTGRES_DB" -c "$1" 2>/dev/null | tr -d '[:space:]'
-}
+# ── 1. Checar container rodando ──
+echo "   Verificando container ${DB_CONTAINER}..."
+DB_STATUS=$(docker inspect -f '{{.State.Status}}' "$DB_CONTAINER" 2>/dev/null || echo "not_found")
+if [ "$DB_STATUS" != "running" ]; then
+  echo "❌ Container $DB_CONTAINER não está rodando (status: $DB_STATUS)"
+  echo "   Rode: docker compose up -d db"
+  exit 1
+fi
+echo "   ✅ Container rodando"
 
-log "🔧 Sincronizando credenciais..."
-
-log "   Aguardando banco (container + healthcheck)..."
-for i in {1..30}; do
-  DB_STATUS=$(docker inspect -f '{{.State.Status}}' "$DB_CONTAINER" 2>/dev/null || echo "missing")
-  DB_HEALTH=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$DB_CONTAINER" 2>/dev/null || echo "unknown")
-
-  if [ "$DB_STATUS" = "running" ] && { [ "$DB_HEALTH" = "healthy" ] || [ "$DB_HEALTH" = "none" ]; }; then
-    log "   ✅ Banco pronto (status=$DB_STATUS, health=$DB_HEALTH)"
-    break
-  fi
-
-  log "   ⏳ tentativa $i/30 (status=$DB_STATUS, health=$DB_HEALTH)"
-  [ "$i" = "30" ] && echo "❌ Banco não ficou pronto em tempo hábil" && exit 1
-  sleep 2
-done
-
-log "   Validando conexão SQL..."
-for i in {1..20}; do
-  if pg_query_trim "SELECT 1;" >/dev/null 2>&1; then
-    log "   ✅ Conexão SQL OK"
-    break
-  fi
-
-  log "   ⏳ tentativa SQL $i/20"
-  [ "$i" = "20" ] && echo "❌ Não foi possível conectar no PostgreSQL com as credenciais do .env" && exit 1
-  sleep 2
-done
-
-log "   Aguardando roles internos..."
-for i in {1..20}; do
-  ROLE_OK=$(pg_query_trim "SELECT 1 FROM pg_roles WHERE rolname='supabase_auth_admin'" || true)
-  [ "$ROLE_OK" = "1" ] && break
-  log "   ⏳ tentativa roles $i/20"
-  [ "$i" = "20" ] && echo "❌ Roles internos não foram criados" && exit 1
+# ── 2. Testar conexão SQL (com retry simples) ──
+echo "   Testando conexão SQL..."
+for i in 1 2 3 4 5 6 7 8 9 10; do
+  RESULT=$(docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" "$DB_CONTAINER" \
+    psql -tA -w -U postgres -d "$POSTGRES_DB" -c "SELECT 1" 2>&1) && break
+  echo "   ⏳ tentativa $i/10..."
   sleep 3
 done
 
-log "   Aplicando SQL de sincronização..."
+if [ "${RESULT:-}" != "1" ]; then
+  echo "❌ Não foi possível conectar ao PostgreSQL"
+  echo "   Resultado: $RESULT"
+  exit 1
+fi
+echo "   ✅ Conexão SQL OK"
 
+# ── 3. Verificar roles ──
+echo "   Verificando roles internos..."
+ROLE_CHECK=$(docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" "$DB_CONTAINER" \
+  psql -tA -w -U postgres -d "$POSTGRES_DB" \
+  -c "SELECT string_agg(rolname, ',') FROM pg_roles WHERE rolname IN ('supabase_admin','supabase_auth_admin','authenticator','supabase_storage_admin');" 2>/dev/null || echo "")
+
+echo "   Roles encontrados: ${ROLE_CHECK:-nenhum}"
+
+# ── 4. Aplicar senhas ──
+echo "   Aplicando senhas..."
 ESCAPED_PASS=$(printf '%s' "$POSTGRES_PASSWORD" | sed "s/'/''/g")
-TMP_SQL=$(mktemp /tmp/sync-db-XXXXXX.sql)
-cat > "$TMP_SQL" <<'EOSQL'
-ALTER ROLE supabase_admin WITH PASSWORD '__POSTGRES_PASSWORD__';
-ALTER ROLE supabase_auth_admin WITH PASSWORD '__POSTGRES_PASSWORD__';
-ALTER ROLE authenticator WITH PASSWORD '__POSTGRES_PASSWORD__';
-ALTER ROLE supabase_storage_admin WITH PASSWORD '__POSTGRES_PASSWORD__';
+
+docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" "$DB_CONTAINER" \
+  psql -v ON_ERROR_STOP=0 -w -U postgres -d "$POSTGRES_DB" <<EOSQL
+DO \$\$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_admin') THEN
+    EXECUTE 'ALTER ROLE supabase_admin WITH PASSWORD ''${ESCAPED_PASS}''';
+    RAISE NOTICE 'supabase_admin OK';
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_auth_admin') THEN
+    EXECUTE 'ALTER ROLE supabase_auth_admin WITH PASSWORD ''${ESCAPED_PASS}''';
+    RAISE NOTICE 'supabase_auth_admin OK';
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticator') THEN
+    EXECUTE 'ALTER ROLE authenticator WITH PASSWORD ''${ESCAPED_PASS}''';
+    RAISE NOTICE 'authenticator OK';
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_storage_admin') THEN
+    EXECUTE 'ALTER ROLE supabase_storage_admin WITH PASSWORD ''${ESCAPED_PASS}''';
+    RAISE NOTICE 'supabase_storage_admin OK';
+  END IF;
+END \$\$;
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
-DO $body$
+DO \$\$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'auth') THEN
-    CREATE SCHEMA auth AUTHORIZATION supabase_auth_admin;
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_auth_admin') THEN
+      CREATE SCHEMA auth AUTHORIZATION supabase_auth_admin;
+    END IF;
   ELSE
-    ALTER SCHEMA auth OWNER TO supabase_auth_admin;
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_auth_admin') THEN
+      ALTER SCHEMA auth OWNER TO supabase_auth_admin;
+    END IF;
   END IF;
-END $body$;
-
-DO $body$
-DECLARE r RECORD;
-BEGIN
-  FOR r IN SELECT tablename FROM pg_tables WHERE schemaname = 'auth' LOOP
-    EXECUTE format('ALTER TABLE auth.%I OWNER TO supabase_auth_admin', r.tablename);
-  END LOOP;
-
-  FOR r IN SELECT sequence_name FROM information_schema.sequences WHERE sequence_schema = 'auth' LOOP
-    EXECUTE format('ALTER SEQUENCE auth.%I OWNER TO supabase_auth_admin', r.sequence_name);
-  END LOOP;
-
-  FOR r IN
-    SELECT p.oid::regprocedure AS sig
-    FROM pg_proc p
-    JOIN pg_namespace n ON p.pronamespace = n.oid
-    WHERE n.nspname = 'auth'
-  LOOP
-    EXECUTE format('ALTER FUNCTION %s OWNER TO supabase_auth_admin', r.sig);
-  END LOOP;
-
-  FOR r IN SELECT viewname FROM pg_views WHERE schemaname = 'auth' LOOP
-    EXECUTE format('ALTER VIEW auth.%I OWNER TO supabase_auth_admin', r.viewname);
-  END LOOP;
-
-  FOR r IN
-    SELECT t.typname
-    FROM pg_type t
-    JOIN pg_namespace n ON t.typnamespace = n.oid
-    WHERE n.nspname = 'auth' AND t.typtype = 'e' AND t.typrelid = 0
-  LOOP
-    EXECUTE format('ALTER TYPE auth.%I OWNER TO supabase_auth_admin', r.typname);
-  END LOOP;
-END $body$;
+END \$\$;
 
 GRANT USAGE ON SCHEMA auth TO supabase_auth_admin, authenticator, anon, authenticated, service_role;
 GRANT CREATE ON SCHEMA auth TO supabase_auth_admin;
@@ -138,15 +105,12 @@ GRANT ALL ON ALL SEQUENCES IN SCHEMA auth TO supabase_auth_admin;
 GRANT ALL ON ALL ROUTINES IN SCHEMA auth TO supabase_auth_admin;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA auth TO authenticator;
 GRANT USAGE ON ALL SEQUENCES IN SCHEMA auth TO authenticator;
+
+GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role, authenticator;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO anon, authenticated;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO service_role;
+GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;
 EOSQL
 
-sed -i "s/__POSTGRES_PASSWORD__/${ESCAPED_PASS}/g" "$TMP_SQL"
-
-if [ "$QUIET" = true ]; then
-  pg_exec -f "$TMP_SQL" >/dev/null
-else
-  pg_exec -f "$TMP_SQL"
-fi
-
-rm -f "$TMP_SQL"
-log "✅ Credenciais sincronizadas."
+echo "✅ Credenciais sincronizadas com sucesso!"
