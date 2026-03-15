@@ -6,6 +6,7 @@
 
 set -euo pipefail
 
+SCRIPT_VERSION="2026-03-15-sql-first"
 EMAIL=${1:-}
 PASSWORD=${2:-}
 
@@ -13,6 +14,8 @@ if [ -z "$EMAIL" ] || [ -z "$PASSWORD" ]; then
   echo "Uso: bash create-admin.sh email@exemplo.com senha123"
   exit 1
 fi
+
+echo "ℹ️ create-admin.sh versão: ${SCRIPT_VERSION}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
