@@ -2,7 +2,7 @@
 # ============================================================
 # Cria ou atualiza admin via SQL direto (100% idempotente)
 # Uso: bash create-admin.sh email senha
-# Versão: 2026-03-15-v5-rewrite
+# Versão: 2026-03-15-v6
 # ============================================================
 
 set -euo pipefail
