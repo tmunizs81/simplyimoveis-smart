@@ -423,11 +423,17 @@ CREATE TRIGGER set_short_code BEFORE INSERT ON public.properties FOR EACH ROW EX
 CREATE TRIGGER update_short_code BEFORE UPDATE ON public.properties FOR EACH ROW EXECUTE FUNCTION update_property_short_code_on_status_change();
 
 -- ============================================================
--- Storage buckets
+-- Storage buckets (somente se schema storage já existir)
 -- ============================================================
-INSERT INTO storage.buckets (id, name, public) VALUES
-  ('property-media', 'property-media', true),
-  ('contract-documents', 'contract-documents', false),
-  ('tenant-documents', 'tenant-documents', false),
-  ('inspection-media', 'inspection-media', false),
-  ('sales-documents', 'sales-documents', false);
+DO $$
+BEGIN
+  IF to_regclass('storage.buckets') IS NOT NULL THEN
+    INSERT INTO storage.buckets (id, name, public) VALUES
+      ('property-media', 'property-media', true),
+      ('contract-documents', 'contract-documents', false),
+      ('tenant-documents', 'tenant-documents', false),
+      ('inspection-media', 'inspection-media', false),
+      ('sales-documents', 'sales-documents', false)
+    ON CONFLICT (id) DO NOTHING;
+  END IF;
+END $$;
