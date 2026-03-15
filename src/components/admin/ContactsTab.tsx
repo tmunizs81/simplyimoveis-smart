@@ -45,10 +45,7 @@ const ContactsTab = () => {
   }, []);
 
   const toggleRead = async (contact: ContactSubmission) => {
-    const { error } = await supabase
-      .from("contact_submissions")
-      .update({ read: !contact.read })
-      .eq("id", contact.id);
+    const { error } = await adminUpdate("contact_submissions", { read: !contact.read }, { id: contact.id });
     if (error) {
       toast.error("Erro ao atualizar status.");
     } else {
