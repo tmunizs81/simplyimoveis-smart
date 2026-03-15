@@ -8,6 +8,7 @@ import Properties from "./pages/Properties";
 import PropertyDetail from "./pages/PropertyDetail";
 import Services from "./pages/Services";
 import Admin from "./pages/Admin";
+import Manual from "./pages/Manual";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,6 +25,7 @@ const App = () => (
           <Route path="/imoveis/:id" element={<PropertyDetail />} />
           <Route path="/servicos" element={<Services />} />
           <Route path="/admin" element={<Admin />} />
+          <Route path="/manual" element={<Manual />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
