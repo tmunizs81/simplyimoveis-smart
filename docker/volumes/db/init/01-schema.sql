@@ -397,7 +397,9 @@ CREATE TABLE public.contract_documents (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 ALTER TABLE public.contract_documents ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Admins can manage documents" ON public.contract_documents FOR ALL TO authenticated USING (has_role(auth.uid(), 'admin'));
+CREATE POLICY "Admins can manage documents" ON public.contract_documents FOR ALL TO authenticated
+  USING (has_role(auth.uid(), 'admin'::app_role))
+  WITH CHECK (has_role(auth.uid(), 'admin'::app_role));
 
 CREATE TABLE public.tenant_documents (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
