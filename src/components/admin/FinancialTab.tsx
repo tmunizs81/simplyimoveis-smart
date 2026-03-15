@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { adminInsert, adminUpdate, adminDelete } from "@/lib/adminCrud";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { Plus, Search, DollarSign, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, Edit, Trash2, X, Save, Calendar, Filter } from "lucide-react";
@@ -80,11 +81,11 @@ const FinancialTab = () => {
     };
 
     if (editing) {
-      const { error } = await supabase.from("financial_transactions").update(payload as any).eq("id", editing.id);
+      const { error } = await adminUpdate("financial_transactions", payload, { id: editing.id });
       if (error) { toast.error("Erro ao atualizar"); return; }
       toast.success("Transação atualizada!");
     } else {
-      const { error } = await supabase.from("financial_transactions").insert(payload as any);
+      const { error } = await adminInsert("financial_transactions", payload);
       if (error) { toast.error("Erro ao registrar"); return; }
       toast.success("Transação registrada!");
     }
@@ -94,15 +95,15 @@ const FinancialTab = () => {
 
   const deleteTransaction = async (id: string) => {
     if (!confirm("Excluir esta transação?")) return;
-    await supabase.from("financial_transactions").delete().eq("id", id);
+    await adminDelete("financial_transactions", { id });
     toast.success("Transação excluída");
     fetchTransactions();
   };
 
   const markAsPaid = async (id: string) => {
-    await supabase.from("financial_transactions").update({
-      status: "pago" as any, paid_date: new Date().toISOString().slice(0, 10),
-    } as any).eq("id", id);
+    await adminUpdate("financial_transactions", {
+      status: "pago", paid_date: new Date().toISOString().slice(0, 10),
+    }, { id });
     toast.success("Marcado como pago!");
     fetchTransactions();
   };

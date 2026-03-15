@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { adminInsert, adminUpdate, adminDelete } from "@/lib/adminCrud";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { Plus, Search, Home, Calendar, DollarSign, Edit, Trash2, X, Save, Upload, FileText, Eye, Download } from "lucide-react";
@@ -114,11 +115,11 @@ const RentalsTab = () => {
     };
 
     if (editing) {
-      const { error } = await supabase.from("rental_contracts").update(payload as any).eq("id", editing.id);
+      const { error } = await adminUpdate("rental_contracts", payload, { id: editing.id });
       if (error) { toast.error("Erro ao atualizar contrato"); return; }
       toast.success("Contrato atualizado!");
     } else {
-      const { error } = await supabase.from("rental_contracts").insert(payload as any);
+      const { error } = await adminInsert("rental_contracts", payload);
       if (error) { toast.error("Erro ao criar contrato"); return; }
       toast.success("Contrato criado!");
     }
@@ -128,7 +129,7 @@ const RentalsTab = () => {
 
   const deleteContract = async (id: string) => {
     if (!confirm("Excluir este contrato e todos os documentos?")) return;
-    await supabase.from("rental_contracts").delete().eq("id", id);
+    await adminDelete("rental_contracts", { id });
     toast.success("Contrato excluído");
     fetchAll();
   };
@@ -143,10 +144,10 @@ const RentalsTab = () => {
       const path = `${user.id}/${contractId}/${crypto.randomUUID()}.${ext}`;
       const { error: uploadError } = await supabase.storage.from("contract-documents").upload(path, file);
       if (uploadError) { toast.error(`Erro ao enviar ${file.name}`); continue; }
-      await supabase.from("contract_documents").insert({
+      await adminInsert("contract_documents", {
         contract_id: contractId, file_path: path, file_name: file.name,
-        file_type: file.type, document_type: uploadDocType as any, user_id: user.id,
-      } as any);
+        file_type: file.type, document_type: uploadDocType, user_id: user.id,
+      });
     }
     toast.success("Documentos enviados!");
     setUploadFiles([]);
@@ -155,7 +156,7 @@ const RentalsTab = () => {
 
   const deleteDoc = async (doc: ContractDoc) => {
     await supabase.storage.from("contract-documents").remove([doc.file_path]);
-    await supabase.from("contract_documents").delete().eq("id", doc.id);
+    await adminDelete("contract_documents", { id: doc.id });
     toast.success("Documento removido");
     if (viewingDocs) fetchDocs(viewingDocs);
   };

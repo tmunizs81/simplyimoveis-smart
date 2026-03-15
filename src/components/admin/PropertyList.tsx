@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { Edit, Trash2, Star, Eye, EyeOff, MapPin, BedDouble, Bath, Maximize2, ImageIcon, Plus, Search, Building2, Car, DoorOpen } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { adminUpdate, adminDelete } from "@/lib/adminCrud";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -28,19 +29,19 @@ const PropertyList = ({ properties, onEdit, onRefresh, onNew }: PropertyListProp
         await supabase.storage.from("property-media").remove([m.file_path]);
       }
     }
-    await supabase.from("properties").delete().eq("id", id);
+    await adminDelete("properties", { id });
     toast.success("Imóvel removido!");
     onRefresh();
   };
 
   const toggleActive = async (p: Property) => {
-    await supabase.from("properties").update({ active: !p.active }).eq("id", p.id);
+    await adminUpdate("properties", { active: !p.active }, { id: p.id });
     toast.success(p.active ? "Imóvel desativado" : "Imóvel ativado");
     onRefresh();
   };
 
   const toggleFeatured = async (p: Property) => {
-    await supabase.from("properties").update({ featured: !p.featured }).eq("id", p.id);
+    await adminUpdate("properties", { featured: !p.featured }, { id: p.id });
     toast.success(p.featured ? "Removido dos destaques" : "Adicionado aos destaques");
     onRefresh();
   };

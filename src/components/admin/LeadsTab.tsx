@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { adminInsert, adminUpdate, adminDelete } from "@/lib/adminCrud";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { Plus, Search, Phone, Mail, Calendar, ChevronDown, Edit, Trash2, Users, Filter, X, Save, ArrowRight } from "lucide-react";
@@ -75,18 +76,18 @@ const LeadsTab = () => {
 
     const payload = {
       name: form.name, email: form.email || null, phone: form.phone || null,
-      source: form.source as any, status: form.status as any,
+      source: form.source, status: form.status,
       interest_type: form.interest_type, budget_min: form.budget_min || null,
       budget_max: form.budget_max || null, notes: form.notes || null,
       next_follow_up: form.next_follow_up || null, user_id: user.id,
     };
 
     if (editingLead) {
-      const { error } = await supabase.from("leads").update(payload as any).eq("id", editingLead.id);
+      const { error } = await adminUpdate("leads", payload, { id: editingLead.id });
       if (error) { toast.error("Erro ao atualizar lead"); return; }
       toast.success("Lead atualizado!");
     } else {
-      const { error } = await supabase.from("leads").insert(payload as any);
+      const { error } = await adminInsert("leads", payload);
       if (error) { toast.error("Erro ao criar lead"); return; }
       toast.success("Lead criado!");
     }
@@ -96,13 +97,13 @@ const LeadsTab = () => {
 
   const deleteLead = async (id: string) => {
     if (!confirm("Excluir este lead?")) return;
-    await supabase.from("leads").delete().eq("id", id);
+    await adminDelete("leads", { id });
     toast.success("Lead excluído");
     fetchLeads();
   };
 
   const updateStatus = async (id: string, status: string) => {
-    await supabase.from("leads").update({ status: status as any }).eq("id", id);
+    await adminUpdate("leads", { status }, { id });
     toast.success("Status atualizado");
     fetchLeads();
   };

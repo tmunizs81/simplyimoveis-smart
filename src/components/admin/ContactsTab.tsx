@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { adminUpdate, adminDelete } from "@/lib/adminCrud";
 import { toast } from "sonner";
 import { Mail, Phone, Clock, Eye, EyeOff, Trash2, ChevronDown, ChevronUp, MessageCircle, Calendar, Bot } from "lucide-react";
 
@@ -44,10 +45,7 @@ const ContactsTab = () => {
   }, []);
 
   const toggleRead = async (contact: ContactSubmission) => {
-    const { error } = await supabase
-      .from("contact_submissions")
-      .update({ read: !contact.read })
-      .eq("id", contact.id);
+    const { error } = await adminUpdate("contact_submissions", { read: !contact.read }, { id: contact.id });
     if (error) {
       toast.error("Erro ao atualizar status.");
     } else {
@@ -58,8 +56,7 @@ const ContactsTab = () => {
   };
 
   const deleteContact = async (id: string) => {
-    // Note: DELETE policy not created, so this may fail
-    const { error } = await supabase.from("contact_submissions").delete().eq("id", id);
+    const { error } = await adminDelete("contact_submissions", { id });
     if (error) {
       toast.error("Erro ao excluir contato.");
     } else {

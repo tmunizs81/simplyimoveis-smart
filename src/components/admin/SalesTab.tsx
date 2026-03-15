@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { adminInsert, adminUpdate, adminDelete } from "@/lib/adminCrud";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { Plus, TrendingUp, DollarSign, Calendar, Edit, Trash2, X, Save, Search, FileText } from "lucide-react";
@@ -78,11 +79,11 @@ const SalesTab = () => {
     };
 
     if (editingSale) {
-      const { error } = await supabase.from("sales").update(payload as any).eq("id", editingSale.id);
+      const { error } = await adminUpdate("sales", payload, { id: editingSale.id });
       if (error) { toast.error("Erro ao atualizar venda"); return; }
       toast.success("Venda atualizada!");
     } else {
-      const { error } = await supabase.from("sales").insert(payload as any);
+      const { error } = await adminInsert("sales", payload);
       if (error) { toast.error("Erro ao criar venda"); return; }
       toast.success("Venda registrada!");
     }
@@ -92,7 +93,7 @@ const SalesTab = () => {
 
   const deleteSale = async (id: string) => {
     if (!confirm("Excluir esta venda?")) return;
-    await supabase.from("sales").delete().eq("id", id);
+    await adminDelete("sales", { id });
     toast.success("Venda excluída");
     fetchSales();
   };

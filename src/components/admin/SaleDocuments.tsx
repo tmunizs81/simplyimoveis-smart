@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { adminInsert, adminDelete } from "@/lib/adminCrud";
 import { toast } from "sonner";
 import { Upload, Trash2, FileText, Download, X, Eye } from "lucide-react";
 
@@ -56,14 +57,14 @@ const SaleDocuments = ({ saleId, onClose }: { saleId: string; onClose: () => voi
       const { error: uploadErr } = await supabase.storage.from("sales-documents").upload(path, file);
       if (uploadErr) { toast.error(`Erro ao enviar ${file.name}`); continue; }
 
-      await supabase.from("sales_documents").insert({
+      await adminInsert("sales_documents", {
         sale_id: saleId,
         user_id: user.id,
         document_type: docType,
         file_name: file.name,
         file_path: path,
         file_type: file.type || "application/octet-stream",
-      } as any);
+      });
     }
     toast.success("Documentos enviados!");
     setFiles([]);
@@ -74,7 +75,7 @@ const SaleDocuments = ({ saleId, onClose }: { saleId: string; onClose: () => voi
   const handleDelete = async (doc: SaleDoc) => {
     if (!confirm(`Excluir "${doc.file_name}"?`)) return;
     await supabase.storage.from("sales-documents").remove([doc.file_path]);
-    await supabase.from("sales_documents").delete().eq("id", doc.id);
+    await adminDelete("sales_documents", { id: doc.id });
     toast.success("Documento excluído");
     fetchDocs();
   };

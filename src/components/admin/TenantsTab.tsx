@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { adminInsert, adminUpdate, adminDelete } from "@/lib/adminCrud";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { Plus, Search, Users, Phone, Mail, Edit, Trash2, X, Save, FileText, Upload, Eye, FolderOpen } from "lucide-react";
@@ -89,13 +90,13 @@ const TenantsTab = () => {
     let tenantId: string;
 
     if (editing) {
-      const { error } = await supabase.from("tenants").update(payload as any).eq("id", editing.id);
+      const { error } = await adminUpdate("tenants", payload, { id: editing.id });
       if (error) { toast.error(error.message || "Erro ao atualizar"); return; }
       tenantId = editing.id;
     } else {
-      const { data: inserted, error } = await supabase.from("tenants").insert(payload as any).select("id").single();
-      if (error || !inserted) { toast.error(error?.message || "Erro ao cadastrar"); return; }
-      tenantId = inserted.id;
+      const { data: inserted, error } = await adminInsert("tenants", payload);
+      if (error || !inserted?.[0]) { toast.error(error?.message || "Erro ao cadastrar"); return; }
+      tenantId = inserted[0].id;
     }
 
     // Upload form documents
@@ -105,10 +106,10 @@ const TenantsTab = () => {
         const path = `${user.id}/${tenantId}/${crypto.randomUUID()}.${ext}`;
         const { error: upErr } = await supabase.storage.from("tenant-documents").upload(path, file);
         if (upErr) { toast.error(`Erro: ${file.name}`); continue; }
-        await supabase.from("tenant_documents").insert({
+        await adminInsert("tenant_documents", {
           tenant_id: tenantId, file_path: path, file_name: file.name,
           file_type: file.type, document_type: docType, user_id: user.id,
-        } as any);
+        });
       }
     }
 
@@ -120,7 +121,7 @@ const TenantsTab = () => {
 
   const deleteTenant = async (id: string) => {
     if (!confirm("Excluir este inquilino e todos os documentos?")) return;
-    await supabase.from("tenants").delete().eq("id", id);
+    await adminDelete("tenants", { id });
     toast.success("Inquilino excluído");
     fetchTenants();
   };
@@ -135,10 +136,10 @@ const TenantsTab = () => {
       const path = `${user.id}/${tenantId}/${crypto.randomUUID()}.${ext}`;
       const { error: uploadError } = await supabase.storage.from("tenant-documents").upload(path, file);
       if (uploadError) { toast.error(`Erro ao enviar ${file.name}`); continue; }
-      await supabase.from("tenant_documents").insert({
+      await adminInsert("tenant_documents", {
         tenant_id: tenantId, file_path: path, file_name: file.name,
         file_type: file.type, document_type: uploadDocType, user_id: user.id,
-      } as any);
+      });
     }
     toast.success("Documentos enviados!");
     setUploadFiles([]);
@@ -147,7 +148,7 @@ const TenantsTab = () => {
 
   const deleteDoc = async (doc: TenantDoc) => {
     await supabase.storage.from("tenant-documents").remove([doc.file_path]);
-    await supabase.from("tenant_documents").delete().eq("id", doc.id);
+    await adminDelete("tenant_documents", { id: doc.id });
     toast.success("Documento removido");
     if (viewingDocs) fetchDocs(viewingDocs);
   };
@@ -337,7 +338,7 @@ const TenantsTab = () => {
 
       <div className="relative">
         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar por nome, CPF ou e-mail..." className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-secondary/30 border border-input text-sm text-foreground focus:ring-2 focus:ring-primary/30 outline-none" />
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar por nome, CPF ou email..." className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-secondary/30 border border-input text-sm text-foreground focus:ring-2 focus:ring-primary/30 outline-none" />
       </div>
 
       {filtered.length === 0 ? (
@@ -354,18 +355,15 @@ const TenantsTab = () => {
                 {t.name.charAt(0).toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-sm text-foreground">{t.name}</p>
-                <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                  {t.cpf_cnpj && <span className="flex items-center gap-1"><FileText size={11} /> {t.cpf_cnpj}</span>}
+                <p className="font-semibold text-sm text-foreground truncate">{t.name}</p>
+                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                  {t.cpf_cnpj && <span>{t.cpf_cnpj}</span>}
                   {t.email && <span className="flex items-center gap-1"><Mail size={11} /> {t.email}</span>}
                   {t.phone && <span className="flex items-center gap-1"><Phone size={11} /> {t.phone}</span>}
                 </div>
               </div>
               <div className="flex items-center gap-1.5">
-                <button onClick={() => { setViewingDocs(t.id); fetchDocs(t.id); }} title="Documentos" className="p-2 rounded-lg border border-primary/30 text-primary bg-primary/5 hover:bg-primary/10 hover:border-primary transition-all flex items-center gap-1">
-                  <FolderOpen size={14} />
-                  <span className="text-[10px] font-bold hidden sm:inline">Docs</span>
-                </button>
+                <button onClick={() => { setViewingDocs(t.id); fetchDocs(t.id); }} className="p-2 rounded-lg border border-border text-muted-foreground hover:text-blue-600 hover:border-blue-400 transition-all" title="Documentos"><FolderOpen size={14} /></button>
                 <button onClick={() => openEdit(t)} className="p-2 rounded-lg border border-border text-muted-foreground hover:text-primary hover:border-primary transition-all"><Edit size={14} /></button>
                 <button onClick={() => deleteTenant(t.id)} className="p-2 rounded-lg border border-border text-muted-foreground hover:text-destructive hover:border-destructive transition-all"><Trash2 size={14} /></button>
               </div>
