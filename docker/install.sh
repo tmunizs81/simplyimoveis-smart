@@ -208,7 +208,7 @@ echo -e "   ${GREEN}OK: Docker Compose: $(docker compose version --short)${NC}"
 cd /
 mkdir -p "$INSTALL_DIR"
 echo -e "${BLUE}Copiando para $INSTALL_DIR...${NC}"
-rsync -a --delete --exclude='node_modules' --exclude='.git' --exclude='docker/.env' \
+rsync -a --delete --exclude='node_modules' --exclude='docker/.env' \
   "$SAFE_SOURCE/" "$INSTALL_DIR/"
 
 cd "$INSTALL_DIR/docker"
