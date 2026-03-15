@@ -1,131 +1,165 @@
-# Simply Imóveis - Instalação Docker (Produção)
+# Simply Imóveis - Deploy Docker Self-Hosted
 
-## Requisitos
-- VPS Ubuntu 24.04 LTS (mín. 2GB RAM, 20GB disco)
-- Domínio apontando para o IP da VPS (DNS tipo A)
+Solução completa para deploy em Ubuntu 24.04 LTS com Docker.
+
+---
+
+## Pré-requisitos
+
+- Ubuntu 24.04 LTS (ou compatível)
 - Acesso root (sudo)
+- 2GB+ RAM, 20GB+ disco
+- Portas 80, 443 livres (para SSL)
+- Domínio apontando para o IP do servidor (para SSL)
 
-## Instalação (produção)
+---
+
+## Instalação do Zero
 
 ```bash
-# Conecte na VPS e execute:
-git clone https://github.com/tmunizs81/simplyimoveis-smart.git /opt/simply-imoveis
-cd /opt/simply-imoveis/docker
+# 1. Clone o repositório
+git clone https://github.com/seu-usuario/simply-imoveis.git
+cd simply-imoveis/docker
+
+# 2. Execute o instalador
 sudo bash install.sh
+
+# Opções:
+sudo bash install.sh --clean      # limpa instalação anterior
+sudo bash install.sh --skip-ssl   # pula SSL
 ```
 
-## Instalação limpa (apaga banco e volumes)
+O instalador:
+1. Instala Docker Engine e Compose
+2. Copia projeto para `/opt/simply-imoveis`
+3. Gera JWT_SECRET, POSTGRES_PASSWORD, ANON_KEY, SERVICE_ROLE_KEY
+4. Pede interativamente: domínio, SMTP, Groq, Telegram
+5. Cria admin
+6. Build e deploy de todos os containers
+7. Aplica schema, migrations, policies e triggers
+8. Cria storage buckets
+9. Valida instalação
+10. Opcionalmente configura SSL
+
+---
+
+## Variáveis de Ambiente
+
+| Variável | Obrigatória | Descrição |
+|---|---|---|
+| `SITE_DOMAIN` | ✅ | Domínio do site |
+| `POSTGRES_PASSWORD` | ✅ Auto | Senha PostgreSQL |
+| `JWT_SECRET` | ✅ Auto | Segredo JWT |
+| `ANON_KEY` | ✅ Auto | Chave pública |
+| `SERVICE_ROLE_KEY` | ✅ Auto | Chave de serviço |
+| `SMTP_USER` | ⚠️ | Email para envio |
+| `SMTP_PASS` | ⚠️ | Senha do email |
+| `GROQ_API_KEY` | ⚠️ | Chat IA ([console.groq.com](https://console.groq.com/keys)) |
+| `TELEGRAM_BOT_TOKEN` | Opcional | Bot via @BotFather |
+| `TELEGRAM_CHAT_ID` | Opcional | ID do chat |
+
+---
+
+## Como Configurar Telegram
+
+1. Abra Telegram → `@BotFather` → `/newbot`
+2. Copie o token → `TELEGRAM_BOT_TOKEN`
+3. Envie mensagem ao bot
+4. Acesse `https://api.telegram.org/bot<TOKEN>/getUpdates`
+5. Copie `chat.id` → `TELEGRAM_CHAT_ID`
+
+---
+
+## Comandos de Operação
 
 ```bash
 cd /opt/simply-imoveis/docker
-sudo bash install-clean.sh
-# ou: sudo bash install.sh --clean
+
+bash status.sh                    # status dos serviços
+bash logs.sh                      # logs de todos
+bash logs.sh functions             # logs functions
+bash validate-install.sh          # validar saúde
+bash redeploy.sh                   # rebuild frontend + functions
+bash redeploy.sh --full            # rebuild tudo
+bash backup.sh                    # backup banco + storage
+bash restore.sh /path/backup.gz   # restaurar
+bash reset-db.sh                   # resetar banco (com backup)
+bash full-wipe.sh                  # apagar TUDO
+bash create-admin.sh e@mail.com s  # criar/resetar admin
+sudo bash setup-ssl.sh             # configurar SSL
+
+# Docker Compose direto
+docker compose up -d
+docker compose down
+docker compose restart
+docker compose logs --tail=50 -f
 ```
 
-O script faz **tudo automaticamente**:
-1. ✅ Instala Docker, Nginx, Certbot
-2. ✅ Clona o repositório
-3. ✅ Gera chaves JWT (ANON_KEY, SERVICE_ROLE_KEY)
-4. ✅ Gera senha segura do banco
-5. ✅ Configura e inicia 7 containers Docker
-6. ✅ Configura Nginx como proxy reverso
-7. ✅ Gera certificado SSL (HTTPS) com renovação automática
-8. ✅ Cria usuário admin com role
-9. ✅ Configura backup diário automático (2h)
-
-### O que o script pergunta:
-- **Domínio** (padrão: simplyimoveis.com.br)
-- **Email e senha do admin**
-- **GROQ API Key** (obrigatória para o chat — https://console.groq.com/keys)
-- **Telegram Bot Token + Chat ID** (opcional)
-
-## Atualizar o Sistema
-
-```bash
-cd /opt/simply-imoveis/docker
-sudo bash update.sh
-```
-
-## Comandos Úteis
-
-```bash
-cd /opt/simply-imoveis/docker
-
-docker compose ps              # Status dos containers
-docker compose logs -f         # Ver todos os logs
-docker compose logs -f auth    # Logs da autenticação
-docker compose logs -f frontend # Logs do frontend
-docker compose restart         # Reiniciar tudo
-docker compose down            # Parar tudo
-docker compose up -d           # Iniciar tudo
-```
-
-## Backup & Restore
-
-```bash
-# Backup manual
-bash backup.sh
-
-# Ver backups
-ls -la /opt/simply-imoveis/backups/
-
-# Restaurar
-bash restore.sh /opt/simply-imoveis/backups/simply-backup-YYYY-MM-DD_HHMM.sql.gz
-```
-
-O backup diário automático roda às 2h e mantém os últimos 30 dias.
-
-## Configurar SMTP (Email)
-
-Edite o `.env` e reinicie o auth:
-
-```bash
-nano /opt/simply-imoveis/docker/.env
-# Preencha: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS
-docker compose restart auth
-```
+---
 
 ## Arquitetura
 
 ```
-Internet → Nginx (443/SSL) → Frontend (:3000)
-                            → Kong API Gateway (:8000)
-                                ├── GoTrue Auth (:9999)
-                                ├── PostgREST (:3000)
-                                ├── Storage API (:5000)
-                                └── Edge Functions (:9000)
-                                      ├── chat (Luma IA)
-                                      ├── notify-telegram
-                                      ├── create-admin-user
-                                      └── admin-crud
-                            → PostgreSQL (:5432, interno)
+Nginx (host) :80/:443
+├── / → Frontend (:3000)
+└── /api/ → Kong (:8000)
+    ├── /auth/v1/ → GoTrue (:9999)
+    ├── /rest/v1/ → PostgREST (:3000)
+    ├── /storage/v1/ → Storage (:5000)
+    └── /functions/v1/ → Edge Runtime (:9000)
+        ├── chat
+        ├── admin-crud
+        ├── create-admin-user
+        └── notify-telegram
+All → PostgreSQL (:5432, interno)
 ```
 
-## Portas
+Containers separados por design: rebuild independente, restart isolado, logs separados.
 
-| Serviço | Porta | Acesso |
-|---------|-------|--------|
-| Frontend | 3000 | Via Nginx |
-| Kong (API) | 8000 | Via Nginx |
-| PostgreSQL | 5432 | Apenas localhost |
+---
+
+## SSL
+
+```bash
+sudo bash setup-ssl.sh
+```
+
+Pré-requisito: DNS apontando para o servidor. Usa Nginx + Let's Encrypt.
+
+---
+
+## Backup
+
+```bash
+# Manual
+bash backup.sh
+
+# Automático (crontab -e)
+0 2 * * * /opt/simply-imoveis/docker/backup.sh
+```
+
+---
 
 ## Troubleshooting
 
-```bash
-# Container não inicia
-docker compose logs <nome-do-servico>
+| Problema | Solução |
+|---|---|
+| Functions boot error | `bash sync-functions.sh ... && docker compose restart functions` |
+| Auth 502 | `bash sync-db-passwords.sh && docker compose restart auth` |
+| RLS/permissão | `psql < sql/selfhosted-admin-recovery.sql` |
+| Admin não loga | `bash create-admin.sh email senha` |
+| Banco corrompido | `bash reset-db.sh` |
+| Tudo quebrado | `bash full-wipe.sh && bash install.sh` |
 
-# Banco não conecta
-docker compose exec db pg_isready -U supabase_admin -d simply_db
+---
 
-# Verificar Nginx
-nginx -t
-systemctl status nginx
+## Checklist de Validação
 
-# Renovar SSL
-certbot renew --dry-run
-
-# Resetar tudo (CUIDADO: apaga dados)
-docker compose down -v
-docker compose up -d
-```
+- [ ] `bash status.sh` — todos running
+- [ ] `bash validate-install.sh` — 0 failures
+- [ ] `http://localhost:3000` carrega
+- [ ] `http://localhost:3000/admin` — login funciona
+- [ ] Criar imóvel no admin
+- [ ] Criar inquilino no admin
+- [ ] Chat IA responde (se GROQ_API_KEY)
+- [ ] SSL funciona (se configurado)
