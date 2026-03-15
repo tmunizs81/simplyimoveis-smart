@@ -23,6 +23,7 @@ echo "🪣 Garantindo buckets padrão..."
 
 docker compose exec -T -e PGPASSWORD="$POSTGRES_PASSWORD" db \
   psql -v ON_ERROR_STOP=1 -w -h 127.0.0.1 -U "$DB_ADMIN_USER" -d "$POSTGRES_DB" <<'EOSQL'
+SET client_min_messages TO warning;
 DO $$
 BEGIN
   IF to_regclass('storage.buckets') IS NULL OR to_regclass('storage.objects') IS NULL THEN

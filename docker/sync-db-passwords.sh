@@ -156,10 +156,12 @@ run_sql "GRANT ALL ON ALL ROUTINES IN SCHEMA storage TO supabase_storage_admin;"
 run_sql "GRANT USAGE ON SCHEMA storage TO authenticator, service_role;"
 
 run_sql "GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role, authenticator;"
-run_sql "GRANT SELECT ON ALL TABLES IN SCHEMA public TO anon, authenticated;"
-run_sql "GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role;"
-run_sql "GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO service_role;"
-run_sql "GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;"
+run_sql "GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, service_role;"
+run_sql "GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, service_role;"
+run_sql "GRANT EXECUTE ON ALL ROUTINES IN SCHEMA public TO anon, authenticated, service_role;"
+run_sql "ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON TABLES TO anon, authenticated, service_role;"
+run_sql "ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON SEQUENCES TO anon, authenticated, service_role;"
+run_sql "ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO anon, authenticated, service_role;"
 
 echo "   Validando privilégios críticos..."
 AUTH_CREATE_DB=$(docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" "$DB_CONTAINER" psql -tA -w -h 127.0.0.1 -U "$DB_ADMIN_USER" -d "$POSTGRES_DB" -c "SELECT has_database_privilege('supabase_auth_admin', current_database(), 'CREATE');" | tr -d '[:space:]')
