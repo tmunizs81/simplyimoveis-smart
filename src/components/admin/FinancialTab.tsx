@@ -95,7 +95,7 @@ const FinancialTab = () => {
 
   const deleteTransaction = async (id: string) => {
     if (!confirm("Excluir esta transação?")) return;
-    await supabase.from("financial_transactions").delete().eq("id", id);
+    await adminDelete("financial_transactions", { id });
     toast.success("Transação excluída");
     fetchTransactions();
   };
