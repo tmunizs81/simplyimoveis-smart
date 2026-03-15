@@ -187,7 +187,7 @@ const Services = () => {
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 gradient-primary text-primary-foreground font-bold px-8 py-4 rounded-xl hover:opacity-90 transition-opacity"
           >
-            Fale com a Talita
+            Fale Conosco
           </motion.a>
         </div>
       </section>
