@@ -1,53 +1,30 @@
 #!/bin/bash
+# ============================================================
+# Simply Imóveis - Atualizar (backup + pull + rebuild)
+# Uso: sudo bash update.sh
+# ============================================================
 set -euo pipefail
 
-# ============================================================
-#  Simply Imóveis - Atualizador
-#  Uso: sudo bash update.sh
-# ============================================================
-
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m'
-
 INSTALL_DIR="/opt/simply-imoveis"
-
-echo -e "${BLUE}🔄 Atualizando Simply Imóveis...${NC}"
-
 cd "$INSTALL_DIR"
 
-# Backup antes de atualizar
-echo -e "${BLUE}💾 Fazendo backup antes da atualização...${NC}"
+echo "💾 Fazendo backup..."
 cd docker && bash backup.sh && cd ..
 
-# Pull das mudanças
-echo -e "${BLUE}📥 Baixando atualizações do GitHub...${NC}"
+echo "📥 Baixando atualizações..."
 git fetch origin
 git reset --hard origin/main 2>/dev/null || git reset --hard origin/master
 
-# Atualizar edge functions
-echo -e "${BLUE}📦 Atualizando Edge Functions...${NC}"
-bash docker/sync-functions.sh "$INSTALL_DIR/supabase/functions" "docker/volumes/functions"
-# Rebuild e restart
 cd docker
-echo -e "${BLUE}🔨 Reconstruindo frontend...${NC}"
-docker compose build --no-cache frontend
+chmod +x *.sh 2>/dev/null || true
+chmod +x volumes/db/init/*.sh 2>/dev/null || true
 
-echo -e "${BLUE}🔧 Renderizando configuração do gateway...${NC}"
+bash sync-functions.sh "$INSTALL_DIR/supabase/functions" "volumes/functions"
 bash render-kong-config.sh
-
-echo -e "${BLUE}🔄 Reiniciando frontend/functions...${NC}"
+docker compose build --no-cache frontend
 docker compose up -d frontend
 docker compose up -d --force-recreate functions
+bash sync-db-passwords.sh || echo "⚠️  sync-db-passwords falhou"
+bash ensure-storage-buckets.sh || echo "⚠️  ensure-storage-buckets falhou"
 
-echo -e "${BLUE}🔐 Reaplicando grants e credenciais internas...${NC}"
-bash sync-db-passwords.sh || echo -e "${YELLOW}⚠️  Não foi possível reaplicar grants agora${NC}"
-
-echo -e "${BLUE}🔐 Reaplicando buckets e políticas de storage...${NC}"
-bash ensure-storage-buckets.sh || echo -e "${YELLOW}⚠️  Não foi possível reaplicar políticas agora${NC}"
-
-echo ""
-echo -e "${GREEN}✅ Atualização concluída!${NC}"
-echo -e "${GREEN}   Verifique: docker compose ps${NC}"
+echo "✅ Atualização concluída!"
