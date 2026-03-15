@@ -131,6 +131,9 @@ ALTER DEFAULT PRIVILEGES FOR ROLE supabase_auth_admin IN SCHEMA auth GRANT ALL O
 ALTER DEFAULT PRIVILEGES FOR ROLE supabase_auth_admin IN SCHEMA auth GRANT ALL ON SEQUENCES TO supabase_auth_admin;
 ALTER DEFAULT PRIVILEGES FOR ROLE supabase_auth_admin IN SCHEMA auth GRANT ALL ON ROUTINES TO supabase_auth_admin;
 
+GRANT USAGE, CREATE ON SCHEMA storage TO supabase_storage_admin;
+GRANT USAGE ON SCHEMA storage TO authenticator, service_role;
+
 GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role, authenticator;
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO anon, authenticated;
 GRANT ALL ON ALL TABLES IN SCHEMA public TO service_role;

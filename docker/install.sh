@@ -241,9 +241,9 @@ bash ensure-storage-buckets.sh || echo -e "${YELLOW}⚠️  Não foi possível g
 # ── 11. Validação ────────────────────────────────────────────
 echo -e "${BLUE}🧪 Validando...${NC}"
 if ! bash validate-install.sh; then
-  echo -e "${YELLOW}⚠️  Reiniciando auth e kong...${NC}"
-  docker compose restart auth kong
-  sleep 15
+  echo -e "${YELLOW}⚠️  Reiniciando auth/rest/storage/kong...${NC}"
+  docker compose restart auth rest storage kong
+  sleep 20
   bash validate-install.sh || {
     echo -e "${RED}❌ Validação falhou. Debug:${NC}"
     echo "   docker compose logs --tail=80 auth rest storage kong db"
