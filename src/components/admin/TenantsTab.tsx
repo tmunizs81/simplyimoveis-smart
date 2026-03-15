@@ -121,7 +121,25 @@ const TenantsTab = () => {
 
   const deleteTenant = async (id: string) => {
     if (!confirm("Excluir este inquilino e todos os documentos?")) return;
-    await adminDelete("tenants", { id });
+
+    // Delete related documents from storage first
+    const { data: docs } = await adminSelect("tenant_documents", { match: { tenant_id: id } });
+    if (docs && docs.length > 0) {
+      const paths = docs.map((d: TenantDoc) => d.file_path);
+      await supabase.storage.from("tenant-documents").remove(paths);
+      await adminDelete("tenant_documents", { tenant_id: id });
+    }
+
+    // Unlink from rental_contracts and inspections
+    await adminUpdate("rental_contracts", { tenant_id: null }, { tenant_id: id });
+    await adminUpdate("property_inspections", { tenant_id: null }, { tenant_id: id });
+    await adminUpdate("financial_transactions", { tenant_id: null }, { tenant_id: id });
+
+    const { error } = await adminDelete("tenants", { id });
+    if (error) {
+      toast.error(error.message || "Erro ao excluir inquilino");
+      return;
+    }
     toast.success("Inquilino excluído");
     fetchTenants();
   };
