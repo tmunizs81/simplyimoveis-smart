@@ -41,7 +41,7 @@ echo ""
 echo "🛠️  Etapa 3/5: Testando auth.uid() com JWT simulado..."
 
 # Simula como PostgREST seta os GUCs (legacy mode = true)
-TEST_UID=$(docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" "$DB_CONTAINER" \
+TEST_UID=$(docker exec -i -e PGPASSWORD="$POSTGRES_PASSWORD" "$DB_CONTAINER" \
   psql -tA -w -h 127.0.0.1 -U supabase_admin -d "$POSTGRES_DB" 2>/dev/null <<'EOSQL'
 DO $$ BEGIN
   PERFORM set_config('request.jwt.claim.sub', 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee', true);
