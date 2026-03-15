@@ -151,10 +151,6 @@ CREATE POLICY "Admins can update property media" ON public.property_media FOR UP
 CREATE POLICY "Admins can delete property media" ON public.property_media FOR DELETE TO authenticated
   USING (has_role(auth.uid(), 'admin'::app_role));
 
-ALTER TABLE public.property_code_sequences ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Admins can manage property code sequences" ON public.property_code_sequences FOR ALL TO authenticated
-  USING (has_role(auth.uid(), 'admin'::app_role))
-  WITH CHECK (has_role(auth.uid(), 'admin'::app_role));
 
 CREATE POLICY "Admins can view roles" ON public.user_roles FOR SELECT TO authenticated
   USING (has_role(auth.uid(), 'admin'::app_role));
