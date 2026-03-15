@@ -47,6 +47,47 @@ const Admin = () => {
     return () => subscription.unsubscribe();
   }, []);
 
+  useEffect(() => {
+    let mounted = true;
+
+    const checkAdminAccess = async () => {
+      if (!user) {
+        if (mounted) {
+          setIsAdmin(false);
+          setAdminCheckLoading(false);
+        }
+        return;
+      }
+
+      setAdminCheckLoading(true);
+      const { data, error } = await supabase.rpc("has_role", {
+        _user_id: user.id,
+        _role: "admin",
+      });
+
+      if (!mounted) return;
+
+      if (error) {
+        toast.error("Falha ao validar permissões de administrador.");
+        setIsAdmin(false);
+      } else {
+        const allowed = Boolean(data);
+        setIsAdmin(allowed);
+        if (!allowed) {
+          toast.error("Sua conta não possui acesso de administrador.");
+        }
+      }
+
+      setAdminCheckLoading(false);
+    };
+
+    checkAdminAccess();
+
+    return () => {
+      mounted = false;
+    };
+  }, [user]);
+
   const fetchProperties = useCallback(async () => {
     if (!user) return;
     const { data } = await supabase
