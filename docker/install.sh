@@ -160,7 +160,7 @@ sleep 10
 echo -e "${BLUE}🧪 Validando...${NC}"
 if ! bash validate-install.sh; then
   echo -e "${YELLOW}⚠️  Tentando re-sync + restart...${NC}"
-  bash sync-db-passwords.sh --quiet
+  bash sync-db-passwords.sh
   docker compose up -d --force-recreate auth kong
   sleep 15
   bash validate-install.sh || { echo -e "${RED}❌ Validação falhou. Logs: docker compose logs --tail=50 auth kong${NC}"; exit 1; }
