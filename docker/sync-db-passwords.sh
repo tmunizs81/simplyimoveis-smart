@@ -53,24 +53,42 @@ if [ "${DB_HEALTH:-}" != "healthy" ] && [ "${DB_HEALTH:-}" != "running" ]; then
 fi
 
 # Usa PGPASSWORD para evitar prompt de senha
+SQL_SYNC="ALTER ROLE supabase_admin WITH PASSWORD '${POSTGRES_PASSWORD}';
+ALTER ROLE supabase_auth_admin WITH PASSWORD '${POSTGRES_PASSWORD}';
+ALTER ROLE authenticator WITH PASSWORD '${POSTGRES_PASSWORD}';
+ALTER ROLE supabase_storage_admin WITH PASSWORD '${POSTGRES_PASSWORD}';
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+DO \$\$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'auth') THEN
+    EXECUTE 'GRANT USAGE ON SCHEMA auth TO supabase_auth_admin, authenticator, anon, authenticated, service_role';
+    EXECUTE 'GRANT CREATE ON SCHEMA auth TO supabase_auth_admin';
+    EXECUTE 'GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA auth TO supabase_auth_admin';
+    EXECUTE 'GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA auth TO supabase_auth_admin';
+    EXECUTE 'GRANT ALL PRIVILEGES ON ALL ROUTINES IN SCHEMA auth TO supabase_auth_admin';
+    EXECUTE 'ALTER DEFAULT PRIVILEGES IN SCHEMA auth GRANT ALL ON TABLES TO supabase_auth_admin';
+    EXECUTE 'ALTER DEFAULT PRIVILEGES IN SCHEMA auth GRANT ALL ON SEQUENCES TO supabase_auth_admin';
+    EXECUTE 'ALTER DEFAULT PRIVILEGES IN SCHEMA auth GRANT ALL ON ROUTINES TO supabase_auth_admin';
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'extensions') THEN
+    EXECUTE 'GRANT USAGE ON SCHEMA extensions TO supabase_auth_admin, authenticator';
+  END IF;
+END
+\$\$;"
+
 docker compose exec -T -e PGPASSWORD="${POSTGRES_PASSWORD}" db psql \
   -v ON_ERROR_STOP=1 \
   -U supabase_admin \
   -d "$POSTGRES_DB" \
-  -c "ALTER ROLE supabase_admin WITH PASSWORD '${POSTGRES_PASSWORD}';
-ALTER ROLE supabase_auth_admin WITH PASSWORD '${POSTGRES_PASSWORD}';
-ALTER ROLE authenticator WITH PASSWORD '${POSTGRES_PASSWORD}';
-ALTER ROLE supabase_storage_admin WITH PASSWORD '${POSTGRES_PASSWORD}';" 2>/dev/null || {
+  -c "$SQL_SYNC" 2>/dev/null || {
   # Fallback: tenta com usuário postgres (trust auth padrão)
   log "⚠️  Tentando com usuário postgres..."
   docker compose exec -T db psql \
     -v ON_ERROR_STOP=1 \
     -U postgres \
     -d "$POSTGRES_DB" \
-    -c "ALTER ROLE supabase_admin WITH PASSWORD '${POSTGRES_PASSWORD}';
-ALTER ROLE supabase_auth_admin WITH PASSWORD '${POSTGRES_PASSWORD}';
-ALTER ROLE authenticator WITH PASSWORD '${POSTGRES_PASSWORD}';
-ALTER ROLE supabase_storage_admin WITH PASSWORD '${POSTGRES_PASSWORD}';"
+    -c "$SQL_SYNC"
 }
 
 log "✅ Senhas dos roles internos sincronizadas."
