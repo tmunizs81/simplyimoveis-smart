@@ -1,9 +1,9 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 # ============================================================
-#  Simply Imóveis - Instalador Docker para Ubuntu 24.04
-#  Uso: sudo bash install.sh
+# Simply Imóveis - Instalador Docker para Ubuntu 24.04
+# Uso: sudo bash install.sh
 # ============================================================
 
 RED='\033[0;31m'
@@ -33,7 +33,7 @@ if ! command -v docker &> /dev/null; then
   echo -e "${GREEN}✅ Docker instalado.${NC}"
 fi
 
-if ! command -v docker compose &> /dev/null && ! docker compose version &> /dev/null; then
+if ! docker compose version &> /dev/null; then
   echo -e "${YELLOW}⚠️  Docker Compose plugin não encontrado. Instalando...${NC}"
   apt-get update && apt-get install -y docker-compose-plugin
   echo -e "${GREEN}✅ Docker Compose instalado.${NC}"
@@ -54,9 +54,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
 echo -e "${BLUE}📋 Copiando arquivos do projeto...${NC}"
-rsync -av --exclude='node_modules' --exclude='.git' --exclude='docker/.env' "$PROJECT_DIR/" "$INSTALL_DIR/"
+rsync -av --delete --exclude='node_modules' --exclude='.git' --exclude='docker/.env' "$PROJECT_DIR/" "$INSTALL_DIR/"
 
 cd "$INSTALL_DIR/docker"
+chmod +x *.sh
 
 # ---- Gerar .env se não existir ----
 if [ ! -f .env ]; then
@@ -79,15 +80,18 @@ if [ ! -f .env ]; then
   echo -e "${YELLOW}║                                                      ║${NC}"
   echo -e "${YELLOW}║  Itens obrigatórios:                                 ║${NC}"
   echo -e "${YELLOW}║  1. SITE_DOMAIN (seu domínio)                        ║${NC}"
-  echo -e "${YELLOW}║  2. ANON_KEY e SERVICE_ROLE_KEY (gerar JWT)          ║${NC}"
-  echo -e "${YELLOW}║  3. SMTP_* (configurações de email)                  ║${NC}"
-  echo -e "${YELLOW}║  4. GROQ_API_KEY (para o chat da Luma)               ║${NC}"
+  echo -e "${YELLOW}║  2. SMTP_* (configurações de email)                  ║${NC}"
+  echo -e "${YELLOW}║  3. GROQ_API_KEY (para o chat da Luma)               ║${NC}"
   echo -e "${YELLOW}╚══════════════════════════════════════════════════════╝${NC}"
   echo ""
-  echo -e "${BLUE}Para gerar as chaves JWT, execute:${NC}"
-  echo -e "${GREEN}  cd ${INSTALL_DIR}/docker && bash generate-keys.sh${NC}"
-  echo ""
+  echo -e "${BLUE}As chaves ANON_KEY e SERVICE_ROLE_KEY serão geradas automaticamente.${NC}"
   read -p "Pressione ENTER após configurar o .env para continuar..."
+fi
+
+# ---- Garantir ANON_KEY/SERVICE_ROLE_KEY válidas ----
+if grep -q "CHANGE_ME" .env; then
+  echo -e "${BLUE}🔑 Gerando ANON_KEY e SERVICE_ROLE_KEY...${NC}"
+  bash generate-keys.sh
 fi
 
 # ---- Copiar Edge Functions ----
@@ -97,7 +101,6 @@ mkdir -p volumes/functions/chat
 mkdir -p volumes/functions/notify-telegram
 mkdir -p volumes/functions/create-admin-user
 
-# Copia as funções
 cp "$INSTALL_DIR/supabase/functions/chat/index.ts" volumes/functions/chat/index.ts
 cp "$INSTALL_DIR/supabase/functions/notify-telegram/index.ts" volumes/functions/notify-telegram/index.ts
 cp "$INSTALL_DIR/supabase/functions/create-admin-user/index.ts" volumes/functions/create-admin-user/index.ts
@@ -120,7 +123,7 @@ serve(async (req) => {
   try {
     const mod = await import(`../${functionName}/index.ts`);
     return mod.default ? mod.default(req) : new Response("Function loaded", { status: 200 });
-  } catch (e) {
+  } catch {
     return new Response(JSON.stringify({ error: `Function '${functionName}' not found` }), {
       status: 404,
       headers: { "Content-Type": "application/json" },
@@ -129,9 +132,18 @@ serve(async (req) => {
 });
 MAINEOF
 
-# ---- Build e Start ----
-echo -e "${BLUE}🔨 Construindo e iniciando containers...${NC}"
-docker compose up -d --build
+# ---- Build e Start seguro ----
+echo -e "${BLUE}🔨 Subindo banco...${NC}"
+docker compose up -d --build db
+
+echo -e "${BLUE}🔧 Sincronizando credenciais internas do banco...${NC}"
+bash sync-db-passwords.sh
+
+echo -e "${BLUE}🚀 Subindo serviços da stack...${NC}"
+docker compose up -d --build --force-recreate auth rest storage functions kong frontend --remove-orphans
+
+echo -e "${BLUE}🧪 Executando validação pós-instalação...${NC}"
+bash validate-install.sh
 
 echo ""
 echo -e "${GREEN}╔══════════════════════════════════════════════════════╗${NC}"
