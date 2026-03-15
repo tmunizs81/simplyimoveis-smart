@@ -378,7 +378,7 @@ echo -e "${GREEN}║    bash status.sh          — ver status dos serviços    
 echo -e "${GREEN}║    bash logs.sh [servico]  — ver logs                    ║${NC}"
 echo -e "${GREEN}║    bash redeploy.sh        — redeploy sem perder dados   ║${NC}"
 echo -e "${GREEN}║    bash backup.sh          — backup do banco             ║${NC}"
-echo -e "${GREEN}║    bash validate-install.sh — validar saúde              ║${NC}"
+echo -e "${GREEN}║    bash validate.sh        — validar saúde               ║${NC}"
 echo -e "${GREEN}║                                                          ║${NC}"
 echo -e "${GREEN}╚══════════════════════════════════════════════════════════╝${NC}"
 echo -e "\n${YELLOW}⚠️  Altere a senha do admin no primeiro acesso!${NC}"
