@@ -1,8 +1,7 @@
 #!/bin/bash
 # ============================================================
-# Cria ou atualiza admin via SQL direto (100% idempotente)
+# Cria/atualiza admin de forma compatível com GoTrue
 # Uso: bash create-admin.sh email senha
-# Versão: 2026-03-15-v9
 # ============================================================
 
 set -euo pipefail
@@ -17,12 +16,21 @@ cd "$SCRIPT_DIR"
 
 [ ! -f .env ] && echo "❌ .env não encontrado" && exit 1
 
-POSTGRES_DB=$(grep -E '^POSTGRES_DB=' .env | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")
+read_env() { grep -E "^${1}=" .env 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'"; }
+
+POSTGRES_DB=$(read_env "POSTGRES_DB")
 POSTGRES_DB="${POSTGRES_DB:-simply_db}"
-POSTGRES_PASSWORD=$(grep -E '^POSTGRES_PASSWORD=' .env | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")
+POSTGRES_PASSWORD=$(read_env "POSTGRES_PASSWORD")
+SERVICE_ROLE_KEY=$(read_env "SERVICE_ROLE_KEY")
+ANON_KEY=$(read_env "ANON_KEY")
+KONG_HTTP_PORT=$(read_env "KONG_HTTP_PORT")
+KONG_HTTP_PORT="${KONG_HTTP_PORT:-8000}"
 DB_CONTAINER="simply-db"
+AUTH_URL="http://127.0.0.1:${KONG_HTTP_PORT}/auth/v1"
 
 [ -z "${POSTGRES_PASSWORD:-}" ] && echo "❌ POSTGRES_PASSWORD vazio" && exit 1
+[ -z "${SERVICE_ROLE_KEY:-}" ] && echo "❌ SERVICE_ROLE_KEY vazio" && exit 1
+[ -z "${ANON_KEY:-}" ] && echo "❌ ANON_KEY vazio" && exit 1
 
 docker inspect -f '{{.State.Status}}' "$DB_CONTAINER" >/dev/null 2>&1 || { echo "❌ Container $DB_CONTAINER não encontrado"; exit 1; }
 
@@ -31,74 +39,91 @@ run_sql_cmd() {
     "$DB_CONTAINER" psql -v ON_ERROR_STOP=1 -w -h 127.0.0.1 -U supabase_admin -d "$POSTGRES_DB" "$@"
 }
 
-run_sql_stdin() {
-  timeout 30s docker exec -i -e PGPASSWORD="$POSTGRES_PASSWORD" \
-    "$DB_CONTAINER" psql -v ON_ERROR_STOP=1 -w -h 127.0.0.1 -U supabase_admin -d "$POSTGRES_DB" "$@"
+json_escape() {
+  printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
 }
 
-# Verifica se auth.users existe
-AUTH_OK=$(run_sql_cmd -tA -c "SELECT to_regclass('auth.users') IS NOT NULL;" 2>/dev/null | tr -d '[:space:]')
+sql_escape() {
+  printf '%s' "$1" | sed "s/'/''/g"
+}
+
+# Aguarda auth.users existir
+AUTH_OK=""
+for i in {1..30}; do
+  AUTH_OK=$(run_sql_cmd -tA -c "SELECT to_regclass('auth.users') IS NOT NULL;" 2>/dev/null | tr -d '[:space:]' || true)
+  [ "$AUTH_OK" = "t" ] && break
+  sleep 2
+done
+
 if [ "$AUTH_OK" != "t" ]; then
   echo "❌ auth.users não existe. GoTrue ainda não migrou."
-  echo "   Aguarde mais 30s e tente novamente."
   exit 1
 fi
 
-echo "👤 Criando admin: ${EMAIL}..."
+echo "👤 Criando/atualizando admin: ${EMAIL}..."
 
-SAFE_PASS=$(printf '%s' "$PASSWORD" | sed "s/'/''/g")
+EMAIL_JSON=$(json_escape "$EMAIL")
+PASS_JSON=$(json_escape "$PASSWORD")
+CREATE_BODY="{\"email\":\"${EMAIL_JSON}\",\"password\":\"${PASS_JSON}\",\"email_confirm\":true}"
 
-run_sql_stdin <<EOSQL
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
+# 1) Tenta criar via API admin (fonte da verdade do GoTrue)
+CREATE_HTTP=$(curl -sS -m 30 -o /tmp/create_admin_resp.$$ -w "%{http_code}" \
+  -X POST "${AUTH_URL}/admin/users" \
+  -H "apikey: ${SERVICE_ROLE_KEY}" \
+  -H "Authorization: Bearer ${SERVICE_ROLE_KEY}" \
+  -H "Content-Type: application/json" \
+  -d "$CREATE_BODY" || true)
 
-DO \$\$
-DECLARE
-  v_uid uuid;
-BEGIN
-  SELECT id INTO v_uid FROM auth.users WHERE email = '${EMAIL}' LIMIT 1;
+if [ "$CREATE_HTTP" = "200" ] || [ "$CREATE_HTTP" = "201" ]; then
+  echo "✅ Usuário criado via Auth API"
+else
+  RESP=$(cat /tmp/create_admin_resp.$$ 2>/dev/null || true)
 
-  IF v_uid IS NULL THEN
-    INSERT INTO auth.users (
-      id, instance_id, aud, role, email, encrypted_password,
-      email_confirmed_at, raw_app_meta_data, raw_user_meta_data,
-      created_at, updated_at, confirmation_token, recovery_token
-    ) VALUES (
-      gen_random_uuid(), '00000000-0000-0000-0000-000000000000',
-      'authenticated', 'authenticated', '${EMAIL}',
-      crypt('${SAFE_PASS}', gen_salt('bf')),
-      now(),
-      '{"provider":"email","providers":["email"]}'::jsonb,
-      '{}'::jsonb,
-      now(), now(), '', ''
-    ) RETURNING id INTO v_uid;
-    RAISE NOTICE 'Usuário criado: %', v_uid;
-  ELSE
-    UPDATE auth.users SET
-      encrypted_password = crypt('${SAFE_PASS}', gen_salt('bf')),
-      email_confirmed_at = COALESCE(email_confirmed_at, now()),
-      aud = 'authenticated', role = 'authenticated',
-      raw_app_meta_data = COALESCE(raw_app_meta_data, '{"provider":"email","providers":["email"]}'::jsonb),
-      updated_at = now()
-    WHERE id = v_uid;
-    RAISE NOTICE 'Usuário atualizado: %', v_uid;
-  END IF;
+  # Se usuário já existe, atualiza senha e confirma email
+  if echo "$RESP" | grep -Eiq "already|exists|registered|duplicate"; then
+    UID=$(run_sql_cmd -tA -c "SELECT id FROM auth.users WHERE lower(email)=lower('$(sql_escape "$EMAIL")') LIMIT 1;" | tr -d '[:space:]')
+    [ -z "$UID" ] && echo "❌ Usuário existe mas não foi encontrado em auth.users" && exit 1
 
-  INSERT INTO auth.identities (id, user_id, identity_data, provider, provider_id, created_at, updated_at, last_sign_in_at)
-  VALUES (
-    v_uid, v_uid,
-    jsonb_build_object('sub', v_uid::text, 'email', '${EMAIL}'),
-    'email', '${EMAIL}', now(), now(), now()
-  )
-  ON CONFLICT (provider, provider_id) DO UPDATE SET
-    user_id = EXCLUDED.user_id,
-    identity_data = EXCLUDED.identity_data,
-    updated_at = now();
+    UPDATE_BODY="{\"password\":\"${PASS_JSON}\",\"email_confirm\":true}"
+    UPDATE_HTTP=$(curl -sS -m 30 -o /tmp/update_admin_resp.$$ -w "%{http_code}" \
+      -X PUT "${AUTH_URL}/admin/users/${UID}" \
+      -H "apikey: ${SERVICE_ROLE_KEY}" \
+      -H "Authorization: Bearer ${SERVICE_ROLE_KEY}" \
+      -H "Content-Type: application/json" \
+      -d "$UPDATE_BODY" || true)
 
-  INSERT INTO public.user_roles (user_id, role) VALUES (v_uid, 'admin')
-  ON CONFLICT (user_id, role) DO NOTHING;
+    if [ "$UPDATE_HTTP" != "200" ]; then
+      echo "❌ Falha ao atualizar senha do usuário existente"
+      cat /tmp/update_admin_resp.$$ 2>/dev/null || true
+      exit 1
+    fi
 
-  RAISE NOTICE '✅ Admin pronto: % (%)', '${EMAIL}', v_uid;
-END \$\$;
-EOSQL
+    echo "✅ Usuário existente atualizado via Auth API"
+  else
+    echo "❌ Falha ao criar usuário via Auth API (HTTP $CREATE_HTTP)"
+    echo "$RESP"
+    exit 1
+  fi
+fi
+
+# 2) Garante role admin no app
+UID=$(run_sql_cmd -tA -c "SELECT id FROM auth.users WHERE lower(email)=lower('$(sql_escape "$EMAIL")') LIMIT 1;" | tr -d '[:space:]')
+[ -z "$UID" ] && echo "❌ Usuário não encontrado após create/update" && exit 1
+
+run_sql_cmd -c "INSERT INTO public.user_roles (user_id, role) VALUES ('${UID}'::uuid, 'admin') ON CONFLICT (user_id, role) DO NOTHING;"
+
+# 3) Smoke test de login real
+LOGIN_BODY="{\"email\":\"${EMAIL_JSON}\",\"password\":\"${PASS_JSON}\"}"
+LOGIN_HTTP=$(curl -sS -m 30 -o /tmp/admin_login_resp.$$ -w "%{http_code}" \
+  -X POST "${AUTH_URL}/token?grant_type=password" \
+  -H "apikey: ${ANON_KEY}" \
+  -H "Content-Type: application/json" \
+  -d "$LOGIN_BODY" || true)
+
+if [ "$LOGIN_HTTP" != "200" ]; then
+  echo "❌ Admin criado, mas login ainda falhou (HTTP $LOGIN_HTTP)"
+  cat /tmp/admin_login_resp.$$ 2>/dev/null || true
+  exit 1
+fi
 
 echo "✅ Admin ${EMAIL} configurado com sucesso!"
