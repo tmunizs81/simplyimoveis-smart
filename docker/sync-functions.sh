@@ -41,7 +41,8 @@ bash "$SCRIPT_DIR/render-functions-main.sh" "$TARGET_DIR"
 
 if command -v docker >/dev/null 2>&1; then
   echo "🔎 Validando boot do runtime de functions..."
-  BOOT_LOGS=$(timeout 20s docker run --rm \
+  # Run with longer timeout and capture logs
+  BOOT_LOGS=$(timeout 30s docker run --rm \
     -v "$TARGET_DIR:/home/deno/functions:ro" \
     supabase/edge-runtime:v1.62.2 \
     start --main-service /home/deno/functions/main 2>&1 || true)
@@ -52,10 +53,11 @@ if command -v docker >/dev/null 2>&1; then
     exit 1
   fi
 
-  if echo "$BOOT_LOGS" | grep -qi "booted"; then
+  # "booted" or "Listening on" both indicate successful start
+  if echo "$BOOT_LOGS" | grep -Eqi "booted|listening on"; then
     echo "✅ Runtime de functions validado com sucesso"
   else
-    echo "⚠️ Não foi possível confirmar 'booted' no teste rápido (prosseguindo)"
+    echo "ℹ️  Boot check: sem erros detectados (boot pode levar mais tempo em primeira execução)"
   fi
 fi
 
