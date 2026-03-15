@@ -149,7 +149,7 @@ const Admin = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <div className="pt-20 flex">
+      <div className="pt-20 flex relative">
         <AdminSidebar
           activeTab={activeTab}
           onTabChange={(tab) => { setActiveTab(tab); setShowForm(false); setEditingProperty(null); }}
@@ -157,7 +157,7 @@ const Admin = () => {
           onLogout={handleLogout}
         />
 
-        <main className="flex-1 p-6 lg:p-8 overflow-y-auto max-h-[calc(100vh-80px)]">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto max-h-[calc(100vh-80px)] min-w-0">
           {activeTab === "dashboard" && <DashboardTab />}
 
           {activeTab === "properties" && !showForm && (
