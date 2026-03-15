@@ -99,7 +99,7 @@ run_sql "GRANT CREATE ON DATABASE \"${POSTGRES_DB}\" TO supabase_auth_admin, sup
 echo "   Garantindo schemas e extensões..."
 run_sql "CREATE SCHEMA IF NOT EXISTS extensions;"
 run_sql "CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;"
-run_sql "CREATE EXTENSION IF NOT EXISTS uuid-ossp WITH SCHEMA extensions;"
+run_sql "CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\" WITH SCHEMA extensions;"
 run_sql "GRANT USAGE ON SCHEMA extensions TO supabase_auth_admin, supabase_storage_admin, authenticator, anon, authenticated, service_role;"
 run_sql "CREATE SCHEMA IF NOT EXISTS auth AUTHORIZATION supabase_auth_admin;"
 run_sql "ALTER SCHEMA auth OWNER TO supabase_auth_admin;"

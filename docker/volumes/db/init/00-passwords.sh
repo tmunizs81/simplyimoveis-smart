@@ -139,5 +139,6 @@ run_sql "GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO service_role;"
 run_sql "GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;"
 
 run_sql "CREATE EXTENSION IF NOT EXISTS pgcrypto;"
+run_sql "CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";"
 
 echo "✅ Roles e senhas internas configurados!"
