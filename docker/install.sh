@@ -234,6 +234,10 @@ docker compose up -d --build --remove-orphans
 echo -e "${BLUE}⏳ Aguardando serviços estabilizarem (25s)...${NC}"
 sleep 25
 
+# ── 10.5 Buckets storage ─────────────────────────────────────
+echo -e "${BLUE}🪣 Garantindo buckets de storage...${NC}"
+bash ensure-storage-buckets.sh || echo -e "${YELLOW}⚠️  Não foi possível garantir buckets agora (seguindo validação).${NC}"
+
 # ── 11. Validação ────────────────────────────────────────────
 echo -e "${BLUE}🧪 Validando...${NC}"
 if ! bash validate-install.sh; then
