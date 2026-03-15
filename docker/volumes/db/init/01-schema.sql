@@ -248,7 +248,9 @@ CREATE TABLE public.rental_contracts (
 );
 
 ALTER TABLE public.rental_contracts ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Admins can manage contracts" ON public.rental_contracts FOR ALL TO authenticated USING (has_role(auth.uid(), 'admin'));
+CREATE POLICY "Admins can manage contracts" ON public.rental_contracts FOR ALL TO authenticated
+  USING (has_role(auth.uid(), 'admin'::app_role))
+  WITH CHECK (has_role(auth.uid(), 'admin'::app_role));
 
 -- ============================================================
 -- Sales
