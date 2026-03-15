@@ -12,7 +12,7 @@ cd "$SCRIPT_DIR"
 SOURCE_DIR="${1:-$SCRIPT_DIR/../supabase/functions}"
 TARGET_DIR="${2:-$SCRIPT_DIR/volumes/functions}"
 
-REQUIRED_FUNCTIONS=("chat" "notify-telegram" "create-admin-user")
+REQUIRED_FUNCTIONS=("chat" "notify-telegram" "create-admin-user" "admin-crud")
 
 mkdir -p "$TARGET_DIR/main"
 
@@ -23,6 +23,11 @@ for fn in "${REQUIRED_FUNCTIONS[@]}"; do
 
   if [ ! -f "$src" ]; then
     echo "❌ Função obrigatória ausente no repositório: $src"
+    exit 1
+  fi
+
+  if ! grep -qE '^\s*export\s+default\s' "$src"; then
+    echo "❌ Função $fn sem export default (obrigatório para runtime self-hosted): $src"
     exit 1
   fi
 

@@ -13,8 +13,17 @@ cd "$SCRIPT_DIR"
 FUNC_DIR="${1:-volumes/functions}"
 mkdir -p "$FUNC_DIR/main"
 
+REQUIRED_FUNCTIONS=("chat" "create-admin-user" "notify-telegram" "admin-crud")
+
+for fn in "${REQUIRED_FUNCTIONS[@]}"; do
+  if [ ! -f "$FUNC_DIR/$fn/index.ts" ]; then
+    echo "❌ Não foi possível gerar main router: função ausente em $FUNC_DIR/$fn/index.ts"
+    echo "💡 Rode: bash sync-functions.sh"
+    exit 1
+  fi
+done
+
 cat > "$FUNC_DIR/main/index.ts" <<'MAINEOF'
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import * as chatModule from "../chat/index.ts";
 import * as createAdminUserModule from "../create-admin-user/index.ts";
 import * as notifyTelegramModule from "../notify-telegram/index.ts";
@@ -45,13 +54,13 @@ const getHandler = (functionName: string): Handler | null => {
   return typeof candidate === "function" ? (candidate as Handler) : null;
 };
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   const url = new URL(req.url);
   const parts = url.pathname.split("/").filter(Boolean);
   const functionName = parts[0] || "";
 
   if (!functionName) {
-    return new Response(JSON.stringify({ status: "ok", version: "3.1" }), {
+    return new Response(JSON.stringify({ status: "ok", version: "3.2" }), {
       headers: jsonHeaders,
     });
   }
