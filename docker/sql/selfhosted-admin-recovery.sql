@@ -5,6 +5,9 @@
 
 BEGIN;
 
+-- Extensões obrigatórias
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 -- ------------------------------------------------------------
 -- 1) Enum e tabela de roles
 -- ------------------------------------------------------------
@@ -51,9 +54,23 @@ $$;
 GRANT EXECUTE ON FUNCTION public.has_role(uuid, public.app_role)
 TO anon, authenticated, service_role, authenticator;
 
--- ------------------------------------------------------------
--- 3) Garantir RLS habilitado nas tabelas do admin
--- ------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.has_role_text(_user_id uuid, _role text)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.user_roles
+    WHERE user_id = _user_id
+      AND role::text = _role
+  )
+$$;
+
+GRANT EXECUTE ON FUNCTION public.has_role_text(uuid, text)
+TO anon, authenticated, service_role, authenticator;
 DO $$
 DECLARE
   tbl text;
