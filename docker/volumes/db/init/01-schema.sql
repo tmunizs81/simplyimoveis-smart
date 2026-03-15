@@ -411,6 +411,10 @@ CREATE TABLE public.property_code_sequences (
   prefix text PRIMARY KEY,
   last_number integer NOT NULL DEFAULT 0
 );
+ALTER TABLE public.property_code_sequences ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Admins can manage property code sequences" ON public.property_code_sequences FOR ALL TO authenticated
+  USING (has_role(auth.uid(), 'admin'::app_role))
+  WITH CHECK (has_role(auth.uid(), 'admin'::app_role));
 INSERT INTO public.property_code_sequences (prefix) VALUES ('A'), ('V');
 
 -- ============================================================
