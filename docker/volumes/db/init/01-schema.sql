@@ -356,7 +356,9 @@ CREATE TABLE public.inspection_media (
 );
 
 ALTER TABLE public.inspection_media ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Admins can manage inspection media" ON public.inspection_media FOR ALL TO authenticated USING (has_role(auth.uid(), 'admin'));
+CREATE POLICY "Admins can manage inspection media" ON public.inspection_media FOR ALL TO authenticated
+  USING (has_role(auth.uid(), 'admin'::app_role))
+  WITH CHECK (has_role(auth.uid(), 'admin'::app_role));
 
 -- ============================================================
 -- Scheduled Visits
