@@ -14,12 +14,17 @@ if [ ! -f .env ]; then
   exit 1
 fi
 
-set -a
-source .env
-set +a
+# Lê variáveis do .env de forma segura (sem source)
+read_env_var() {
+  grep -E "^${1}=" .env 2>/dev/null | head -1 | sed "s/^${1}=//" | tr -d '"' | tr -d "'"
+}
 
-KONG_PORT="${KONG_HTTP_PORT:-8000}"
-API_KEY="${SERVICE_ROLE_KEY:-${ANON_KEY:-}}"
+KONG_PORT=$(read_env_var "KONG_HTTP_PORT")
+KONG_PORT="${KONG_PORT:-8000}"
+API_KEY=$(read_env_var "SERVICE_ROLE_KEY")
+if [ -z "$API_KEY" ]; then
+  API_KEY=$(read_env_var "ANON_KEY")
+fi
 
 if [ -z "$API_KEY" ]; then
   echo "❌ SERVICE_ROLE_KEY/ANON_KEY não definidos no .env"
@@ -53,7 +58,7 @@ check_container simply-frontend
 
 echo "🔍 Validando endpoints..."
 AUTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:${KONG_PORT}/auth/v1/settings" \
-  -H "apikey: ${API_KEY}")
+  -H "apikey: ${API_KEY}" 2>/dev/null || echo "000")
 
 if [ "$AUTH_STATUS" != "200" ]; then
   echo "❌ /auth/v1/settings retornou HTTP $AUTH_STATUS"
@@ -64,9 +69,9 @@ echo "✅ Auth respondeu HTTP 200"
 
 REST_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:${KONG_PORT}/rest/v1/" \
   -H "apikey: ${API_KEY}" \
-  -H "Authorization: Bearer ${API_KEY}")
+  -H "Authorization: Bearer ${API_KEY}" 2>/dev/null || echo "000")
 
-if [ "$REST_STATUS" -ge 500 ] || [ "$REST_STATUS" = "000" ]; then
+if [ "$REST_STATUS" -ge 500 ] 2>/dev/null || [ "$REST_STATUS" = "000" ]; then
   echo "❌ /rest/v1/ retornou HTTP $REST_STATUS"
   exit 1
 fi

@@ -59,6 +59,12 @@ rsync -av --delete --exclude='node_modules' --exclude='.git' --exclude='docker/.
 cd "$INSTALL_DIR/docker"
 chmod +x *.sh
 
+# ---- Função para ler variável do .env de forma segura ----
+read_env_var() {
+  local var_name="$1"
+  grep -E "^${var_name}=" .env 2>/dev/null | head -1 | sed "s/^${var_name}=//" | tr -d '"' | tr -d "'"
+}
+
 # ---- Gerar .env se não existir ----
 if [ ! -f .env ]; then
   echo -e "${YELLOW}📝 Gerando arquivo .env...${NC}"
@@ -76,7 +82,7 @@ if [ ! -f .env ]; then
   echo -e "${YELLOW}╔══════════════════════════════════════════════════════╗${NC}"
   echo -e "${YELLOW}║  ⚠️  CONFIGURE O ARQUIVO .env ANTES DE CONTINUAR    ║${NC}"
   echo -e "${YELLOW}╠══════════════════════════════════════════════════════╣${NC}"
-  echo -e "${YELLOW}║  Arquivo: ${INSTALL_DIR}/docker/.env        ║${NC}"
+  echo -e "${YELLOW}║  Arquivo: ${INSTALL_DIR}/docker/.env                ║${NC}"
   echo -e "${YELLOW}║                                                      ║${NC}"
   echo -e "${YELLOW}║  Itens obrigatórios:                                 ║${NC}"
   echo -e "${YELLOW}║  1. SITE_DOMAIN (seu domínio)                        ║${NC}"
@@ -89,7 +95,8 @@ if [ ! -f .env ]; then
 fi
 
 # ---- Garantir ANON_KEY/SERVICE_ROLE_KEY válidas ----
-if grep -q "CHANGE_ME" .env; then
+CURRENT_ANON=$(read_env_var "ANON_KEY")
+if [ -z "$CURRENT_ANON" ] || [ "$CURRENT_ANON" = "CHANGE_ME" ]; then
   echo -e "${BLUE}🔑 Gerando ANON_KEY e SERVICE_ROLE_KEY...${NC}"
   bash generate-keys.sh
 fi
@@ -136,11 +143,29 @@ MAINEOF
 echo -e "${BLUE}🔨 Subindo banco...${NC}"
 docker compose up -d --build db
 
+echo -e "${BLUE}⏳ Aguardando banco ficar saudável...${NC}"
+for i in $(seq 1 30); do
+  DB_HEALTH=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' simply-db 2>/dev/null || true)
+  if [ "$DB_HEALTH" = "healthy" ]; then
+    break
+  fi
+  sleep 2
+done
+
+if [ "$DB_HEALTH" != "healthy" ]; then
+  echo -e "${RED}❌ Banco não ficou saudável a tempo.${NC}"
+  docker compose logs --tail=30 db
+  exit 1
+fi
+
 echo -e "${BLUE}🔧 Sincronizando credenciais internas do banco...${NC}"
-bash sync-db-passwords.sh
+bash sync-db-passwords.sh --quiet
 
 echo -e "${BLUE}🚀 Subindo serviços da stack...${NC}"
 docker compose up -d --build --force-recreate auth rest storage functions kong frontend --remove-orphans
+
+echo -e "${BLUE}⏳ Aguardando serviços estabilizarem (15s)...${NC}"
+sleep 15
 
 echo -e "${BLUE}🧪 Executando validação pós-instalação...${NC}"
 bash validate-install.sh
