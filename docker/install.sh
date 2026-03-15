@@ -150,7 +150,7 @@ sleep 25
 
 # Re-sync após GoTrue criar tabelas
 echo -e "${BLUE}🔐 Re-sincronizando permissões...${NC}"
-bash sync-db-passwords.sh --quiet
+bash sync-db-passwords.sh
 
 # Restart auth para pegar permissões
 docker compose restart auth
