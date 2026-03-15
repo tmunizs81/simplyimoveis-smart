@@ -2,7 +2,7 @@
 # ============================================================
 # Sincroniza (e repara) roles/senhas internos do banco
 # Uso: bash sync-db-passwords.sh
-# Versão: 2026-03-15-v16
+# Versão: 2026-03-15-v17
 # ============================================================
 
 set -euo pipefail
@@ -28,7 +28,6 @@ echo "   Verificando container ${DB_CONTAINER}..."
 DB_STATUS=$(docker inspect -f '{{.State.Status}}' "$DB_CONTAINER" 2>/dev/null || echo "not_found")
 if [ "$DB_STATUS" != "running" ]; then
   echo "❌ Container $DB_CONTAINER não está rodando (status: $DB_STATUS)"
-  echo "   Rode: docker compose up -d db"
   exit 1
 fi
 echo "   ✅ Container rodando"
@@ -43,28 +42,32 @@ for i in {1..30}; do
   for candidate in "${CANDIDATES[@]}"; do
     [ -z "$candidate" ] && continue
     RESULT=$(docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" "$DB_CONTAINER" \
-      psql -tA -w -U "$candidate" -d "$POSTGRES_DB" -c "SELECT 1" 2>/dev/null || true)
-
+      psql -tA -w -h 127.0.0.1 -U "$candidate" -d "$POSTGRES_DB" -c "SELECT 1" 2>/dev/null || true)
     if [ "$RESULT" = "1" ]; then
       DB_ADMIN_USER="$candidate"
       echo "   ✅ Conexão SQL OK com usuário: $DB_ADMIN_USER"
       break 2
     fi
   done
-
   echo "   ⏳ tentativa $i/30..."
   sleep 2
 done
 
 if [ -z "$DB_ADMIN_USER" ]; then
-  echo "❌ Não foi possível conectar ao PostgreSQL (usuarios tentados: ${CANDIDATES[*]})"
-  docker logs --tail=50 "$DB_CONTAINER" || true
+  echo "❌ Não foi possível conectar ao PostgreSQL"
   exit 1
 fi
 
+# Helper: always use -h 127.0.0.1 to force password auth (avoid peer auth failures)
 run_sql() {
   docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" "$DB_CONTAINER" \
-    psql -v ON_ERROR_STOP=1 -w -U "$DB_ADMIN_USER" -d "$POSTGRES_DB" -c "$1"
+    psql -v ON_ERROR_STOP=1 -w -h 127.0.0.1 -U "$DB_ADMIN_USER" -d "$POSTGRES_DB" -c "$1"
+}
+
+run_sql_as() {
+  local user="$1"; shift
+  docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" "$DB_CONTAINER" \
+    psql -v ON_ERROR_STOP=1 -w -h 127.0.0.1 -U "$user" -d "$POSTGRES_DB" -c "$1"
 }
 
 echo "   Criando/garantindo roles internos..."
@@ -107,32 +110,26 @@ run_sql "ALTER ROLE supabase_auth_admin IN DATABASE \"${POSTGRES_DB}\" SET searc
 run_sql "ALTER ROLE supabase_storage_admin IN DATABASE \"${POSTGRES_DB}\" SET search_path = storage, public;"
 run_sql "ALTER ROLE authenticator IN DATABASE \"${POSTGRES_DB}\" SET search_path = public, auth, storage;"
 
-echo "   Criando funções auth auxiliares..."
+echo "   Preparando funções auth (drop + recreate como supabase_auth_admin)..."
+# Drop as superuser para garantir, depois recria como supabase_auth_admin
+run_sql "DROP FUNCTION IF EXISTS auth.uid() CASCADE;"
+run_sql "DROP FUNCTION IF EXISTS auth.role() CASCADE;"
+run_sql "DROP FUNCTION IF EXISTS auth.email() CASCADE;"
+
+# Criar funções conectado como supabase_auth_admin (owner correto para GoTrue)
 docker exec -i -e PGPASSWORD="$POSTGRES_PASSWORD" "$DB_CONTAINER" \
-  psql -v ON_ERROR_STOP=1 -w -U "$DB_ADMIN_USER" -d "$POSTGRES_DB" <<'EOSQL'
+  psql -v ON_ERROR_STOP=1 -w -h 127.0.0.1 -U supabase_auth_admin -d "$POSTGRES_DB" <<'EOSQL'
 CREATE OR REPLACE FUNCTION auth.uid()
-RETURNS uuid
-LANGUAGE sql
-STABLE
-AS $$
-  SELECT NULLIF(current_setting('request.jwt.claim.sub', true), '')::uuid;
-$$;
+RETURNS uuid LANGUAGE sql STABLE
+AS $$ SELECT NULLIF(current_setting('request.jwt.claim.sub', true), '')::uuid; $$;
 
 CREATE OR REPLACE FUNCTION auth.role()
-RETURNS text
-LANGUAGE sql
-STABLE
-AS $$
-  SELECT NULLIF(current_setting('request.jwt.claim.role', true), '')::text;
-$$;
+RETURNS text LANGUAGE sql STABLE
+AS $$ SELECT NULLIF(current_setting('request.jwt.claim.role', true), '')::text; $$;
 
 CREATE OR REPLACE FUNCTION auth.email()
-RETURNS text
-LANGUAGE sql
-STABLE
-AS $$
-  SELECT NULLIF(current_setting('request.jwt.claim.email', true), '')::text;
-$$;
+RETURNS text LANGUAGE sql STABLE
+AS $$ SELECT NULLIF(current_setting('request.jwt.claim.email', true), '')::text; $$;
 EOSQL
 
 echo "   Aplicando grants de schema..."
@@ -161,21 +158,30 @@ run_sql "GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO service_role;"
 run_sql "GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated;"
 
 echo "   Validando privilégios críticos..."
-AUTH_CREATE_DB=$(docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" "$DB_CONTAINER" psql -tA -w -U "$DB_ADMIN_USER" -d "$POSTGRES_DB" -c "SELECT has_database_privilege('supabase_auth_admin', current_database(), 'CREATE');" | tr -d '[:space:]')
-STORAGE_CREATE_DB=$(docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" "$DB_CONTAINER" psql -tA -w -U "$DB_ADMIN_USER" -d "$POSTGRES_DB" -c "SELECT has_database_privilege('supabase_storage_admin', current_database(), 'CREATE');" | tr -d '[:space:]')
+AUTH_CREATE_DB=$(docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" "$DB_CONTAINER" psql -tA -w -h 127.0.0.1 -U "$DB_ADMIN_USER" -d "$POSTGRES_DB" -c "SELECT has_database_privilege('supabase_auth_admin', current_database(), 'CREATE');" | tr -d '[:space:]')
+STORAGE_CREATE_DB=$(docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" "$DB_CONTAINER" psql -tA -w -h 127.0.0.1 -U "$DB_ADMIN_USER" -d "$POSTGRES_DB" -c "SELECT has_database_privilege('supabase_storage_admin', current_database(), 'CREATE');" | tr -d '[:space:]')
 
 [ "$AUTH_CREATE_DB" = "t" ] || { echo "❌ supabase_auth_admin sem CREATE no database"; exit 1; }
 [ "$STORAGE_CREATE_DB" = "t" ] || { echo "❌ supabase_storage_admin sem CREATE no database"; exit 1; }
 
-AUTH_PATH=$(docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" "$DB_CONTAINER" psql -tA -w -U supabase_auth_admin -d "$POSTGRES_DB" -c "SHOW search_path;" | tr -d '[:space:]')
-STORAGE_PATH=$(docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" "$DB_CONTAINER" psql -tA -w -U supabase_storage_admin -d "$POSTGRES_DB" -c "SHOW search_path;" | tr -d '[:space:]')
+AUTH_PATH=$(docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" "$DB_CONTAINER" psql -tA -w -h 127.0.0.1 -U supabase_auth_admin -d "$POSTGRES_DB" -c "SHOW search_path;" | tr -d '[:space:]')
+STORAGE_PATH=$(docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" "$DB_CONTAINER" psql -tA -w -h 127.0.0.1 -U supabase_storage_admin -d "$POSTGRES_DB" -c "SHOW search_path;" | tr -d '[:space:]')
 
-[[ "$AUTH_PATH" == auth,* || "$AUTH_PATH" == auth ]] || { echo "❌ search_path supabase_auth_admin inválido: $AUTH_PATH"; exit 1; }
-[[ "$STORAGE_PATH" == storage,* || "$STORAGE_PATH" == storage ]] || { echo "❌ search_path supabase_storage_admin inválido: $STORAGE_PATH"; exit 1; }
+[[ "$AUTH_PATH" == *auth* ]] || { echo "❌ search_path supabase_auth_admin inválido: $AUTH_PATH"; exit 1; }
+[[ "$STORAGE_PATH" == *storage* ]] || { echo "❌ search_path supabase_storage_admin inválido: $STORAGE_PATH"; exit 1; }
 
-# Probes reais com os próprios roles
-docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" "$DB_CONTAINER" psql -v ON_ERROR_STOP=1 -w -U supabase_auth_admin -d "$POSTGRES_DB" -c "CREATE TABLE IF NOT EXISTS auth.__probe_auth_migration(id int); DROP TABLE auth.__probe_auth_migration;" >/dev/null
+# Probe: supabase_auth_admin cria e dropa tabela no schema auth
+docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" "$DB_CONTAINER" \
+  psql -v ON_ERROR_STOP=1 -w -h 127.0.0.1 -U supabase_auth_admin -d "$POSTGRES_DB" \
+  -c "CREATE TABLE IF NOT EXISTS auth.__probe(id int); DROP TABLE auth.__probe;" >/dev/null
 
-docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" "$DB_CONTAINER" psql -v ON_ERROR_STOP=1 -w -U supabase_storage_admin -d "$POSTGRES_DB" -c "CREATE TABLE IF NOT EXISTS storage.__probe_storage_migration(id int); DROP TABLE storage.__probe_storage_migration;" >/dev/null
+# Probe: supabase_storage_admin cria e dropa tabela no schema storage
+docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" "$DB_CONTAINER" \
+  psql -v ON_ERROR_STOP=1 -w -h 127.0.0.1 -U supabase_storage_admin -d "$POSTGRES_DB" \
+  -c "CREATE TABLE IF NOT EXISTS storage.__probe(id int); DROP TABLE storage.__probe;" >/dev/null
+
+# Probe: verificar ownership das funções auth
+AUTH_FN_OWNER=$(docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" "$DB_CONTAINER" psql -tA -w -h 127.0.0.1 -U "$DB_ADMIN_USER" -d "$POSTGRES_DB" -c "SELECT proowner::regrole FROM pg_proc WHERE proname='uid' AND pronamespace='auth'::regnamespace;" | tr -d '[:space:]')
+[[ "$AUTH_FN_OWNER" == "supabase_auth_admin" ]] || { echo "❌ auth.uid() owner=$AUTH_FN_OWNER (esperado supabase_auth_admin)"; exit 1; }
 
 echo "✅ Credenciais sincronizadas com sucesso!"
