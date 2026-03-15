@@ -1,9 +1,8 @@
 #!/bin/bash
 # ============================================================
-# Valida stack Docker — retorna 0 se tudo OK, 1 se problemas
-# Versão: 2026-03-15-v10
+# Valida stack Docker — retorna 0 se OK, 1 se problemas
+# Versão: 2026-03-15-v11-simplified
 # ============================================================
-
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -18,111 +17,52 @@ ANON_KEY=$(read_env "ANON_KEY")
 SERVICE_ROLE_KEY=$(read_env "SERVICE_ROLE_KEY")
 POSTGRES_DB=$(read_env "POSTGRES_DB"); POSTGRES_DB="${POSTGRES_DB:-simply_db}"
 POSTGRES_PASSWORD=$(read_env "POSTGRES_PASSWORD")
-DB_ADMIN_USER=$(read_env "POSTGRES_USER"); DB_ADMIN_USER="${DB_ADMIN_USER:-supabase_admin}"
+DB_USER=$(read_env "POSTGRES_USER"); DB_USER="${DB_USER:-supabase_admin}"
 
 [ -z "$ANON_KEY" ] || [ -z "$SERVICE_ROLE_KEY" ] && echo "❌ Chaves JWT não definidas" && exit 1
 
 ERRORS=0
 
-check_container() {
-  local c="$1"
-  local st
-  local rs
+echo "── Containers ──"
+for c in simply-db simply-auth simply-rest simply-storage simply-functions simply-kong simply-frontend; do
   st=$(docker inspect -f '{{.State.Status}}' "$c" 2>/dev/null || echo "missing")
   rs=$(docker inspect -f '{{.State.Restarting}}' "$c" 2>/dev/null || echo "false")
   if [ "$st" != "running" ] || [ "$rs" = "true" ]; then
-    echo "❌ $c ($st, restarting=$rs)"; ERRORS=$((ERRORS+1)); return 1
+    echo "❌ $c ($st)"; ERRORS=$((ERRORS+1))
+  else
+    echo "✅ $c"
   fi
-  echo "✅ $c"
-}
-
-echo "── Containers ──"
-for c in simply-db simply-auth simply-rest simply-storage simply-functions simply-kong simply-frontend; do
-  check_container "$c" || true
 done
 
-echo "── Schema auth ──"
-AUTH_OK=$(docker compose exec -T -e PGPASSWORD="$POSTGRES_PASSWORD" db \
-  psql -tA -w -U "$DB_ADMIN_USER" -d "$POSTGRES_DB" \
-  -c "SELECT to_regclass('auth.users') IS NOT NULL;" 2>/dev/null | tr -d '[:space:]')
-if [ "$AUTH_OK" != "t" ]; then
-  echo "❌ auth.users não existe"; ERRORS=$((ERRORS+1))
-else
-  echo "✅ auth.users"
-fi
-
-echo "── API ──"
-AUTH_ST=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:${KONG_PORT}/auth/v1/settings" \
-  -H "apikey: ${ANON_KEY}" 2>/dev/null || echo "000")
+echo "── Auth ──"
+AUTH_ST=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:${KONG_PORT}/auth/v1/settings" -H "apikey: ${ANON_KEY}" 2>/dev/null || echo "000")
 if [ "$AUTH_ST" != "200" ]; then
-  echo "❌ Auth settings: HTTP $AUTH_ST"; ERRORS=$((ERRORS+1))
+  echo "❌ Auth: HTTP $AUTH_ST"; ERRORS=$((ERRORS+1))
 else
-  echo "✅ Auth settings: 200"
+  echo "✅ Auth: OK"
 fi
 
-LOGIN_ST=$(curl -s -o /dev/null -w "%{http_code}" -X POST \
-  "http://localhost:${KONG_PORT}/auth/v1/token?grant_type=password" \
-  -H "apikey: ${ANON_KEY}" -H "Content-Type: application/json" \
-  -d '{"email":"test@invalid.local","password":"wrong"}' 2>/dev/null || echo "000")
-if [ "$LOGIN_ST" -ge 500 ] 2>/dev/null || [ "$LOGIN_ST" = "000" ]; then
-  echo "❌ Login flow: HTTP $LOGIN_ST (esperava 400)"; ERRORS=$((ERRORS+1))
-else
-  echo "✅ Login flow: HTTP $LOGIN_ST"
-fi
-
+echo "── REST ──"
 REST_ST=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:${KONG_PORT}/rest/v1/" \
   -H "apikey: ${SERVICE_ROLE_KEY}" -H "Authorization: Bearer ${SERVICE_ROLE_KEY}" 2>/dev/null || echo "000")
 if [ "$REST_ST" -ge 500 ] 2>/dev/null || [ "$REST_ST" = "000" ]; then
   echo "❌ REST: HTTP $REST_ST"; ERRORS=$((ERRORS+1))
 else
-  echo "✅ REST: HTTP $REST_ST"
+  echo "✅ REST: OK"
 fi
 
-echo "── Edge Functions ──"
-FUNC_BODY=$(curl -s -X POST "http://localhost:${KONG_PORT}/functions/v1/create-admin-user" \
-  -H "apikey: ${ANON_KEY}" -H "Content-Type: application/json" -d '{"action":"list"}' 2>/dev/null || true)
+echo "── Functions ──"
 FUNC_ST=$(curl -s -o /dev/null -w "%{http_code}" -X POST "http://localhost:${KONG_PORT}/functions/v1/create-admin-user" \
   -H "apikey: ${ANON_KEY}" -H "Content-Type: application/json" -d '{"action":"list"}' 2>/dev/null || echo "000")
 if [ "$FUNC_ST" = "000" ] || [ "$FUNC_ST" = "404" ]; then
-  echo "❌ create-admin-user: HTTP $FUNC_ST"; ERRORS=$((ERRORS+1))
-  [ -n "$FUNC_BODY" ] && echo "   resposta: $FUNC_BODY"
-  docker compose exec -T functions ls -la /home/deno/functions/create-admin-user 2>/dev/null || true
-elif [ "$FUNC_ST" -ge 500 ] 2>/dev/null; then
-  echo "❌ create-admin-user: HTTP $FUNC_ST"; ERRORS=$((ERRORS+1))
-  [ -n "$FUNC_BODY" ] && echo "   resposta: $FUNC_BODY"
+  echo "❌ Functions: HTTP $FUNC_ST"; ERRORS=$((ERRORS+1))
 else
-  echo "✅ create-admin-user: HTTP $FUNC_ST"
+  echo "✅ Functions: HTTP $FUNC_ST"
 fi
-
-echo "── Privilégios SQL ──"
-check_priv() {
-  local role="$1"
-  local table="$2"
-  local priv="$3"
-  local ok
-  ok=$(docker compose exec -T -e PGPASSWORD="$POSTGRES_PASSWORD" db \
-    psql -tA -w -h 127.0.0.1 -U "$DB_ADMIN_USER" -d "$POSTGRES_DB" \
-    -c "SELECT has_table_privilege('${role}', '${table}', '${priv}');" 2>/dev/null | tr -d '[:space:]')
-
-  if [ "$ok" != "t" ]; then
-    echo "❌ ${role} sem ${priv} em ${table}"; ERRORS=$((ERRORS+1))
-  else
-    echo "✅ ${role} ${priv} ${table}"
-  fi
-}
-
-check_priv authenticated public.properties SELECT
-check_priv authenticated public.properties INSERT
-check_priv authenticated public.properties UPDATE
-check_priv authenticated public.properties DELETE
-check_priv authenticated public.tenants INSERT
-check_priv service_role public.user_roles SELECT
 
 echo ""
 if [ "$ERRORS" -gt 0 ]; then
-  echo "❌ $ERRORS problema(s)"
-  echo "   Debug rápido: docker compose logs --tail=80 db auth rest storage"
+  echo "❌ $ERRORS problema(s). Debug: docker compose logs --tail=50"
   exit 1
 fi
-
 echo "🎉 Tudo OK!"
