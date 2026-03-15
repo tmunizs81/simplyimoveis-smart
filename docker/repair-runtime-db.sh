@@ -25,7 +25,9 @@ run_sql() {
 
 run_sql_quiet() {
   docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" "$DB_CONTAINER" \
-    psql -tA -w -h 127.0.0.1 -U supabase_admin -d "$POSTGRES_DB" -c "$1" 2>/dev/null | tr -d '[:space:]'
+    psql -tA -w -h 127.0.0.1 -U supabase_admin -d "$POSTGRES_DB" 2>/dev/null <<EOSQL | tail -1 | tr -d '[:space:]'
+$1
+EOSQL
 }
 
 echo "🛠️  Etapa 1/5: Sincronizando credenciais e permissões..."
