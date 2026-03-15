@@ -37,7 +37,7 @@ run_sql_stdin() {
 }
 
 # Verifica se auth.users existe
-AUTH_OK=$(run_sql -tA -c "SELECT to_regclass('auth.users') IS NOT NULL;" 2>/dev/null | tr -d '[:space:]')
+AUTH_OK=$(run_sql_cmd -tA -c "SELECT to_regclass('auth.users') IS NOT NULL;" 2>/dev/null | tr -d '[:space:]')
 if [ "$AUTH_OK" != "t" ]; then
   echo "❌ auth.users não existe. GoTrue ainda não migrou."
   echo "   Aguarde mais 30s e tente novamente."
@@ -48,7 +48,7 @@ echo "👤 Criando admin: ${EMAIL}..."
 
 SAFE_PASS=$(printf '%s' "$PASSWORD" | sed "s/'/''/g")
 
-run_sql <<EOSQL
+run_sql_stdin <<EOSQL
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 DO \$\$
