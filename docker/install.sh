@@ -248,8 +248,12 @@ if ! bash validate-install.sh; then
     echo -e "${RED}❌ Validação falhou. Debug:${NC}"
     echo "   docker compose logs --tail=80 auth rest storage kong db"
     echo -e "${YELLOW}   Tentando recuperação rápida (sync + restart auth/rest/storage/kong)...${NC}"
-    bash sync-db-passwords.sh || true
-    docker compose restart auth rest storage kong || true
+    if ! bash sync-db-passwords.sh; then
+      echo -e "${RED}❌ Recuperação rápida falhou no sync-db-passwords.sh${NC}"
+      echo "   docker compose logs --tail=80 db"
+      exit 1
+    fi
+    docker compose restart auth rest storage kong
     sleep 20
     echo "   docker compose logs --tail=30 db"
     exit 1
