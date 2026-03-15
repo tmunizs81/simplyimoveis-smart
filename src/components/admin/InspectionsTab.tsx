@@ -187,7 +187,7 @@ const InspectionsTab = () => {
 
   const deleteInspection = async (id: string) => {
     if (!confirm("Excluir esta vistoria e todas as mídias?")) return;
-    await supabase.from("property_inspections").delete().eq("id", id);
+    await adminDelete("property_inspections", { id });
     toast.success("Vistoria excluída");
     fetchAll();
   };
