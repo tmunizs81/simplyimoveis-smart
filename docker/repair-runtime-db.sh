@@ -98,7 +98,15 @@ GRANT EXECUTE ON FUNCTION auth.role() TO anon, authenticated, service_role, auth
 GRANT EXECUTE ON FUNCTION auth.email() TO anon, authenticated, service_role, authenticator;
 EOSQL
   echo "   Retestando..."
-  TEST_UID2=$(run_sql_quiet "BEGIN; SET LOCAL role TO 'authenticated'; SET LOCAL request.jwt.claim.sub TO 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'; SELECT auth.uid(); COMMIT;")
+  TEST_UID2=$(docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" "$DB_CONTAINER" \
+    psql -tA -w -h 127.0.0.1 -U supabase_admin -d "$POSTGRES_DB" 2>/dev/null <<'EOSQL2'
+DO $$ BEGIN
+  PERFORM set_config('request.jwt.claim.sub', 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee', true);
+END $$;
+SELECT auth.uid();
+EOSQL2
+  )
+  TEST_UID2=$(echo "$TEST_UID2" | grep -v '^$' | grep -v '^DO$' | tr -d '[:space:]')
   if [ "$TEST_UID2" = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee" ]; then
     echo "   ✅ auth.uid() agora funciona!"
   else
