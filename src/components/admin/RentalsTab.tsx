@@ -129,7 +129,53 @@ const RentalsTab = () => {
 
   const deleteContract = async (id: string) => {
     if (!confirm("Excluir este contrato e todos os documentos?")) return;
-    await adminDelete("rental_contracts", { id });
+
+    // 1) Remove contract docs (storage + table)
+    const { data: docs, error: docsError } = await adminSelect("contract_documents", { match: { contract_id: id } });
+    if (docsError) {
+      toast.error(docsError.message || "Erro ao buscar documentos do contrato");
+      return;
+    }
+
+    if (Array.isArray(docs) && docs.length > 0) {
+      const paths = docs
+        .map((d) => (d as ContractDoc).file_path)
+        .filter(Boolean);
+
+      if (paths.length > 0) {
+        const { error: storageError } = await supabase.storage.from("contract-documents").remove(paths);
+        if (storageError) {
+          toast.error(storageError.message || "Erro ao remover arquivos do contrato");
+          return;
+        }
+      }
+
+      const { error: docsDeleteError } = await adminDelete("contract_documents", { contract_id: id });
+      if (docsDeleteError) {
+        toast.error(docsDeleteError.message || "Erro ao remover documentos do contrato");
+        return;
+      }
+    }
+
+    // 2) Unlink dependent rows that reference this contract
+    const unlinkOps = await Promise.all([
+      adminUpdate("financial_transactions", { contract_id: null }, { contract_id: id }),
+      adminUpdate("property_inspections", { contract_id: null }, { contract_id: id }),
+    ]);
+
+    const unlinkError = unlinkOps.find((op) => op.error)?.error;
+    if (unlinkError) {
+      toast.error(unlinkError.message || "Erro ao desvincular dependências do contrato");
+      return;
+    }
+
+    // 3) Delete contract
+    const { error } = await adminDelete("rental_contracts", { id });
+    if (error) {
+      toast.error(error.message || "Erro ao excluir contrato");
+      return;
+    }
+
     toast.success("Contrato excluído");
     fetchAll();
   };
