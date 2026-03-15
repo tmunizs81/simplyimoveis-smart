@@ -14,8 +14,8 @@ COMPOSE_FILE="$SCRIPT_DIR/docker-compose.yml"
 CORE_SQL="$SCRIPT_DIR/sql/selfhosted-admin-recovery.sql"
 STORAGE_SQL="$SCRIPT_DIR/sql/bootstrap-storage.sql"
 
-[ -f "$ENV_FILE" ] || { echo -e "${RED}❌ .env não encontrado em $ENV_FILE${NC}"; exit 1; }
-[ -f "$COMPOSE_FILE" ] || { echo -e "${RED}❌ docker-compose.yml ausente: $COMPOSE_FILE${NC}"; exit 1; }
+[ -f "$ENV_FILE" ] || { echo -e "${RED}ERRO: .env nao encontrado em $ENV_FILE${NC}"; exit 1; }
+[ -f "$COMPOSE_FILE" ] || { echo -e "${RED}ERRO: docker-compose.yml ausente: $COMPOSE_FILE${NC}"; exit 1; }
 
 read_env() {
   local key="$1"
@@ -34,19 +34,32 @@ POSTGRES_PASSWORD="$(read_env "POSTGRES_PASSWORD")"
 POSTGRES_DB="$(read_env "POSTGRES_DB")"; POSTGRES_DB="${POSTGRES_DB:-simply_db}"
 DB_USER="$(read_env "POSTGRES_USER")"; DB_USER="${DB_USER:-supabase_admin}"
 
-[ -z "$ANON_KEY" ] || [ -z "$SERVICE_ROLE_KEY" ] && { echo -e "${RED}❌ Chaves JWT não definidas no .env${NC}"; exit 1; }
-[ -z "$POSTGRES_PASSWORD" ] && { echo -e "${RED}❌ POSTGRES_PASSWORD ausente no .env${NC}"; exit 1; }
+[ -z "$ANON_KEY" ] || [ -z "$SERVICE_ROLE_KEY" ] && { echo -e "${RED}ERRO: Chaves JWT nao definidas no .env${NC}"; exit 1; }
+[ -z "$POSTGRES_PASSWORD" ] && { echo -e "${RED}ERRO: POSTGRES_PASSWORD ausente no .env${NC}"; exit 1; }
 
 PASS=0; FAIL=0; WARN=0
 
 check() {
-  local desc="$1" result="$2"
+  local desc="$1"
+  local result="$2"
   if [ "$result" = "ok" ]; then
-    echo -e "   ${GREEN}✅ $desc${NC}"; ((PASS++))
+    echo -e "   ${GREEN}OK: $desc${NC}"
+    PASS=$((PASS + 1))
   elif [ "$result" = "warn" ]; then
-    echo -e "   ${YELLOW}⚠️  $desc${NC}"; ((WARN++))
+    echo -e "   ${YELLOW}WARN: $desc${NC}"
+    WARN=$((WARN + 1))
   else
-    echo -e "   ${RED}❌ $desc${NC}"; ((FAIL++))
+    echo -e "   ${RED}FAIL: $desc${NC}"
+    FAIL=$((FAIL + 1))
+  fi
+}
+
+require_file() {
+  local filepath="$1"
+  if [ -f "$filepath" ]; then
+    check "$filepath" "ok"
+  else
+    check "Arquivo ausente: $filepath" "fail"
   fi
 }
 
@@ -55,14 +68,16 @@ run_sql() {
     psql -tA -w -h 127.0.0.1 -U "$DB_USER" -d "$POSTGRES_DB" -c "$1" 2>/dev/null || echo ""
 }
 
-echo -e "${BLUE}╔══════════════════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║     Validação Estrutural do Instalador Docker       ║${NC}"
-echo -e "${BLUE}╚══════════════════════════════════════════════════════╝${NC}"
+echo -e "${BLUE}=== Validacao Estrutural do Instalador Docker ===${NC}"
 
 echo -e "\n${BLUE}1. Arquivos essenciais${NC}"
-for f in "$CORE_SQL" "$STORAGE_SQL" "$SCRIPT_DIR/bootstrap-db.sh" "$SCRIPT_DIR/sync-db-passwords.sh" "$SCRIPT_DIR/ensure-storage-buckets.sh" "$SCRIPT_DIR/volumes/db/init/00-passwords.sh" "$SCRIPT_DIR/volumes/db/init/01-schema.sql"; do
-  [ -f "$f" ] && check "$(realpath "$f")" "ok" || check "Arquivo ausente: $f" "fail"
-done
+require_file "$CORE_SQL"
+require_file "$STORAGE_SQL"
+require_file "$SCRIPT_DIR/bootstrap-db.sh"
+require_file "$SCRIPT_DIR/sync-db-passwords.sh"
+require_file "$SCRIPT_DIR/ensure-storage-buckets.sh"
+require_file "$SCRIPT_DIR/volumes/db/init/00-passwords.sh"
+require_file "$SCRIPT_DIR/volumes/db/init/01-schema.sql"
 
 echo -e "\n${BLUE}2. Containers${NC}"
 for c in simply-db simply-auth simply-rest simply-storage simply-kong simply-functions simply-frontend; do
@@ -75,9 +90,13 @@ for c in simply-db simply-auth simply-rest simply-storage simply-kong simply-fun
   fi
 done
 
-echo -e "\n${BLUE}3. Banco (objetos críticos)${NC}"
+echo -e "\n${BLUE}3. Banco (objetos criticos)${NC}"
 DB_OK=$(run_sql "SELECT 1;")
-[ "$DB_OK" = "1" ] && check "Conexão PostgreSQL" "ok" || check "Conexão PostgreSQL" "fail"
+if [ "$DB_OK" = "1" ]; then
+  check "Conexao PostgreSQL" "ok"
+else
+  check "Conexao PostgreSQL" "fail"
+fi
 
 if [ "$DB_OK" = "1" ]; then
   MISSING_TYPES=$(run_sql "
@@ -92,7 +111,11 @@ if [ "$DB_OK" = "1" ]; then
     LEFT JOIN pg_type t ON t.typname = req.name
     LEFT JOIN pg_namespace n ON n.oid=t.typnamespace AND n.nspname='public'
     WHERE n.oid IS NULL;")
-  [ -z "$(echo "$MISSING_TYPES" | tr -d '[:space:]')" ] && check "Tipos customizados" "ok" || check "Tipos ausentes: $MISSING_TYPES" "fail"
+  if [ -z "$(echo "$MISSING_TYPES" | tr -d '[:space:]')" ]; then
+    check "Tipos customizados" "ok"
+  else
+    check "Tipos ausentes: $MISSING_TYPES" "fail"
+  fi
 
   MISSING_TABLES=$(run_sql "
     WITH req(name) AS (
@@ -106,7 +129,11 @@ if [ "$DB_OK" = "1" ]; then
     SELECT COALESCE(string_agg(req.name, ', '), '')
     FROM req
     WHERE to_regclass('public.' || req.name) IS NULL;")
-  [ -z "$(echo "$MISSING_TABLES" | tr -d '[:space:]')" ] && check "Tabelas principais" "ok" || check "Tabelas ausentes: $MISSING_TABLES" "fail"
+  if [ -z "$(echo "$MISSING_TABLES" | tr -d '[:space:]')" ]; then
+    check "Tabelas principais" "ok"
+  else
+    check "Tabelas ausentes: $MISSING_TABLES" "fail"
+  fi
 
   MISSING_FUNCS=$(run_sql "
     WITH req(sig) AS (
@@ -118,7 +145,11 @@ if [ "$DB_OK" = "1" ]; then
       ]::text[])
     )
     SELECT COALESCE(string_agg(sig, ', '), '') FROM req WHERE to_regprocedure(sig) IS NULL;")
-  [ -z "$(echo "$MISSING_FUNCS" | tr -d '[:space:]')" ] && check "Funções auxiliares" "ok" || check "Funções ausentes: $MISSING_FUNCS" "fail"
+  if [ -z "$(echo "$MISSING_FUNCS" | tr -d '[:space:]')" ]; then
+    check "Funcoes auxiliares" "ok"
+  else
+    check "Funcoes ausentes: $MISSING_FUNCS" "fail"
+  fi
 
   MISSING_RLS=$(run_sql "
     WITH req(tbl) AS (
@@ -133,7 +164,11 @@ if [ "$DB_OK" = "1" ]; then
     FROM req
     LEFT JOIN pg_tables t ON t.schemaname='public' AND t.tablename=req.tbl
     WHERE t.rowsecurity IS DISTINCT FROM true;")
-  [ -z "$(echo "$MISSING_RLS" | tr -d '[:space:]')" ] && check "RLS habilitado nas tabelas críticas" "ok" || check "RLS ausente em: $MISSING_RLS" "fail"
+  if [ -z "$(echo "$MISSING_RLS" | tr -d '[:space:]')" ]; then
+    check "RLS habilitado nas tabelas criticas" "ok"
+  else
+    check "RLS ausente em: $MISSING_RLS" "fail"
+  fi
 
   MISSING_POLICIES=$(run_sql "
     WITH req(name) AS (
@@ -150,7 +185,11 @@ if [ "$DB_OK" = "1" ]; then
     FROM req
     LEFT JOIN pg_policies p ON p.schemaname='public' AND p.policyname=req.name
     WHERE p.policyname IS NULL;")
-  [ -z "$(echo "$MISSING_POLICIES" | tr -d '[:space:]')" ] && check "Policies críticas" "ok" || check "Policies ausentes: $MISSING_POLICIES" "fail"
+  if [ -z "$(echo "$MISSING_POLICIES" | tr -d '[:space:]')" ]; then
+    check "Policies criticas" "ok"
+  else
+    check "Policies ausentes: $MISSING_POLICIES" "fail"
+  fi
 
   MISSING_TRIGGERS=$(run_sql "
     WITH req(name) AS (
@@ -164,12 +203,20 @@ if [ "$DB_OK" = "1" ]; then
     FROM req
     LEFT JOIN pg_trigger t ON t.tgname=req.name AND NOT t.tgisinternal
     WHERE t.oid IS NULL;")
-  [ -z "$(echo "$MISSING_TRIGGERS" | tr -d '[:space:]')" ] && check "Triggers críticos" "ok" || check "Triggers ausentes: $MISSING_TRIGGERS" "fail"
+  if [ -z "$(echo "$MISSING_TRIGGERS" | tr -d '[:space:]')" ]; then
+    check "Triggers criticos" "ok"
+  else
+    check "Triggers ausentes: $MISSING_TRIGGERS" "fail"
+  fi
 fi
 
 echo -e "\n${BLUE}4. Storage${NC}"
 BUCKETS=$(run_sql "SELECT count(*) FROM storage.buckets WHERE id IN ('property-media','contract-documents','tenant-documents','inspection-media','sales-documents');")
-[ "${BUCKETS:-0}" -eq 5 ] && check "Buckets obrigatórios (5/5)" "ok" || check "Buckets obrigatórios (${BUCKETS}/5)" "fail"
+if [ "${BUCKETS:-0}" -eq 5 ]; then
+  check "Buckets obrigatorios (5/5)" "ok"
+else
+  check "Buckets obrigatorios (${BUCKETS:-0}/5)" "fail"
+fi
 
 STORAGE_POLICIES=$(run_sql "SELECT count(*) FROM pg_policies WHERE schemaname='storage' AND tablename='objects' AND policyname IN (
 'Admins can upload contract-documents','Admins can read contract-documents','Admins can update contract-documents','Admins can delete contract-documents',
@@ -177,36 +224,43 @@ STORAGE_POLICIES=$(run_sql "SELECT count(*) FROM pg_policies WHERE schemaname='s
 'Admins can upload inspection-media','Admins can read inspection-media','Admins can update inspection-media','Admins can delete inspection-media',
 'Admins can upload sales-documents','Admins can read sales-documents','Admins can update sales-documents','Admins can delete sales-documents',
 'Admins can upload property-media','Admins can update property-media','Admins can delete property-media','Public can read property-media');")
-[ "${STORAGE_POLICIES:-0}" -ge 20 ] && check "Policies storage (${STORAGE_POLICIES}/20)" "ok" || check "Policies storage (${STORAGE_POLICIES}/20)" "fail"
+if [ "${STORAGE_POLICIES:-0}" -ge 20 ]; then
+  check "Policies storage (${STORAGE_POLICIES}/20)" "ok"
+else
+  check "Policies storage (${STORAGE_POLICIES:-0}/20)" "fail"
+fi
 
 echo -e "\n${BLUE}5. APIs e frontend${NC}"
 AUTH_ST=$(curl -sS -m 10 -o /dev/null -w "%{http_code}" "http://127.0.0.1:${KONG_PORT}/auth/v1/settings" -H "apikey: ${ANON_KEY}" 2>/dev/null || echo "000")
-[ "$AUTH_ST" = "200" ] && check "Auth API (HTTP $AUTH_ST)" "ok" || check "Auth API (HTTP $AUTH_ST)" "fail"
+if [ "$AUTH_ST" = "200" ]; then check "Auth API (HTTP $AUTH_ST)" "ok"; else check "Auth API (HTTP $AUTH_ST)" "fail"; fi
 
 REST_ST=$(curl -sS -m 10 -o /dev/null -w "%{http_code}" "http://127.0.0.1:${KONG_PORT}/rest/v1/" -H "apikey: ${ANON_KEY}" 2>/dev/null || echo "000")
-[ "$REST_ST" = "200" ] && check "REST API (HTTP $REST_ST)" "ok" || check "REST API (HTTP $REST_ST)" "fail"
+if [ "$REST_ST" = "200" ]; then check "REST API (HTTP $REST_ST)" "ok"; else check "REST API (HTTP $REST_ST)" "fail"; fi
 
 STORAGE_ST=$(curl -sS -m 10 -o /dev/null -w "%{http_code}" "http://127.0.0.1:${KONG_PORT}/storage/v1/bucket" -H "apikey: ${ANON_KEY}" -H "Authorization: Bearer ${SERVICE_ROLE_KEY}" 2>/dev/null || echo "000")
-[ "$STORAGE_ST" = "200" ] && check "Storage API (HTTP $STORAGE_ST)" "ok" || check "Storage API (HTTP $STORAGE_ST)" "warn"
+if [ "$STORAGE_ST" = "200" ]; then check "Storage API (HTTP $STORAGE_ST)" "ok"; else check "Storage API (HTTP $STORAGE_ST)" "warn"; fi
 
 FE_ST=$(curl -sS -m 10 -o /dev/null -w "%{http_code}" "http://127.0.0.1:${FRONTEND_PORT}/" 2>/dev/null || echo "000")
-[ "$FE_ST" = "200" ] && check "Frontend (HTTP $FE_ST)" "ok" || check "Frontend (HTTP $FE_ST)" "fail"
+if [ "$FE_ST" = "200" ]; then check "Frontend (HTTP $FE_ST)" "ok"; else check "Frontend (HTTP $FE_ST)" "fail"; fi
 
-echo -e "\n${BLUE}6. Function crítica (admin-crud)${NC}"
+echo -e "\n${BLUE}6. Function critica (admin-crud)${NC}"
 CRUD_ST=$(curl -sS -m 10 -o /dev/null -w "%{http_code}" -X POST "http://127.0.0.1:${KONG_PORT}/functions/v1/admin-crud" -H "apikey: ${ANON_KEY}" -H "Content-Type: application/json" -d '{}' 2>/dev/null || echo "000")
-[[ "$CRUD_ST" =~ ^(400|401|403)$ ]] && check "admin-crud endpoint (HTTP $CRUD_ST)" "ok" || check "admin-crud endpoint (HTTP $CRUD_ST)" "warn"
+case "$CRUD_ST" in
+  400|401|403) check "admin-crud endpoint (HTTP $CRUD_ST)" "ok" ;;
+  *) check "admin-crud endpoint (HTTP $CRUD_ST)" "warn" ;;
+esac
 
 echo ""
-echo -e "${BLUE}════ Resumo ════${NC}"
+echo -e "${BLUE}=== Resumo ===${NC}"
 echo -e "   ${GREEN}Passed: $PASS${NC}  ${YELLOW}Warnings: $WARN${NC}  ${RED}Failed: $FAIL${NC}"
 
 if [ "$FAIL" -gt 0 ]; then
-  echo -e "\n${RED}❌ Validação falhou com $FAIL erro(s) crítico(s).${NC}"
+  echo -e "\n${RED}Validacao falhou com $FAIL erro(s) critico(s).${NC}"
   echo -e "${YELLOW}Debug sugerido:${NC}"
   echo -e "   cd $SCRIPT_DIR && docker compose logs --tail=120 db rest auth storage kong functions"
   echo -e "   cd $SCRIPT_DIR && bash bootstrap-db.sh"
   exit 1
 fi
 
-echo -e "\n${GREEN}✅ Validação concluída com sucesso!${NC}"
+echo -e "\n${GREEN}Validacao concluida com sucesso!${NC}"
 exit 0
