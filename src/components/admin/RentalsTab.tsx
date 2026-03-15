@@ -115,11 +115,11 @@ const RentalsTab = () => {
     };
 
     if (editing) {
-      const { error } = await supabase.from("rental_contracts").update(payload as any).eq("id", editing.id);
+      const { error } = await adminUpdate("rental_contracts", payload, { id: editing.id });
       if (error) { toast.error("Erro ao atualizar contrato"); return; }
       toast.success("Contrato atualizado!");
     } else {
-      const { error } = await supabase.from("rental_contracts").insert(payload as any);
+      const { error } = await adminInsert("rental_contracts", payload);
       if (error) { toast.error("Erro ao criar contrato"); return; }
       toast.success("Contrato criado!");
     }
