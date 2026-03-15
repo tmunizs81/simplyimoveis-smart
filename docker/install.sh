@@ -1,7 +1,7 @@
 #!/bin/bash
 # ============================================================
 # Simply Imóveis - Instalador para Ubuntu 24.04 LTS
-# Versão: 2026-03-15-v13-structural
+# Versão: 2026-03-15-v14-bootstrap-pipeline
 # Uso: sudo bash install.sh [--clean] [--skip-ssl]
 # ============================================================
 set -euo pipefail
