@@ -53,14 +53,52 @@ if [ "${DB_HEALTH:-}" != "healthy" ] && [ "${DB_HEALTH:-}" != "running" ]; then
 fi
 
 # Usa PGPASSWORD para evitar prompt de senha
+# Usa PGPASSWORD para evitar prompt de senha
 SQL_SYNC="ALTER ROLE supabase_admin WITH PASSWORD '${POSTGRES_PASSWORD}';
 ALTER ROLE supabase_auth_admin WITH PASSWORD '${POSTGRES_PASSWORD}';
 ALTER ROLE authenticator WITH PASSWORD '${POSTGRES_PASSWORD}';
 ALTER ROLE supabase_storage_admin WITH PASSWORD '${POSTGRES_PASSWORD}';
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+-- Corrige ownership do schema auth (causa raiz do erro 500 Database error checking email)
 DO \$\$
+DECLARE
+  r RECORD;
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'auth') THEN
+    -- Schema ownership
+    EXECUTE 'ALTER SCHEMA auth OWNER TO supabase_auth_admin';
+
+    -- Tabelas
+    FOR r IN SELECT tablename FROM pg_tables WHERE schemaname = 'auth' LOOP
+      EXECUTE format('ALTER TABLE auth.%I OWNER TO supabase_auth_admin', r.tablename);
+    END LOOP;
+
+    -- Sequências
+    FOR r IN SELECT sequence_name FROM information_schema.sequences WHERE sequence_schema = 'auth' LOOP
+      EXECUTE format('ALTER SEQUENCE auth.%I OWNER TO supabase_auth_admin', r.sequence_name);
+    END LOOP;
+
+    -- Funções
+    FOR r IN SELECT p.oid::regprocedure AS func_signature
+             FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid
+             WHERE n.nspname = 'auth' LOOP
+      EXECUTE format('ALTER FUNCTION %s OWNER TO supabase_auth_admin', r.func_signature);
+    END LOOP;
+
+    -- Views
+    FOR r IN SELECT viewname FROM pg_views WHERE schemaname = 'auth' LOOP
+      EXECUTE format('ALTER VIEW auth.%I OWNER TO supabase_auth_admin', r.viewname);
+    END LOOP;
+
+    -- Types
+    FOR r IN SELECT t.typname
+             FROM pg_type t JOIN pg_namespace n ON t.typnamespace = n.oid
+             WHERE n.nspname = 'auth' AND t.typtype IN ('e','c') LOOP
+      EXECUTE format('ALTER TYPE auth.%I OWNER TO supabase_auth_admin', r.typname);
+    END LOOP;
+
+    -- Grants
     EXECUTE 'GRANT USAGE ON SCHEMA auth TO supabase_auth_admin, authenticator, anon, authenticated, service_role';
     EXECUTE 'GRANT CREATE ON SCHEMA auth TO supabase_auth_admin';
     EXECUTE 'GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA auth TO supabase_auth_admin';
@@ -69,10 +107,16 @@ BEGIN
     EXECUTE 'ALTER DEFAULT PRIVILEGES IN SCHEMA auth GRANT ALL ON TABLES TO supabase_auth_admin';
     EXECUTE 'ALTER DEFAULT PRIVILEGES IN SCHEMA auth GRANT ALL ON SEQUENCES TO supabase_auth_admin';
     EXECUTE 'ALTER DEFAULT PRIVILEGES IN SCHEMA auth GRANT ALL ON ROUTINES TO supabase_auth_admin';
+
+    -- Grants mínimos para authenticator (usado pelo PostgREST/GoTrue em runtime)
+    EXECUTE 'GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA auth TO authenticator';
+    EXECUTE 'GRANT USAGE ON ALL SEQUENCES IN SCHEMA auth TO authenticator';
   END IF;
 
   IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'extensions') THEN
     EXECUTE 'GRANT USAGE ON SCHEMA extensions TO supabase_auth_admin, authenticator';
+    EXECUTE 'GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA extensions TO supabase_auth_admin';
+    EXECUTE 'GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA extensions TO supabase_auth_admin';
   END IF;
 END
 \$\$;"
