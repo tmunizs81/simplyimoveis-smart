@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { adminUpdate, adminDelete } from "@/lib/adminCrud";
 import { toast } from "sonner";
 import { Mail, Phone, Clock, Eye, EyeOff, Trash2, ChevronDown, ChevronUp, MessageCircle, Calendar, Bot } from "lucide-react";
 
