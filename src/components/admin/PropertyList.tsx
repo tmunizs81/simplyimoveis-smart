@@ -29,7 +29,7 @@ const PropertyList = ({ properties, onEdit, onRefresh, onNew }: PropertyListProp
         await supabase.storage.from("property-media").remove([m.file_path]);
       }
     }
-    await supabase.from("properties").delete().eq("id", id);
+    await adminDelete("properties", { id });
     toast.success("Imóvel removido!");
     onRefresh();
   };
