@@ -123,10 +123,7 @@ const ChatWidget = ({ propertyId }: { propertyId?: string }) => {
       const notifyUrl = resolveFunctionUrl("notify-telegram");
       await fetch(notifyUrl, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-        },
+        headers: getFunctionHeaders(),
         body: JSON.stringify({
           visit: {
             ...visitData,
