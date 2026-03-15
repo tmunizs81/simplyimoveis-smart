@@ -19,10 +19,9 @@ if [ ! -f .env ]; then
   exit 1
 fi
 
-set -a
-source .env
-set +a
-
+# Lê POSTGRES_PASSWORD do .env de forma segura (sem source)
+POSTGRES_PASSWORD=$(grep -E '^POSTGRES_PASSWORD=' .env | head -1 | sed 's/^POSTGRES_PASSWORD=//' | tr -d '"' | tr -d "'")
+POSTGRES_DB=$(grep -E '^POSTGRES_DB=' .env | head -1 | sed 's/^POSTGRES_DB=//' | tr -d '"' | tr -d "'")
 POSTGRES_DB="${POSTGRES_DB:-simply_db}"
 
 if [ -z "${POSTGRES_PASSWORD:-}" ]; then
@@ -38,7 +37,7 @@ log() {
 
 log "🔧 Sincronizando credenciais internas do banco..."
 
-docker compose up -d db >/dev/null
+docker compose up -d db >/dev/null 2>&1
 
 for _ in {1..30}; do
   DB_HEALTH=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' simply-db 2>/dev/null || true)
@@ -57,11 +56,9 @@ docker compose exec -T db psql \
   -v ON_ERROR_STOP=1 \
   -U supabase_admin \
   -d "$POSTGRES_DB" \
-  -v db_password="$POSTGRES_PASSWORD" <<'SQL'
-ALTER ROLE supabase_admin WITH PASSWORD :'db_password';
-ALTER ROLE supabase_auth_admin WITH PASSWORD :'db_password';
-ALTER ROLE authenticator WITH PASSWORD :'db_password';
-ALTER ROLE supabase_storage_admin WITH PASSWORD :'db_password';
-SQL
+  -c "ALTER ROLE supabase_admin WITH PASSWORD '${POSTGRES_PASSWORD}';
+ALTER ROLE supabase_auth_admin WITH PASSWORD '${POSTGRES_PASSWORD}';
+ALTER ROLE authenticator WITH PASSWORD '${POSTGRES_PASSWORD}';
+ALTER ROLE supabase_storage_admin WITH PASSWORD '${POSTGRES_PASSWORD}';"
 
 log "✅ Senhas dos roles internos sincronizadas."

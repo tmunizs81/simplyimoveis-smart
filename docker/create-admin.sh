@@ -22,12 +22,22 @@ if [ ! -f .env ]; then
   exit 1
 fi
 
-set -a
-source .env
-set +a
+# Lê variáveis do .env de forma segura (sem source)
+read_env_var() {
+  grep -E "^${1}=" .env 2>/dev/null | head -1 | sed "s/^${1}=//" | tr -d '"' | tr -d "'"
+}
 
+POSTGRES_DB=$(read_env_var "POSTGRES_DB")
 POSTGRES_DB="${POSTGRES_DB:-simply_db}"
-KONG_PORT="${KONG_HTTP_PORT:-8000}"
+POSTGRES_PASSWORD=$(read_env_var "POSTGRES_PASSWORD")
+KONG_PORT=$(read_env_var "KONG_HTTP_PORT")
+KONG_PORT="${KONG_PORT:-8000}"
+SERVICE_ROLE_KEY=$(read_env_var "SERVICE_ROLE_KEY")
+
+if [ -z "$POSTGRES_PASSWORD" ]; then
+  echo "❌ POSTGRES_PASSWORD não definido no .env"
+  exit 1
+fi
 
 wait_container_running() {
   local container="$1"
@@ -54,7 +64,7 @@ wait_auth_ready() {
   for _ in {1..60}; do
     local status
     status=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:${KONG_PORT}/auth/v1/settings" \
-      -H "apikey: ${api_key}" || true)
+      -H "apikey: ${api_key}" 2>/dev/null || echo "000")
 
     if [ "$status" = "200" ]; then
       return 0
@@ -67,21 +77,24 @@ wait_auth_ready() {
 }
 
 # 1) Garantir DB + roles internos sincronizados
-docker compose up -d db >/dev/null
+echo "🔧 Sincronizando banco e credenciais..."
+docker compose up -d db >/dev/null 2>&1
 bash "$SCRIPT_DIR/sync-db-passwords.sh" --quiet
 
 # 2) Recriar serviços dependentes para usar senha atualizada
-docker compose up -d --force-recreate auth rest storage functions kong >/dev/null
+echo "🔄 Reiniciando serviços..."
+docker compose up -d --force-recreate auth rest storage functions kong >/dev/null 2>&1
 
+echo "⏳ Aguardando auth estabilizar..."
 if ! wait_container_running simply-auth 90; then
   echo "❌ Container simply-auth não ficou estável."
-  docker compose logs --tail=120 auth
+  docker compose logs --tail=30 auth
   exit 1
 fi
 
 if ! wait_container_running simply-kong 60; then
   echo "❌ Container simply-kong não ficou estável."
-  docker compose logs --tail=120 kong
+  docker compose logs --tail=30 kong
   exit 1
 fi
 
@@ -100,8 +113,8 @@ fi
 
 if ! wait_auth_ready "$API_SERVICE_KEY"; then
   echo "❌ Auth não respondeu corretamente após sincronização."
-  echo "📋 Logs recentes (auth/rest/storage):"
-  docker compose logs --tail=120 auth rest storage
+  echo "📋 Logs recentes:"
+  docker compose logs --tail=30 auth
   exit 1
 fi
 
@@ -122,20 +135,19 @@ USER_RESPONSE=$(echo "$RESPONSE_WITH_STATUS" | sed '$d')
 
 USER_ID=""
 
-if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 300 ]; then
-  USER_ID=$(echo "$USER_RESPONSE" | jq -r '.id // .user.id // empty' 2>/dev/null || true)
-  if [ -z "$USER_ID" ]; then
-    USER_ID=$(echo "$USER_RESPONSE" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4 || true)
-  fi
+if [ "$HTTP_STATUS" -ge 200 ] 2>/dev/null && [ "$HTTP_STATUS" -lt 300 ] 2>/dev/null; then
+  USER_ID=$(echo "$USER_RESPONSE" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4 || true)
 else
-  echo "❌ Erro ao criar usuário (HTTP $HTTP_STATUS):"
-  echo "$USER_RESPONSE"
+  echo "⚠️  Resposta HTTP $HTTP_STATUS ao criar usuário."
 
   if echo "$USER_RESPONSE" | grep -qi "already been registered\|already exists"; then
-    echo "ℹ️  Usuário já existe, buscando ID para apenas atribuir role admin..."
+    echo "ℹ️  Usuário já existe, buscando ID para atribuir role admin..."
   else
+    echo "❌ Erro: $USER_RESPONSE"
     if echo "$USER_RESPONSE" | grep -qi "Invalid authentication credentials"; then
-      echo "💡 Dica: execute 'bash sync-db-passwords.sh' e tente novamente."
+      echo ""
+      echo "💡 Dica: As chaves podem estar desatualizadas no Kong."
+      echo "   Rode: docker compose down && bash install.sh"
     fi
     exit 1
   fi
@@ -146,8 +158,7 @@ if [ -z "$USER_ID" ]; then
     -v ON_ERROR_STOP=1 \
     -U supabase_admin \
     -d "$POSTGRES_DB" \
-    -v user_email="$EMAIL" \
-    -tA -c "SELECT id FROM auth.users WHERE email = :'user_email' LIMIT 1;" | tr -d '[:space:]')
+    -tA -c "SELECT id FROM auth.users WHERE email = '${EMAIL}' LIMIT 1;" | tr -d '[:space:]')
 fi
 
 if [ -z "$USER_ID" ]; then
@@ -162,11 +173,12 @@ docker compose exec -T db psql \
   -v ON_ERROR_STOP=1 \
   -U supabase_admin \
   -d "$POSTGRES_DB" \
-  -v user_id="$USER_ID" \
-  -c "INSERT INTO public.user_roles (user_id, role) VALUES (:'user_id', 'admin') ON CONFLICT DO NOTHING;"
+  -c "INSERT INTO public.user_roles (user_id, role) VALUES ('${USER_ID}', 'admin') ON CONFLICT DO NOTHING;"
 
 echo "✅ Role 'admin' atribuída."
 echo ""
 echo "🎉 Admin criado com sucesso!"
 echo "   Email: ${EMAIL}"
-echo "   Acesse: https://${SITE_DOMAIN}/admin"
+
+SITE_DOMAIN=$(read_env_var "SITE_DOMAIN")
+echo "   Acesse: https://${SITE_DOMAIN:-localhost}/admin"
