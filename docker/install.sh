@@ -346,13 +346,13 @@ sleep 25
 # ==============================================================
 # ETAPA 11 - Validacao
 # ==============================================================
-echo -e "\n${BLUE}Validando instalacao...${NC}"
+echo -e "\n${BLUE}Validando stack interno...${NC}"
 if ! bash validate-install.sh; then
   echo -e "${YELLOW}Reiniciando servicos e tentando novamente...${NC}"
   docker compose restart auth rest storage kong functions
   sleep 20
   if ! bash validate-install.sh; then
-    echo -e "${RED}Erro: Validacao falhou. Debug: docker compose logs --tail=50${NC}"
+    echo -e "${RED}Erro: Validacao do stack interno falhou. Debug: docker compose logs --tail=50${NC}"
     exit 1
   fi
 fi
