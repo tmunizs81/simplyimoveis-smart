@@ -98,7 +98,7 @@ BEGIN
   -- Identity (idempotente)
   INSERT INTO auth.identities (id, user_id, identity_data, provider, provider_id, created_at, updated_at, last_sign_in_at)
   VALUES (
-    v_user_id::text,
+    v_user_id,
     v_user_id,
     jsonb_build_object('sub', v_user_id::text, 'email', v_email),
     'email', v_email, now(), now(), now()
