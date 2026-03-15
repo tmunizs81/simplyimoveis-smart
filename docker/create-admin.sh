@@ -20,10 +20,15 @@ cd "$SCRIPT_DIR"
 POSTGRES_DB=$(grep -E '^POSTGRES_DB=' .env | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")
 POSTGRES_DB="${POSTGRES_DB:-simply_db}"
 POSTGRES_PASSWORD=$(grep -E '^POSTGRES_PASSWORD=' .env | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")
+DB_CONTAINER="simply-db"
+
+[ -z "${POSTGRES_PASSWORD:-}" ] && echo "❌ POSTGRES_PASSWORD vazio" && exit 1
+
+docker inspect -f '{{.State.Status}}' "$DB_CONTAINER" >/dev/null 2>&1 || { echo "❌ Container $DB_CONTAINER não encontrado"; exit 1; }
 
 run_sql() {
-  timeout 30s docker compose exec -T -e PGPASSWORD="$POSTGRES_PASSWORD" \
-    db psql -v ON_ERROR_STOP=1 -w -h 127.0.0.1 -U supabase_admin -d "$POSTGRES_DB" "$@"
+  timeout 30s docker exec -i -e PGPASSWORD="$POSTGRES_PASSWORD" \
+    "$DB_CONTAINER" psql -v ON_ERROR_STOP=1 -w -h 127.0.0.1 -U supabase_admin -d "$POSTGRES_DB" "$@"
 }
 
 # Verifica se auth.users existe
