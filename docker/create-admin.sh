@@ -20,8 +20,10 @@ cd "$SCRIPT_DIR"
 POSTGRES_DB=$(grep -E '^POSTGRES_DB=' .env | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")
 POSTGRES_DB="${POSTGRES_DB:-simply_db}"
 
+POSTGRES_PASSWORD=$(grep -E '^POSTGRES_PASSWORD=' .env | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")
+
 run_sql() {
-  docker compose exec -T db psql -v ON_ERROR_STOP=1 -U postgres -d "$POSTGRES_DB" "$@"
+  timeout 60s docker compose exec -T -e PGPASSWORD="$POSTGRES_PASSWORD" db psql -v ON_ERROR_STOP=1 -w -U postgres -d "$POSTGRES_DB" "$@"
 }
 
 # Espera banco
