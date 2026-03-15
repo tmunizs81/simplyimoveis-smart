@@ -25,7 +25,9 @@ run_sql() {
 
 run_sql_quiet() {
   docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" "$DB_CONTAINER" \
-    psql -tA -w -h 127.0.0.1 -U supabase_admin -d "$POSTGRES_DB" -c "$1" 2>/dev/null | tr -d '[:space:]'
+    psql -tA -w -h 127.0.0.1 -U supabase_admin -d "$POSTGRES_DB" 2>/dev/null <<EOSQL | tail -1 | tr -d '[:space:]'
+$1
+EOSQL
 }
 
 echo "🛠️  Etapa 1/5: Sincronizando credenciais e permissões..."
@@ -39,14 +41,16 @@ echo ""
 echo "🛠️  Etapa 3/5: Testando auth.uid() com JWT simulado..."
 
 # Simula como PostgREST seta os GUCs (legacy mode = true)
-TEST_UID=$(run_sql_quiet "
-  BEGIN;
-  SET LOCAL role TO 'authenticated';
-  SET LOCAL request.jwt.claim.sub TO 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
-  SET LOCAL request.jwt.claim.role TO 'authenticated';
-  SELECT auth.uid();
-  COMMIT;
-")
+TEST_UID=$(docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" "$DB_CONTAINER" \
+  psql -tA -w -h 127.0.0.1 -U supabase_admin -d "$POSTGRES_DB" 2>/dev/null <<'EOSQL'
+DO $$ BEGIN
+  PERFORM set_config('request.jwt.claim.sub', 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee', true);
+  PERFORM set_config('request.jwt.claim.role', 'authenticated', true);
+END $$;
+SELECT auth.uid();
+EOSQL
+)
+TEST_UID=$(echo "$TEST_UID" | grep -v '^$' | grep -v '^DO$' | tr -d '[:space:]')
 
 if [ "$TEST_UID" = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee" ]; then
   echo "   ✅ auth.uid() funciona corretamente!"
@@ -94,7 +98,15 @@ GRANT EXECUTE ON FUNCTION auth.role() TO anon, authenticated, service_role, auth
 GRANT EXECUTE ON FUNCTION auth.email() TO anon, authenticated, service_role, authenticator;
 EOSQL
   echo "   Retestando..."
-  TEST_UID2=$(run_sql_quiet "BEGIN; SET LOCAL role TO 'authenticated'; SET LOCAL request.jwt.claim.sub TO 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'; SELECT auth.uid(); COMMIT;")
+  TEST_UID2=$(docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" "$DB_CONTAINER" \
+    psql -tA -w -h 127.0.0.1 -U supabase_admin -d "$POSTGRES_DB" 2>/dev/null <<'EOSQL2'
+DO $$ BEGIN
+  PERFORM set_config('request.jwt.claim.sub', 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee', true);
+END $$;
+SELECT auth.uid();
+EOSQL2
+  )
+  TEST_UID2=$(echo "$TEST_UID2" | grep -v '^$' | grep -v '^DO$' | tr -d '[:space:]')
   if [ "$TEST_UID2" = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee" ]; then
     echo "   ✅ auth.uid() agora funciona!"
   else
