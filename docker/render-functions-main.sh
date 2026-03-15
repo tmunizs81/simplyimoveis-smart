@@ -13,7 +13,7 @@ cd "$SCRIPT_DIR"
 FUNC_DIR="${1:-volumes/functions}"
 mkdir -p "$FUNC_DIR/main"
 
-REQUIRED_FUNCTIONS=("chat" "create-admin-user" "notify-telegram" "admin-crud")
+REQUIRED_FUNCTIONS=("chat" "create-admin-user" "notify-telegram" "admin-crud" "ai-insights")
 
 for fn in "${REQUIRED_FUNCTIONS[@]}"; do
   if [ ! -f "$FUNC_DIR/$fn/index.ts" ]; then
