@@ -19,7 +19,7 @@ if [ ! -f .env ]; then
   exit 1
 fi
 
-# Lê POSTGRES_PASSWORD do .env de forma segura (sem source)
+# Lê variáveis do .env de forma segura
 POSTGRES_PASSWORD=$(grep -E '^POSTGRES_PASSWORD=' .env | head -1 | sed 's/^POSTGRES_PASSWORD=//' | tr -d '"' | tr -d "'")
 POSTGRES_DB=$(grep -E '^POSTGRES_DB=' .env | head -1 | sed 's/^POSTGRES_DB=//' | tr -d '"' | tr -d "'")
 POSTGRES_DB="${POSTGRES_DB:-simply_db}"
@@ -52,13 +52,25 @@ if [ "${DB_HEALTH:-}" != "healthy" ] && [ "${DB_HEALTH:-}" != "running" ]; then
   exit 1
 fi
 
-docker compose exec -T db psql \
+# Usa PGPASSWORD para evitar prompt de senha
+docker compose exec -T -e PGPASSWORD="${POSTGRES_PASSWORD}" db psql \
   -v ON_ERROR_STOP=1 \
   -U supabase_admin \
   -d "$POSTGRES_DB" \
   -c "ALTER ROLE supabase_admin WITH PASSWORD '${POSTGRES_PASSWORD}';
 ALTER ROLE supabase_auth_admin WITH PASSWORD '${POSTGRES_PASSWORD}';
 ALTER ROLE authenticator WITH PASSWORD '${POSTGRES_PASSWORD}';
+ALTER ROLE supabase_storage_admin WITH PASSWORD '${POSTGRES_PASSWORD}';" 2>/dev/null || {
+  # Fallback: tenta com usuário postgres (trust auth padrão)
+  log "⚠️  Tentando com usuário postgres..."
+  docker compose exec -T db psql \
+    -v ON_ERROR_STOP=1 \
+    -U postgres \
+    -d "$POSTGRES_DB" \
+    -c "ALTER ROLE supabase_admin WITH PASSWORD '${POSTGRES_PASSWORD}';
+ALTER ROLE supabase_auth_admin WITH PASSWORD '${POSTGRES_PASSWORD}';
+ALTER ROLE authenticator WITH PASSWORD '${POSTGRES_PASSWORD}';
 ALTER ROLE supabase_storage_admin WITH PASSWORD '${POSTGRES_PASSWORD}';"
+}
 
 log "✅ Senhas dos roles internos sincronizadas."
