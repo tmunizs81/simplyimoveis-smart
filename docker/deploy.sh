@@ -563,12 +563,26 @@ create_admin_and_finish() {
   # Ler variáveis do .env
   source .env
 
+  local RUNTIME_SERVICE_KEY
+  RUNTIME_SERVICE_KEY=$(docker compose exec -T kong printenv SUPABASE_SERVICE_KEY 2>/dev/null | tr -d '\r' || true)
+  local API_SERVICE_KEY
+  API_SERVICE_KEY="${RUNTIME_SERVICE_KEY:-${SERVICE_ROLE_KEY:-}}"
+
+  if [ -z "$API_SERVICE_KEY" ]; then
+    log_error "SERVICE_ROLE_KEY indisponível para criar o admin"
+    return
+  fi
+
+  if [ -n "$RUNTIME_SERVICE_KEY" ] && [ "${SERVICE_ROLE_KEY:-}" != "$RUNTIME_SERVICE_KEY" ]; then
+    log_warn "Chave do .env diferente da chave ativa do Kong, usando chave do container"
+  fi
+
   local AUTH_RESPONSE
   AUTH_RESPONSE=$(curl -s -X POST \
     "http://127.0.0.1:${KONG_HTTP_PORT:-8000}/auth/v1/admin/users" \
     -H "Content-Type: application/json" \
-    -H "apikey: ${SERVICE_ROLE_KEY}" \
-    -H "Authorization: Bearer ${SERVICE_ROLE_KEY}" \
+    -H "apikey: ${API_SERVICE_KEY}" \
+    -H "Authorization: Bearer ${API_SERVICE_KEY}" \
     -d "{
       \"email\": \"${ADMIN_EMAIL}\",
       \"password\": \"${ADMIN_PASS}\",
@@ -586,8 +600,8 @@ create_admin_and_finish() {
     curl -s -X POST \
       "http://127.0.0.1:${KONG_HTTP_PORT:-8000}/rest/v1/user_roles" \
       -H "Content-Type: application/json" \
-      -H "apikey: ${SERVICE_ROLE_KEY}" \
-      -H "Authorization: Bearer ${SERVICE_ROLE_KEY}" \
+      -H "apikey: ${API_SERVICE_KEY}" \
+      -H "Authorization: Bearer ${API_SERVICE_KEY}" \
       -H "Prefer: return=minimal" \
       -d "{\"user_id\": \"${USER_ID}\", \"role\": \"admin\"}" > /dev/null 2>&1
 
