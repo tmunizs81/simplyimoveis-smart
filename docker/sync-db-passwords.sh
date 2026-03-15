@@ -60,11 +60,18 @@ ALTER ROLE authenticator WITH PASSWORD '${POSTGRES_PASSWORD}';
 ALTER ROLE supabase_storage_admin WITH PASSWORD '${POSTGRES_PASSWORD}';
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
--- Corrige ownership do schema auth (causa raiz do erro 500 Database error checking email)
+-- Corrige schema auth quebrado (erro 500: relation "users" does not exist)
 DO \$\$
 DECLARE
   r RECORD;
 BEGIN
+  IF to_regclass('auth.users') IS NULL THEN
+    IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'auth') THEN
+      EXECUTE 'DROP SCHEMA auth CASCADE';
+    END IF;
+    EXECUTE 'CREATE SCHEMA auth AUTHORIZATION supabase_auth_admin';
+  END IF;
+
   IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'auth') THEN
     -- Schema ownership
     EXECUTE 'ALTER SCHEMA auth OWNER TO supabase_auth_admin';
