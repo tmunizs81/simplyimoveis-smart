@@ -122,24 +122,53 @@ const TenantsTab = () => {
   const deleteTenant = async (id: string) => {
     if (!confirm("Excluir este inquilino e todos os documentos?")) return;
 
-    // Delete related documents from storage first
-    const { data: docs } = await adminSelect("tenant_documents", { match: { tenant_id: id } });
-    if (docs && docs.length > 0) {
-      const paths = docs.map((d: TenantDoc) => d.file_path);
-      await supabase.storage.from("tenant-documents").remove(paths);
-      await adminDelete("tenant_documents", { tenant_id: id });
+    // 1) Remove tenant docs (storage + table)
+    const { data: docs, error: docsError } = await adminSelect("tenant_documents", { match: { tenant_id: id } });
+    if (docsError) {
+      toast.error(docsError.message || "Erro ao buscar documentos do inquilino");
+      return;
     }
 
-    // Unlink from rental_contracts and inspections
-    await adminUpdate("rental_contracts", { tenant_id: null }, { tenant_id: id });
-    await adminUpdate("property_inspections", { tenant_id: null }, { tenant_id: id });
-    await adminUpdate("financial_transactions", { tenant_id: null }, { tenant_id: id });
+    if (Array.isArray(docs) && docs.length > 0) {
+      const paths = docs
+        .map((d) => (d as TenantDoc).file_path)
+        .filter(Boolean);
 
+      if (paths.length > 0) {
+        const { error: storageError } = await supabase.storage.from("tenant-documents").remove(paths);
+        if (storageError) {
+          toast.error(storageError.message || "Erro ao remover arquivos do inquilino");
+          return;
+        }
+      }
+
+      const { error: docsDeleteError } = await adminDelete("tenant_documents", { tenant_id: id });
+      if (docsDeleteError) {
+        toast.error(docsDeleteError.message || "Erro ao remover documentos do inquilino");
+        return;
+      }
+    }
+
+    // 2) Unlink dependent rows
+    const unlinkOps = await Promise.all([
+      adminUpdate("rental_contracts", { tenant_id: null }, { tenant_id: id }),
+      adminUpdate("property_inspections", { tenant_id: null }, { tenant_id: id }),
+      adminUpdate("financial_transactions", { tenant_id: null }, { tenant_id: id }),
+    ]);
+
+    const unlinkError = unlinkOps.find((op) => op.error)?.error;
+    if (unlinkError) {
+      toast.error(unlinkError.message || "Erro ao desvincular dependências do inquilino");
+      return;
+    }
+
+    // 3) Delete tenant
     const { error } = await adminDelete("tenants", { id });
     if (error) {
       toast.error(error.message || "Erro ao excluir inquilino");
       return;
     }
+
     toast.success("Inquilino excluído");
     fetchTenants();
   };
