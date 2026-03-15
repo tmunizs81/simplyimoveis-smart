@@ -336,7 +336,9 @@ CREATE TABLE public.property_inspections (
 );
 
 ALTER TABLE public.property_inspections ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Admins can manage inspections" ON public.property_inspections FOR ALL TO authenticated USING (has_role(auth.uid(), 'admin'));
+CREATE POLICY "Admins can manage inspections" ON public.property_inspections FOR ALL TO authenticated
+  USING (has_role(auth.uid(), 'admin'::app_role))
+  WITH CHECK (has_role(auth.uid(), 'admin'::app_role));
 
 -- ============================================================
 -- Inspection Media
