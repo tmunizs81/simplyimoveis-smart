@@ -13,10 +13,12 @@ serve(async (req) => {
 
   try {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
-
     const TELEGRAM_API_KEY = Deno.env.get("TELEGRAM_API_KEY");
-    if (!TELEGRAM_API_KEY) throw new Error("TELEGRAM_API_KEY is not configured");
+    const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN");
+
+    if (!TELEGRAM_API_KEY && !TELEGRAM_BOT_TOKEN) {
+      throw new Error("Configure TELEGRAM_API_KEY (connector) ou TELEGRAM_BOT_TOKEN (.env)");
+    }
 
     const { visit } = await req.json();
 
