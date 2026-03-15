@@ -361,36 +361,8 @@ ${visit.notes ? `📝 <b>Obs:</b> ${visit.notes}` : ""}`;
 });
 FUNCEOF
 
-  # Criar main handler
-  cat > "$FUNC_DIR/main/index.ts" << 'MAINEOF'
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
-serve(async (req) => {
-  const url = new URL(req.url);
-  const path = url.pathname.split("/").filter(Boolean);
-  const functionName = path[0];
-
-  if (!functionName) {
-    return new Response(JSON.stringify({ status: "ok", version: "2.0" }), {
-      headers: { "Content-Type": "application/json" },
-    });
-  }
-
-  try {
-    const mod = await import(`../${functionName}/index.ts`);
-    if (mod.default) {
-      return mod.default(req);
-    }
-    return new Response("Function loaded", { status: 200 });
-  } catch (e) {
-    console.error(`Function '${functionName}' error:`, e);
-    return new Response(
-      JSON.stringify({ error: `Function '${functionName}' not found` }),
-      { status: 404, headers: { "Content-Type": "application/json" } }
-    );
-  }
-});
-MAINEOF
+  # Criar/atualizar main handler
+  bash "$INSTALL_DIR/docker/render-functions-main.sh" "$FUNC_DIR"
 
   log_success "Edge Functions preparadas (chat, notify-telegram, create-admin-user)"
 }

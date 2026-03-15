@@ -8,6 +8,7 @@ set -euo pipefail
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
 
@@ -28,10 +29,11 @@ git reset --hard origin/main 2>/dev/null || git reset --hard origin/master
 
 # Atualizar edge functions
 echo -e "${BLUE}📦 Atualizando Edge Functions...${NC}"
+mkdir -p docker/volumes/functions/{main,chat,notify-telegram,create-admin-user}
 cp supabase/functions/chat/index.ts docker/volumes/functions/chat/index.ts
 cp supabase/functions/notify-telegram/index.ts docker/volumes/functions/notify-telegram/index.ts
 cp supabase/functions/create-admin-user/index.ts docker/volumes/functions/create-admin-user/index.ts
-
+bash docker/render-functions-main.sh docker/volumes/functions
 # Rebuild e restart
 cd docker
 echo -e "${BLUE}🔨 Reconstruindo frontend...${NC}"

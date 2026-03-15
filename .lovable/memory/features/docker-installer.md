@@ -9,3 +9,5 @@ Mudanças principais vs versões anteriores:
 - docker-compose.yml: `GOTRUE_DB_NAMESPACE=auth`, `DB_NAMESPACE=auth`, `search_path=auth` no DB URL
 - notify-telegram: dual-mode (connector via LOVABLE_API_KEY ou bot direto via TELEGRAM_BOT_TOKEN)
 - Root cause crítico de "permission denied": grants em public executados antes do 01-schema; corrigir com GRANT ALL + ALTER DEFAULT PRIVILEGES para anon/authenticated/service_role (em 00-passwords + sync-db-passwords + 01-schema)
+- Root cause de RLS falso-negativo: auth.uid()/role()/email() devem suportar `request.jwt.claims` (PostgREST com `PGRST_DB_USE_LEGACY_GUCS=false`) além de `request.jwt.claim.*`
+- Função `create-admin-user` pode quebrar com router `main/index.ts` desatualizado; sempre regenerar via `render-functions-main.sh` no install/update/deploy
