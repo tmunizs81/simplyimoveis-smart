@@ -1,8 +1,8 @@
 #!/bin/bash
 # ============================================================
-# Sincroniza senhas dos roles internos do Supabase
+# Sincroniza (e repara) roles/senhas internos do banco
 # Uso: bash sync-db-passwords.sh
-# Versão: 2026-03-15-v11
+# Versão: 2026-03-15-v12
 # ============================================================
 
 set -euo pipefail
@@ -12,11 +12,13 @@ cd "$SCRIPT_DIR"
 
 [ ! -f .env ] && echo "❌ .env não encontrado" && exit 1
 
-POSTGRES_PASSWORD=$(grep -E '^POSTGRES_PASSWORD=' .env | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")
-POSTGRES_DB=$(grep -E '^POSTGRES_DB=' .env | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'")
+read_env() { grep -E "^${1}=" .env 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"' | tr -d "'"; }
+
+POSTGRES_PASSWORD=$(read_env "POSTGRES_PASSWORD")
+POSTGRES_DB=$(read_env "POSTGRES_DB")
 POSTGRES_DB="${POSTGRES_DB:-simply_db}"
+POSTGRES_USER_ENV=$(read_env "POSTGRES_USER")
 DB_CONTAINER="simply-db"
-DB_ADMIN_USER="supabase_admin"
 
 [ -z "${POSTGRES_PASSWORD:-}" ] && echo "❌ POSTGRES_PASSWORD vazio" && exit 1
 
@@ -31,82 +33,96 @@ if [ "$DB_STATUS" != "running" ]; then
 fi
 echo "   ✅ Container rodando"
 
-echo "   Testando conexão SQL com ${DB_ADMIN_USER}..."
-CONNECTED=false
-for i in 1 2 3 4 5 6 7 8 9 10; do
-  RESULT=$(docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" "$DB_CONTAINER" \
-    psql -tA -w -U "$DB_ADMIN_USER" -d "$POSTGRES_DB" -c "SELECT 1" 2>&1 || true)
+echo "   Procurando usuário administrativo válido..."
+DB_ADMIN_USER=""
+CANDIDATES=()
+[ -n "${POSTGRES_USER_ENV:-}" ] && CANDIDATES+=("${POSTGRES_USER_ENV}")
+CANDIDATES+=("supabase_admin" "postgres")
 
-  if [ "$RESULT" = "1" ]; then
-    CONNECTED=true
-    echo "   ✅ Conexão SQL OK"
-    break
-  fi
+for i in {1..30}; do
+  for candidate in "${CANDIDATES[@]}"; do
+    [ -z "$candidate" ] && continue
+    RESULT=$(docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" "$DB_CONTAINER" \
+      psql -tA -w -U "$candidate" -d "$POSTGRES_DB" -c "SELECT 1" 2>/dev/null || true)
 
-  echo "   ⏳ tentativa $i/10..."
-  sleep 3
+    if [ "$RESULT" = "1" ]; then
+      DB_ADMIN_USER="$candidate"
+      echo "   ✅ Conexão SQL OK com usuário: $DB_ADMIN_USER"
+      break 2
+    fi
+  done
+
+  echo "   ⏳ tentativa $i/30..."
+  sleep 2
 done
 
-if [ "$CONNECTED" != "true" ]; then
-  echo "❌ Não foi possível conectar ao PostgreSQL com user ${DB_ADMIN_USER}"
-  echo "   Resultado: $RESULT"
+if [ -z "$DB_ADMIN_USER" ]; then
+  echo "❌ Não foi possível conectar ao PostgreSQL (usuarios tentados: ${CANDIDATES[*]})"
+  docker logs --tail=50 "$DB_CONTAINER" || true
   exit 1
 fi
 
-echo "   Verificando roles internos..."
-ROLE_CHECK=$(docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" "$DB_CONTAINER" \
-  psql -tA -w -U "$DB_ADMIN_USER" -d "$POSTGRES_DB" \
-  -c "SELECT string_agg(rolname, ',') FROM pg_roles WHERE rolname IN ('supabase_admin','supabase_auth_admin','authenticator','supabase_storage_admin');" 2>/dev/null || echo "")
-
-echo "   Roles encontrados: ${ROLE_CHECK:-nenhum}"
-
-echo "   Aplicando senhas..."
+echo "   Aplicando reparo de roles/senhas..."
 ESCAPED_PASS=$(printf '%s' "$POSTGRES_PASSWORD" | sed "s/'/''/g")
 
 docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" "$DB_CONTAINER" \
-  psql -v ON_ERROR_STOP=0 -w -U "$DB_ADMIN_USER" -d "$POSTGRES_DB" <<EOSQL
+  psql -v ON_ERROR_STOP=1 -w -U "$DB_ADMIN_USER" -d "$POSTGRES_DB" <<EOSQL
 DO \$\$
 BEGIN
-  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_admin') THEN
-    EXECUTE 'ALTER ROLE supabase_admin WITH PASSWORD ''${ESCAPED_PASS}''';
-    RAISE NOTICE 'supabase_admin OK';
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'postgres') THEN
+    CREATE ROLE postgres WITH LOGIN SUPERUSER CREATEDB CREATEROLE REPLICATION BYPASSRLS;
   END IF;
-  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_auth_admin') THEN
-    EXECUTE 'ALTER ROLE supabase_auth_admin WITH PASSWORD ''${ESCAPED_PASS}''';
-    RAISE NOTICE 'supabase_auth_admin OK';
+
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_admin') THEN
+    CREATE ROLE supabase_admin WITH LOGIN SUPERUSER CREATEDB CREATEROLE REPLICATION BYPASSRLS;
   END IF;
-  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticator') THEN
-    EXECUTE 'ALTER ROLE authenticator WITH PASSWORD ''${ESCAPED_PASS}''';
-    RAISE NOTICE 'authenticator OK';
+
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_auth_admin') THEN
+    CREATE ROLE supabase_auth_admin WITH LOGIN NOINHERIT CREATEROLE CREATEDB;
   END IF;
-  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_storage_admin') THEN
-    EXECUTE 'ALTER ROLE supabase_storage_admin WITH PASSWORD ''${ESCAPED_PASS}''';
-    RAISE NOTICE 'supabase_storage_admin OK';
+
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_storage_admin') THEN
+    CREATE ROLE supabase_storage_admin WITH LOGIN NOINHERIT CREATEROLE CREATEDB;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticator') THEN
+    CREATE ROLE authenticator WITH LOGIN NOINHERIT;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+    CREATE ROLE anon NOLOGIN NOINHERIT;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+    CREATE ROLE authenticated NOLOGIN NOINHERIT;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
+    CREATE ROLE service_role NOLOGIN NOINHERIT BYPASSRLS;
   END IF;
 END \$\$;
 
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
+ALTER ROLE postgres WITH PASSWORD '${ESCAPED_PASS}';
+ALTER ROLE supabase_admin WITH PASSWORD '${ESCAPED_PASS}';
+ALTER ROLE supabase_auth_admin WITH PASSWORD '${ESCAPED_PASS}';
+ALTER ROLE supabase_storage_admin WITH PASSWORD '${ESCAPED_PASS}';
+ALTER ROLE authenticator WITH PASSWORD '${ESCAPED_PASS}';
 
-DO \$\$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'auth') THEN
-    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_auth_admin') THEN
-      CREATE SCHEMA auth AUTHORIZATION supabase_auth_admin;
-    END IF;
-  ELSE
-    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_auth_admin') THEN
-      ALTER SCHEMA auth OWNER TO supabase_auth_admin;
-    END IF;
-  END IF;
-END \$\$;
+GRANT anon TO authenticator;
+GRANT authenticated TO authenticator;
+GRANT service_role TO authenticator;
+
+CREATE SCHEMA IF NOT EXISTS auth AUTHORIZATION supabase_auth_admin;
+ALTER SCHEMA auth OWNER TO supabase_auth_admin;
 
 GRANT USAGE ON SCHEMA auth TO supabase_auth_admin, authenticator, anon, authenticated, service_role;
 GRANT CREATE ON SCHEMA auth TO supabase_auth_admin;
 GRANT ALL ON ALL TABLES IN SCHEMA auth TO supabase_auth_admin;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA auth TO supabase_auth_admin;
 GRANT ALL ON ALL ROUTINES IN SCHEMA auth TO supabase_auth_admin;
-GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA auth TO authenticator;
-GRANT USAGE ON ALL SEQUENCES IN SCHEMA auth TO authenticator;
+ALTER DEFAULT PRIVILEGES FOR ROLE supabase_auth_admin IN SCHEMA auth GRANT ALL ON TABLES TO supabase_auth_admin;
+ALTER DEFAULT PRIVILEGES FOR ROLE supabase_auth_admin IN SCHEMA auth GRANT ALL ON SEQUENCES TO supabase_auth_admin;
+ALTER DEFAULT PRIVILEGES FOR ROLE supabase_auth_admin IN SCHEMA auth GRANT ALL ON ROUTINES TO supabase_auth_admin;
 
 GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role, authenticator;
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO anon, authenticated;

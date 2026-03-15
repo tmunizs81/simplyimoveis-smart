@@ -96,6 +96,12 @@ if [ -z "$CURRENT_PG" ] || [ "$CURRENT_PG" = "SuaSenhaForteAqui123!" ]; then
   echo -e "   ${GREEN}✅ POSTGRES_PASSWORD gerado${NC}"
 fi
 
+CURRENT_PG_USER=$(read_env "POSTGRES_USER")
+if [ -z "$CURRENT_PG_USER" ]; then
+  set_env "POSTGRES_USER" "supabase_admin"
+  echo -e "   ${GREEN}✅ POSTGRES_USER definido (supabase_admin)${NC}"
+fi
+
 CURRENT_ANON=$(read_env "ANON_KEY")
 if [ -z "$CURRENT_ANON" ] || [ "$CURRENT_ANON" = "CHANGE_ME" ]; then
   echo -e "   ${BLUE}🔑 Gerando ANON_KEY e SERVICE_ROLE_KEY...${NC}"
@@ -190,8 +196,12 @@ echo -e "${BLUE}🐘 FASE 1: Subindo apenas o banco de dados...${NC}"
 docker compose up -d --build db
 
 echo -e "${BLUE}⏳ Aguardando banco aceitar conexões...${NC}"
+DB_ADMIN_USER=$(read_env "POSTGRES_USER")
+DB_ADMIN_USER="${DB_ADMIN_USER:-supabase_admin}"
+DB_NAME=$(read_env "POSTGRES_DB")
+DB_NAME="${DB_NAME:-simply_db}"
 for i in {1..60}; do
-  if docker exec simply-db pg_isready -U supabase_admin -q 2>/dev/null; then
+  if docker exec simply-db pg_isready -U "$DB_ADMIN_USER" -d "$DB_NAME" -q 2>/dev/null; then
     echo -e "   ${GREEN}✅ Banco aceitando conexões (tentativa $i)${NC}"
     break
   fi
