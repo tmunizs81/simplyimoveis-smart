@@ -18,6 +18,13 @@ echo -e "${NC}"
 
 [ "$EUID" -ne 0 ] && echo -e "${RED}❌ Execute com sudo${NC}" && exit 1
 
+FORCE_CLEAN=false
+for arg in "$@"; do
+  if [ "$arg" = "--clean" ]; then
+    FORCE_CLEAN=true
+  fi
+done
+
 # ── 1. Dependências ──────────────────────────────────────────
 echo -e "${BLUE}📦 Dependências do sistema...${NC}"
 apt-get update -qq >/dev/null 2>&1
