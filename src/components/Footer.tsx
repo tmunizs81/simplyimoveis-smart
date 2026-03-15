@@ -25,7 +25,7 @@ const Footer = () => {
               <img src={logo} alt="SimplyImóveis" className="h-12 w-12 object-contain rounded-lg" />
               <div className="flex flex-col leading-tight">
                 <span className="font-display text-xl font-bold">
-                  <span className="text-accent-foreground">simply</span>
+                  <span className="text-accent-foreground">Simply</span>
                   <span className="text-primary">Imóveis</span>
                 </span>
                 <span className="text-accent-foreground/50 text-[10px] tracking-widest">— by Talita Muniz —</span>
