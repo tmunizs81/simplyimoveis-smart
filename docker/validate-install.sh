@@ -51,13 +51,36 @@ else
   echo "✅ REST: OK"
 fi
 
-echo "── Functions ──"
-FUNC_ST=$(curl -s -o /dev/null -w "%{http_code}" -X POST "http://localhost:${KONG_PORT}/functions/v1/create-admin-user" \
-  -H "apikey: ${ANON_KEY}" -H "Content-Type: application/json" -d '{"action":"list"}' 2>/dev/null || echo "000")
-if [ "$FUNC_ST" = "000" ] || [ "$FUNC_ST" = "404" ]; then
-  echo "❌ Functions: HTTP $FUNC_ST"; ERRORS=$((ERRORS+1))
+echo "── Functions (export default) ──"
+FUNC_DIR="volumes/functions"
+for fn in chat create-admin-user notify-telegram; do
+  fn_file="$FUNC_DIR/$fn/index.ts"
+  if [ ! -f "$fn_file" ]; then
+    echo "❌ $fn: arquivo ausente ($fn_file)"; ERRORS=$((ERRORS+1))
+  elif ! grep -qE '^\s*export\s+default\s' "$fn_file"; then
+    echo "❌ $fn: falta 'export default handler' — o runtime vai crashar"
+    echo "   💡 Adicione ao final do arquivo: export default handler;"
+    ERRORS=$((ERRORS+1))
+  else
+    echo "✅ $fn: export default OK"
+  fi
+done
+
+echo "── Functions (runtime) ──"
+# Check if functions container is crash-looping
+FUNC_LOGS=$(docker logs simply-functions --tail=5 2>&1 || true)
+if echo "$FUNC_LOGS" | grep -qi "boot error"; then
+  echo "❌ Functions runtime: boot error detectado"
+  echo "   $(echo "$FUNC_LOGS" | grep -i 'boot error' | head -1)"
+  ERRORS=$((ERRORS+1))
 else
-  echo "✅ Functions: HTTP $FUNC_ST"
+  FUNC_ST=$(curl -s -o /dev/null -w "%{http_code}" -X POST "http://localhost:${KONG_PORT}/functions/v1/create-admin-user" \
+    -H "apikey: ${ANON_KEY}" -H "Content-Type: application/json" -d '{"action":"list"}' 2>/dev/null || echo "000")
+  if [ "$FUNC_ST" = "000" ] || [ "$FUNC_ST" = "404" ] || [ "$FUNC_ST" = "503" ]; then
+    echo "❌ Functions API: HTTP $FUNC_ST"; ERRORS=$((ERRORS+1))
+  else
+    echo "✅ Functions API: HTTP $FUNC_ST"
+  fi
 fi
 
 echo ""
