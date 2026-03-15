@@ -96,7 +96,7 @@ const HeroSection = () => {
             {slides[current].location}
           </motion.span>
 
-          <h1 className="font-display text-4xl sm:text-5xl lg:text-7xl font-bold text-white leading-[1.1] mb-6">
+          <h1 className="font-display text-3xl sm:text-5xl lg:text-7xl font-bold text-white leading-[1.1] mb-4 sm:mb-6">
             A excelência que o seu{" "}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-yellow-400">
               patrimônio exige.
