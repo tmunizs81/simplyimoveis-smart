@@ -104,15 +104,20 @@ GRANT EXECUTE ON FUNCTION auth.role() TO anon, authenticated, service_role, auth
 GRANT EXECUTE ON FUNCTION auth.email() TO anon, authenticated, service_role, authenticator;
 EOSQL
   echo "   Retestando..."
-  TEST_UID2=$(docker exec -i -e PGPASSWORD="$POSTGRES_PASSWORD" "$DB_CONTAINER" \
-    psql -tA -w -h 127.0.0.1 -U supabase_admin -d "$POSTGRES_DB" 2>/dev/null <<'EOSQL2'
+  RAW_TEST_UID2=""
+  if ! RAW_TEST_UID2=$(docker exec -i -e PGPASSWORD="$POSTGRES_PASSWORD" "$DB_CONTAINER" \
+    psql -tA -w -h 127.0.0.1 -U supabase_admin -d "$POSTGRES_DB" 2>&1 <<'EOSQL2'
 DO $$ BEGIN
   PERFORM set_config('request.jwt.claim.sub', 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee', true);
 END $$;
 SELECT auth.uid();
 EOSQL2
-  )
-  TEST_UID2=$(echo "$TEST_UID2" | grep -v '^$' | grep -v '^DO$' | tr -d '[:space:]')
+  ); then
+    echo "   ❌ Falha ao retestar auth.uid()"
+    echo "$RAW_TEST_UID2"
+    exit 1
+  fi
+  TEST_UID2=$(echo "$RAW_TEST_UID2" | awk 'NF && $0 != "DO" { print; exit }' | tr -d '[:space:]')
   if [ "$TEST_UID2" = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee" ]; then
     echo "   ✅ auth.uid() agora funciona!"
   else
