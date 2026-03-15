@@ -81,12 +81,12 @@ else
 
   # Se usuário já existe, atualiza senha e confirma email
   if echo "$RESP" | grep -Eiq "already|exists|registered|duplicate"; then
-    UID=$(run_sql_cmd -tA -c "SELECT id FROM auth.users WHERE lower(email)=lower('$(sql_escape "$EMAIL")') LIMIT 1;" | tr -d '[:space:]')
-    [ -z "$UID" ] && echo "❌ Usuário existe mas não foi encontrado em auth.users" && exit 1
+    ADMIN_UID=$(run_sql_cmd -tA -c "SELECT id FROM auth.users WHERE lower(email)=lower('$(sql_escape "$EMAIL")') LIMIT 1;" | tr -d '[:space:]')
+    [ -z "$ADMIN_UID" ] && echo "❌ Usuário existe mas não foi encontrado em auth.users" && exit 1
 
     UPDATE_BODY="{\"password\":\"${PASS_JSON}\",\"email_confirm\":true}"
     UPDATE_HTTP=$(curl -sS -m 30 -o /tmp/update_admin_resp.$$ -w "%{http_code}" \
-      -X PUT "${AUTH_URL}/admin/users/${UID}" \
+      -X PUT "${AUTH_URL}/admin/users/${ADMIN_UID}" \
       -H "apikey: ${SERVICE_ROLE_KEY}" \
       -H "Authorization: Bearer ${SERVICE_ROLE_KEY}" \
       -H "Content-Type: application/json" \
@@ -107,10 +107,10 @@ else
 fi
 
 # 2) Garante role admin no app
-UID=$(run_sql_cmd -tA -c "SELECT id FROM auth.users WHERE lower(email)=lower('$(sql_escape "$EMAIL")') LIMIT 1;" | tr -d '[:space:]')
-[ -z "$UID" ] && echo "❌ Usuário não encontrado após create/update" && exit 1
+ADMIN_UID=$(run_sql_cmd -tA -c "SELECT id FROM auth.users WHERE lower(email)=lower('$(sql_escape "$EMAIL")') LIMIT 1;" | tr -d '[:space:]')
+[ -z "$ADMIN_UID" ] && echo "❌ Usuário não encontrado após create/update" && exit 1
 
-run_sql_cmd -c "INSERT INTO public.user_roles (user_id, role) VALUES ('${UID}'::uuid, 'admin') ON CONFLICT (user_id, role) DO NOTHING;"
+run_sql_cmd -c "INSERT INTO public.user_roles (user_id, role) VALUES ('${ADMIN_UID}'::uuid, 'admin') ON CONFLICT (user_id, role) DO NOTHING;"
 
 # 3) Smoke test de login real
 LOGIN_BODY="{\"email\":\"${EMAIL_JSON}\",\"password\":\"${PASS_JSON}\"}"
