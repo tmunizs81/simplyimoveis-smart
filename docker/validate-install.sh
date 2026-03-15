@@ -53,7 +53,7 @@ fi
 
 echo "── Functions (export default) ──"
 FUNC_DIR="volumes/functions"
-for fn in chat create-admin-user notify-telegram; do
+for fn in chat create-admin-user notify-telegram admin-crud; do
   fn_file="$FUNC_DIR/$fn/index.ts"
   if [ ! -f "$fn_file" ]; then
     echo "❌ $fn: arquivo ausente ($fn_file)"; ERRORS=$((ERRORS+1))
