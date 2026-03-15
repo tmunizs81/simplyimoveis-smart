@@ -246,8 +246,11 @@ if ! bash validate-install.sh; then
   sleep 15
   bash validate-install.sh || {
     echo -e "${RED}❌ Validação falhou. Debug:${NC}"
-    echo "   docker compose logs --tail=30 auth"
-    echo "   docker compose logs --tail=30 kong"
+    echo "   docker compose logs --tail=80 auth rest storage kong db"
+    echo -e "${YELLOW}   Tentando recuperação rápida (sync + restart auth/rest/storage/kong)...${NC}"
+    bash sync-db-passwords.sh || true
+    docker compose restart auth rest storage kong || true
+    sleep 20
     echo "   docker compose logs --tail=30 db"
     exit 1
   }

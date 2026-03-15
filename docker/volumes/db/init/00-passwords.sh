@@ -82,12 +82,18 @@ GRANT service_role TO authenticator;
 
 DO $$
 BEGIN
+  EXECUTE format('ALTER DATABASE %I OWNER TO supabase_admin', current_database());
   EXECUTE format('GRANT CONNECT, TEMP ON DATABASE %I TO anon, authenticated, service_role, authenticator, supabase_auth_admin, supabase_storage_admin', current_database());
   EXECUTE format('GRANT CREATE ON DATABASE %I TO supabase_auth_admin, supabase_storage_admin', current_database());
+  EXECUTE format('ALTER ROLE supabase_auth_admin IN DATABASE %I SET search_path = auth, public', current_database());
+  EXECUTE format('ALTER ROLE supabase_storage_admin IN DATABASE %I SET search_path = storage, public', current_database());
+  EXECUTE format('ALTER ROLE authenticator IN DATABASE %I SET search_path = public, auth, storage', current_database());
 END $$;
 
 CREATE SCHEMA IF NOT EXISTS auth AUTHORIZATION supabase_auth_admin;
 ALTER SCHEMA auth OWNER TO supabase_auth_admin;
+CREATE SCHEMA IF NOT EXISTS storage AUTHORIZATION supabase_storage_admin;
+ALTER SCHEMA storage OWNER TO supabase_storage_admin;
 
 CREATE OR REPLACE FUNCTION auth.uid()
 RETURNS uuid
