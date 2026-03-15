@@ -32,6 +32,16 @@ const ChatWidget = ({ propertyId }: { propertyId?: string }) => {
       .join("\n\n");
   };
 
+  const resolveFunctionUrl = (functionName: string, forceSameOrigin = false) => {
+    const envBase = (import.meta.env.VITE_SUPABASE_URL || "").replace(/\/$/, "");
+    const sameOriginBase = `${window.location.origin}/api`;
+    const hostname = window.location.hostname;
+    const isLovableHost = hostname.includes("lovable.app") || hostname.includes("lovableproject.com");
+
+    const baseUrl = forceSameOrigin ? sameOriginBase : isLovableHost ? envBase || sameOriginBase : sameOriginBase;
+    return `${baseUrl}/functions/v1/${functionName}`;
+  };
+
   const saveContactSubmission = async (data: {
     name: string;
     phone: string;
@@ -101,8 +111,8 @@ const ChatWidget = ({ propertyId }: { propertyId?: string }) => {
         chatMessages: allMessages,
       });
 
-      const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/notify-telegram`;
-      await fetch(CHAT_URL, {
+      const notifyUrl = resolveFunctionUrl("notify-telegram");
+      await fetch(notifyUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -154,24 +164,46 @@ const ChatWidget = ({ propertyId }: { propertyId?: string }) => {
     setLoading(true);
 
     try {
-      const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
-      const resp = await fetch(CHAT_URL, {
+      const primaryUrl = resolveFunctionUrl("chat");
+      const fallbackUrl = resolveFunctionUrl("chat", true);
+      const requestOptions: RequestInit = {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
         body: JSON.stringify({ messages: allMessages, propertyId }),
-      });
+      };
+
+      let resp: Response;
+      try {
+        resp = await fetch(primaryUrl, requestOptions);
+      } catch (primaryError) {
+        if (fallbackUrl === primaryUrl) throw primaryError;
+        resp = await fetch(fallbackUrl, requestOptions);
+      }
+
+      if (!resp.ok && [404, 502, 503, 504].includes(resp.status) && fallbackUrl !== primaryUrl) {
+        resp = await fetch(fallbackUrl, requestOptions);
+      }
 
       if (!resp.ok) {
-        let errorMessage = "Erro ao conectar";
-        try {
-          const errorData = await resp.json();
-          if (errorData?.error) errorMessage = String(errorData.error);
-        } catch {
-          // ignore json parse failures
+        const rawText = await resp.text();
+        let errorMessage = `Erro ao conectar (${resp.status})`;
+
+        if (rawText) {
+          try {
+            const errorData = JSON.parse(rawText);
+            if (errorData?.error) {
+              errorMessage = String(errorData.error);
+            } else {
+              errorMessage = `${errorMessage}: ${rawText.slice(0, 180)}`;
+            }
+          } catch {
+            errorMessage = `${errorMessage}: ${rawText.slice(0, 180)}`;
+          }
         }
+
         throw new Error(errorMessage);
       }
 
