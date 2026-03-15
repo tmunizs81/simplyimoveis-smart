@@ -123,7 +123,6 @@ MISSING_FUNCS=$(run_db_sql "
 WITH req(sig) AS (
   SELECT unnest(ARRAY[
     'public.has_role(uuid,public.app_role)',
-    'public.has_role_text(uuid,text)',
     'public.update_updated_at_column()',
     'public.generate_property_short_code()',
     'public.update_property_short_code_on_status_change()'

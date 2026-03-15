@@ -264,7 +264,7 @@ if ! bash bootstrap-db.sh; then
   echo -e "${YELLOW}Debug: docker compose logs --tail=120 db rest storage${NC}"
   exit 1
 fi
-echo -e "   ${GREEN}✅ Bootstrap concluído${NC}
+echo -e "   ${GREEN}✅ Bootstrap concluído${NC}"
 
 # ════════════════════════════════════════════════════════════
 # ETAPA 10 — Subir todos os serviços

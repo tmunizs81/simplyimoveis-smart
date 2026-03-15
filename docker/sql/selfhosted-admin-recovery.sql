@@ -342,20 +342,6 @@ AS $$
   );
 $$;
 
-CREATE OR REPLACE FUNCTION public.has_role_text(_user_id uuid, _role text)
-RETURNS boolean
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT EXISTS (
-    SELECT 1
-    FROM public.user_roles
-    WHERE user_id = _user_id
-      AND role::text = _role
-  );
-$$;
 
 CREATE OR REPLACE FUNCTION public.update_updated_at_column()
 RETURNS trigger
@@ -475,7 +461,6 @@ BEGIN
   WITH req(sig) AS (
     SELECT unnest(ARRAY[
       'public.has_role(uuid,public.app_role)',
-      'public.has_role_text(uuid,text)',
       'public.update_updated_at_column()',
       'public.generate_property_short_code()',
       'public.update_property_short_code_on_status_change()'
@@ -723,8 +708,6 @@ GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, service_role
 GRANT EXECUTE ON ALL ROUTINES IN SCHEMA public TO anon, authenticated, service_role;
 
 GRANT EXECUTE ON FUNCTION public.has_role(uuid, public.app_role)
-TO anon, authenticated, service_role, authenticator;
-GRANT EXECUTE ON FUNCTION public.has_role_text(uuid, text)
 TO anon, authenticated, service_role, authenticator;
 
 ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public
