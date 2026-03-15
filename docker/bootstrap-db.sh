@@ -40,8 +40,9 @@ echo -e "${BLUE}🔐 Sincronizando funções auth.uid()/auth.role()/auth.email()
 bash sync-db-passwords.sh
 
 echo -e "${BLUE}🧱 Aplicando bootstrap core (schema/rls/funções)...${NC}"
+echo -e "   Arquivo: $(realpath sql/selfhosted-admin-recovery.sql)"
 docker compose exec -T -e PGPASSWORD="$POSTGRES_PASSWORD" db \
-  psql -v ON_ERROR_STOP=1 -w -h 127.0.0.1 -U "$DB_ADMIN_USER" -d "$POSTGRES_DB" -f sql/selfhosted-admin-recovery.sql
+  psql -v ON_ERROR_STOP=1 -w -h 127.0.0.1 -U "$DB_ADMIN_USER" -d "$POSTGRES_DB" < sql/selfhosted-admin-recovery.sql
 
 echo -e "${BLUE}🔎 Validando dependências do pipeline...${NC}"
 CORE_OK=$(docker compose exec -T -e PGPASSWORD="$POSTGRES_PASSWORD" db \

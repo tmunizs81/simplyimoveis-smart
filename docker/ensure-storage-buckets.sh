@@ -39,7 +39,8 @@ if [ "$(echo "$ROLE_DEPS_OK" | tr -d '[:space:]')" != "ok" ]; then
   exit 1
 fi
 
+echo -e "   Arquivo: $(realpath sql/bootstrap-storage.sql)"
 docker compose exec -T -e PGPASSWORD="$POSTGRES_PASSWORD" db \
-  psql -v ON_ERROR_STOP=1 -w -h 127.0.0.1 -U "$DB_ADMIN_USER" -d "$POSTGRES_DB" -f sql/bootstrap-storage.sql
+  psql -v ON_ERROR_STOP=1 -w -h 127.0.0.1 -U "$DB_ADMIN_USER" -d "$POSTGRES_DB" < sql/bootstrap-storage.sql
 
 echo -e "${GREEN}✅ Buckets e policies de storage aplicados${NC}"
