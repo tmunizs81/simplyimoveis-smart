@@ -72,10 +72,10 @@ const InspectionsTab = () => {
 
   const fetchAll = async () => {
     const [{ data: ins }, { data: props }, { data: ten }, { data: con }] = await Promise.all([
-      supabase.from("property_inspections").select("*").order("inspection_date", { ascending: false }),
-      supabase.from("properties").select("id, title, address").order("title"),
-      supabase.from("tenants").select("id, name").order("name"),
-      supabase.from("rental_contracts").select("id, property_id, tenant_id"),
+      adminSelect("property_inspections", { order: { column: "inspection_date", ascending: false } }),
+      adminSelect("properties", { select: "id, title, address", order: { column: "title", ascending: true } }),
+      adminSelect("tenants", { select: "id, name", order: { column: "name", ascending: true } }),
+      adminSelect("rental_contracts", { select: "id, property_id, tenant_id" }),
     ]);
     setInspections((ins as Inspection[]) || []);
     setProperties((props as Property[]) || []);
@@ -85,7 +85,7 @@ const InspectionsTab = () => {
   };
 
   const fetchMedia = async (inspectionId: string) => {
-    const { data } = await supabase.from("inspection_media").select("*").eq("inspection_id", inspectionId).order("created_at", { ascending: false });
+    const { data } = await adminSelect("inspection_media", { match: { inspection_id: inspectionId }, order: { column: "created_at", ascending: false } });
     setMedia((data as InspectionMedia[]) || []);
   };
 
