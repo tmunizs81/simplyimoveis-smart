@@ -26,6 +26,12 @@ const ChatWidget = ({ propertyId }: { propertyId?: string }) => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  useEffect(() => {
+    const handleOpenChat = () => setOpen(true);
+    window.addEventListener("open-chat-luma", handleOpenChat);
+    return () => window.removeEventListener("open-chat-luma", handleOpenChat);
+  }, []);
+
   const formatChatTranscript = (msgs: Message[]) => {
     return msgs
       .map((m) => `[${m.role === "user" ? "Cliente" : "Luma"}]: ${m.content}`)

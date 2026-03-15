@@ -177,18 +177,19 @@ const Services = () => {
           >
             Agende uma consulta personalizada e descubra como podemos ajudar você.
           </motion.p>
-          <motion.a
+          <motion.button
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.2 }}
-            href="https://wa.me/5585999990000"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 gradient-primary text-primary-foreground font-bold px-8 py-4 rounded-xl hover:opacity-90 transition-opacity"
+            onClick={() => {
+              // Dispatch custom event to open chat widget
+              window.dispatchEvent(new CustomEvent("open-chat-luma"));
+            }}
+            className="inline-flex items-center gap-2 gradient-primary text-primary-foreground font-bold px-8 py-4 rounded-xl hover:opacity-90 transition-opacity cursor-pointer"
           >
             Fale Conosco
-          </motion.a>
+          </motion.button>
         </div>
       </section>
 
