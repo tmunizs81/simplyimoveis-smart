@@ -103,7 +103,8 @@ prompt_config "SMTP_PASS" "Senha SMTP (App Password)" "" "true"
 prompt_config "SMTP_SENDER_NAME" "Nome do remetente" "Simply Imóveis"
 prompt_config "SMTP_ADMIN_EMAIL" "Email do administrador" "admin@simplyimoveis.com.br"
 prompt_config "GROQ_API_KEY" "Chave API do Groq (chat IA Luma)" "" "true"
-prompt_config "TELEGRAM_BOT_TOKEN" "Telegram Bot Token (notificações)" ""
+prompt_config "TELEGRAM_API_KEY" "Telegram API Key (opcional, via connector)" "" "true"
+prompt_config "TELEGRAM_BOT_TOKEN" "Telegram Bot Token (opção direta, sem connector)" "" "true"
 prompt_config "TELEGRAM_CHAT_ID" "Telegram Chat ID" ""
 
 # ── Gerar chaves JWT se necessário ───────────────────────────
