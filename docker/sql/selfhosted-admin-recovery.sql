@@ -10,7 +10,7 @@ BEGIN;
 -- ------------------------------------------------------------
 DO $$
 BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'app_role') THEN
+  IF NOT EXISTS (SELECT 1 FROM pg_type t JOIN pg_namespace n ON t.typnamespace = n.oid WHERE t.typname = 'app_role' AND n.nspname = 'public') THEN
     CREATE TYPE public.app_role AS ENUM ('admin', 'moderator', 'user');
   END IF;
 END
