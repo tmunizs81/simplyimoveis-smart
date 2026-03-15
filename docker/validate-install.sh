@@ -79,12 +79,17 @@ else
 fi
 
 echo "── Edge Functions ──"
+FUNC_BODY=$(curl -s -X POST "http://localhost:${KONG_PORT}/functions/v1/create-admin-user" \
+  -H "apikey: ${ANON_KEY}" -H "Content-Type: application/json" -d '{"action":"list"}' 2>/dev/null || true)
 FUNC_ST=$(curl -s -o /dev/null -w "%{http_code}" -X POST "http://localhost:${KONG_PORT}/functions/v1/create-admin-user" \
   -H "apikey: ${ANON_KEY}" -H "Content-Type: application/json" -d '{"action":"list"}' 2>/dev/null || echo "000")
 if [ "$FUNC_ST" = "000" ] || [ "$FUNC_ST" = "404" ]; then
   echo "❌ create-admin-user: HTTP $FUNC_ST"; ERRORS=$((ERRORS+1))
+  [ -n "$FUNC_BODY" ] && echo "   resposta: $FUNC_BODY"
+  docker compose exec -T functions ls -la /home/deno/functions/create-admin-user 2>/dev/null || true
 elif [ "$FUNC_ST" -ge 500 ] 2>/dev/null; then
   echo "❌ create-admin-user: HTTP $FUNC_ST"; ERRORS=$((ERRORS+1))
+  [ -n "$FUNC_BODY" ] && echo "   resposta: $FUNC_BODY"
 else
   echo "✅ create-admin-user: HTTP $FUNC_ST"
 fi

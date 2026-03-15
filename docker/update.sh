@@ -29,11 +29,7 @@ git reset --hard origin/main 2>/dev/null || git reset --hard origin/master
 
 # Atualizar edge functions
 echo -e "${BLUE}📦 Atualizando Edge Functions...${NC}"
-mkdir -p docker/volumes/functions/{main,chat,notify-telegram,create-admin-user}
-cp supabase/functions/chat/index.ts docker/volumes/functions/chat/index.ts
-cp supabase/functions/notify-telegram/index.ts docker/volumes/functions/notify-telegram/index.ts
-cp supabase/functions/create-admin-user/index.ts docker/volumes/functions/create-admin-user/index.ts
-bash docker/render-functions-main.sh docker/volumes/functions
+bash docker/sync-functions.sh "$INSTALL_DIR/supabase/functions" "docker/volumes/functions"
 # Rebuild e restart
 cd docker
 echo -e "${BLUE}🔨 Reconstruindo frontend...${NC}"

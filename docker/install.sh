@@ -188,12 +188,7 @@ bash render-kong-config.sh
 
 # ── 8. Edge Functions ────────────────────────────────────────
 echo -e "${BLUE}📦 Preparando Edge Functions...${NC}"
-mkdir -p volumes/functions/{main,chat,notify-telegram,create-admin-user}
-cp "$INSTALL_DIR/supabase/functions/chat/index.ts" volumes/functions/chat/index.ts 2>/dev/null || true
-cp "$INSTALL_DIR/supabase/functions/notify-telegram/index.ts" volumes/functions/notify-telegram/index.ts 2>/dev/null || true
-cp "$INSTALL_DIR/supabase/functions/create-admin-user/index.ts" volumes/functions/create-admin-user/index.ts 2>/dev/null || true
-
-bash render-functions-main.sh volumes/functions
+bash sync-functions.sh "$INSTALL_DIR/supabase/functions" "volumes/functions"
 
 # ── 9. Limpar instalação anterior ────────────────────────────
 echo ""
