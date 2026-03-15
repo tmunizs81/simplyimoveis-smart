@@ -160,6 +160,28 @@ prompt_config "GROQ_API_KEY"     "Chave API do Groq (chat IA Luma)" "" "true"
 prompt_config "TELEGRAM_BOT_TOKEN" "Telegram Bot Token (notificações, ENTER p/ pular)" ""
 prompt_config "TELEGRAM_CHAT_ID"   "Telegram Chat ID" ""
 
+default_admin_email="$(read_env "SMTP_ADMIN_EMAIL")"
+default_admin_email="${default_admin_email:-admin@simplyimoveis.com.br}"
+
+echo ""
+read -p "🧑‍💼 E-mail do usuário admin inicial [${default_admin_email}]: " ADMIN_LOGIN_EMAIL
+ADMIN_LOGIN_EMAIL="${ADMIN_LOGIN_EMAIL:-$default_admin_email}"
+
+while [[ ! "$ADMIN_LOGIN_EMAIL" =~ ^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$ ]]; do
+  echo -e "${YELLOW}⚠️  E-mail inválido. Tente novamente.${NC}"
+  read -p "🧑‍💼 E-mail do usuário admin inicial: " ADMIN_LOGIN_EMAIL
+done
+
+echo ""
+while true; do
+  read -s -p "🔐 Senha do usuário admin inicial (mínimo 8 caracteres): " ADMIN_LOGIN_PASSWORD
+  echo ""
+  if [ ${#ADMIN_LOGIN_PASSWORD} -ge 8 ]; then
+    break
+  fi
+  echo -e "${YELLOW}⚠️  Senha muito curta.${NC}"
+done
+
 # ── 7. Kong config ──────────────────────────────────────────
 echo -e "${BLUE}🔧 Renderizando Kong config...${NC}"
 bash render-kong-config.sh
