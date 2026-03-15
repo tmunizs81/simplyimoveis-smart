@@ -18,6 +18,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import * as chatModule from "../chat/index.ts";
 import * as createAdminUserModule from "../create-admin-user/index.ts";
 import * as notifyTelegramModule from "../notify-telegram/index.ts";
+import * as adminCrudModule from "../admin-crud/index.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -33,6 +34,7 @@ const modules: Record<string, Record<string, unknown>> = {
   "chat": chatModule,
   "create-admin-user": createAdminUserModule,
   "notify-telegram": notifyTelegramModule,
+  "admin-crud": adminCrudModule,
 };
 
 const getHandler = (functionName: string): Handler | null => {
