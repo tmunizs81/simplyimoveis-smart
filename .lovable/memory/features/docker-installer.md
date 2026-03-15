@@ -8,3 +8,4 @@ Mudanças principais vs versões anteriores:
 - auth.identities.id é UUID (nunca cast para text)
 - docker-compose.yml: `GOTRUE_DB_NAMESPACE=auth`, `DB_NAMESPACE=auth`, `search_path=auth` no DB URL
 - notify-telegram: dual-mode (connector via LOVABLE_API_KEY ou bot direto via TELEGRAM_BOT_TOKEN)
+- Root cause crítico de "permission denied": grants em public executados antes do 01-schema; corrigir com GRANT ALL + ALTER DEFAULT PRIVILEGES para anon/authenticated/service_role (em 00-passwords + sync-db-passwords + 01-schema)
