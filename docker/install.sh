@@ -139,7 +139,7 @@ for _ in {1..40}; do
 done
 
 echo -e "${BLUE}🔐 Sincronizando credenciais...${NC}"
-bash sync-db-passwords.sh --quiet
+bash sync-db-passwords.sh
 
 # ── 10. Subir stack completa ─────────────────────────────────
 echo -e "${BLUE}🚀 Subindo stack...${NC}"
