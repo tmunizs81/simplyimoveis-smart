@@ -131,4 +131,73 @@ R "ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL O
 R "ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT ALL ON SEQUENCES TO anon, authenticated, service_role;"
 R "ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO anon, authenticated, service_role;"
 
-echo "✅ Credenciais sincronizadas!"
+# ── Reparar RLS policies (adiciona admin policies faltantes) ──
+echo "   Reparando RLS policies..."
+
+# has_role function
+R "CREATE OR REPLACE FUNCTION public.has_role(_user_id uuid, _role app_role)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS \$\$
+  SELECT EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = _user_id AND role = _role)
+\$\$;" >/dev/null 2>&1 || true
+
+# Properties admin policies
+R "DO \$\$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='properties' AND policyname='Admins can manage properties') THEN
+    CREATE POLICY \"Admins can manage properties\" ON public.properties FOR ALL TO authenticated
+      USING (public.has_role(auth.uid(), 'admin'::app_role))
+      WITH CHECK (public.has_role(auth.uid(), 'admin'::app_role));
+  END IF;
+END \$\$;" >/dev/null 2>&1 || true
+
+# Also try alternate policy name from older schema
+R "DO \$\$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='properties' AND policyname LIKE 'Admins can manage%') THEN
+    CREATE POLICY \"Admins can manage all properties\" ON public.properties FOR ALL TO authenticated
+      USING (public.has_role(auth.uid(), 'admin'::app_role))
+      WITH CHECK (public.has_role(auth.uid(), 'admin'::app_role));
+  END IF;
+END \$\$;" >/dev/null 2>&1 || true
+
+# Property media admin policies
+R "DO \$\$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='property_media' AND policyname='Admins can manage property media') THEN
+    CREATE POLICY \"Admins can manage property media\" ON public.property_media FOR ALL TO authenticated
+      USING (public.has_role(auth.uid(), 'admin'::app_role))
+      WITH CHECK (public.has_role(auth.uid(), 'admin'::app_role));
+  END IF;
+END \$\$;" >/dev/null 2>&1 || true
+
+# Property code sequences
+R "DO \$\$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename='property_code_sequences' AND policyname LIKE 'Admins can manage%') THEN
+    CREATE POLICY \"Admins can manage code sequences\" ON public.property_code_sequences FOR ALL TO authenticated
+      USING (public.has_role(auth.uid(), 'admin'::app_role))
+      WITH CHECK (public.has_role(auth.uid(), 'admin'::app_role));
+  END IF;
+END \$\$;" >/dev/null 2>&1 || true
+
+# Fix ALL policies that are missing WITH CHECK (drop and recreate with explicit WITH CHECK)
+for tbl in leads tenants rental_contracts sales financial_transactions property_inspections inspection_media contract_documents tenant_documents sales_documents; do
+  POLICY_NAME=$(docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" "$DB_CONTAINER" \
+    psql -tA -w -h 127.0.0.1 -U "$DB_USER" -d "$POSTGRES_DB" \
+    -c "SELECT policyname FROM pg_policies WHERE tablename='$tbl' AND cmd='ALL' AND policyname LIKE 'Admins can%' LIMIT 1;" 2>/dev/null || true)
+  POLICY_NAME=$(echo "$POLICY_NAME" | tr -d '[:space:]')
+
+  if [ -n "$POLICY_NAME" ]; then
+    # Check if with_check is null (needs fix)
+    HAS_CHECK=$(docker exec -e PGPASSWORD="$POSTGRES_PASSWORD" "$DB_CONTAINER" \
+      psql -tA -w -h 127.0.0.1 -U "$DB_USER" -d "$POSTGRES_DB" \
+      -c "SELECT with_check IS NOT NULL FROM pg_policies WHERE tablename='$tbl' AND policyname='$POLICY_NAME';" 2>/dev/null || true)
+    HAS_CHECK=$(echo "$HAS_CHECK" | tr -d '[:space:]')
+
+    if [ "$HAS_CHECK" = "f" ]; then
+      echo "   Corrigindo policy $POLICY_NAME em $tbl..."
+      R "DROP POLICY \"$POLICY_NAME\" ON public.$tbl;" >/dev/null 2>&1 || true
+      R "CREATE POLICY \"$POLICY_NAME\" ON public.$tbl FOR ALL TO authenticated
+        USING (public.has_role(auth.uid(), 'admin'::app_role))
+        WITH CHECK (public.has_role(auth.uid(), 'admin'::app_role));" >/dev/null 2>&1 || true
+    fi
+  fi
+done
+
+echo "✅ Credenciais e policies sincronizadas!"

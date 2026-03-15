@@ -198,7 +198,9 @@ CREATE TABLE public.leads (
 );
 
 ALTER TABLE public.leads ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Admins can manage leads" ON public.leads FOR ALL TO authenticated USING (has_role(auth.uid(), 'admin'));
+CREATE POLICY "Admins can manage leads" ON public.leads FOR ALL TO authenticated
+  USING (has_role(auth.uid(), 'admin'::app_role))
+  WITH CHECK (has_role(auth.uid(), 'admin'::app_role));
 
 -- ============================================================
 -- Tenants
@@ -218,7 +220,9 @@ CREATE TABLE public.tenants (
 );
 
 ALTER TABLE public.tenants ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Admins can manage tenants" ON public.tenants FOR ALL TO authenticated USING (has_role(auth.uid(), 'admin'));
+CREATE POLICY "Admins can manage tenants" ON public.tenants FOR ALL TO authenticated
+  USING (has_role(auth.uid(), 'admin'::app_role))
+  WITH CHECK (has_role(auth.uid(), 'admin'::app_role));
 
 -- ============================================================
 -- Rental Contracts
@@ -244,7 +248,9 @@ CREATE TABLE public.rental_contracts (
 );
 
 ALTER TABLE public.rental_contracts ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Admins can manage contracts" ON public.rental_contracts FOR ALL TO authenticated USING (has_role(auth.uid(), 'admin'));
+CREATE POLICY "Admins can manage contracts" ON public.rental_contracts FOR ALL TO authenticated
+  USING (has_role(auth.uid(), 'admin'::app_role))
+  WITH CHECK (has_role(auth.uid(), 'admin'::app_role));
 
 -- ============================================================
 -- Sales
@@ -270,7 +276,9 @@ CREATE TABLE public.sales (
 );
 
 ALTER TABLE public.sales ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Admins can manage sales" ON public.sales FOR ALL TO authenticated USING (has_role(auth.uid(), 'admin'));
+CREATE POLICY "Admins can manage sales" ON public.sales FOR ALL TO authenticated
+  USING (has_role(auth.uid(), 'admin'::app_role))
+  WITH CHECK (has_role(auth.uid(), 'admin'::app_role));
 
 -- ============================================================
 -- Financial Transactions
@@ -296,7 +304,9 @@ CREATE TABLE public.financial_transactions (
 );
 
 ALTER TABLE public.financial_transactions ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Admins can manage transactions" ON public.financial_transactions FOR ALL TO authenticated USING (has_role(auth.uid(), 'admin'));
+CREATE POLICY "Admins can manage transactions" ON public.financial_transactions FOR ALL TO authenticated
+  USING (has_role(auth.uid(), 'admin'::app_role))
+  WITH CHECK (has_role(auth.uid(), 'admin'::app_role));
 
 -- ============================================================
 -- Property Inspections
@@ -326,7 +336,9 @@ CREATE TABLE public.property_inspections (
 );
 
 ALTER TABLE public.property_inspections ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Admins can manage inspections" ON public.property_inspections FOR ALL TO authenticated USING (has_role(auth.uid(), 'admin'));
+CREATE POLICY "Admins can manage inspections" ON public.property_inspections FOR ALL TO authenticated
+  USING (has_role(auth.uid(), 'admin'::app_role))
+  WITH CHECK (has_role(auth.uid(), 'admin'::app_role));
 
 -- ============================================================
 -- Inspection Media
@@ -344,7 +356,9 @@ CREATE TABLE public.inspection_media (
 );
 
 ALTER TABLE public.inspection_media ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Admins can manage inspection media" ON public.inspection_media FOR ALL TO authenticated USING (has_role(auth.uid(), 'admin'));
+CREATE POLICY "Admins can manage inspection media" ON public.inspection_media FOR ALL TO authenticated
+  USING (has_role(auth.uid(), 'admin'::app_role))
+  WITH CHECK (has_role(auth.uid(), 'admin'::app_role));
 
 -- ============================================================
 -- Scheduled Visits
@@ -383,7 +397,9 @@ CREATE TABLE public.contract_documents (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 ALTER TABLE public.contract_documents ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Admins can manage documents" ON public.contract_documents FOR ALL TO authenticated USING (has_role(auth.uid(), 'admin'));
+CREATE POLICY "Admins can manage documents" ON public.contract_documents FOR ALL TO authenticated
+  USING (has_role(auth.uid(), 'admin'::app_role))
+  WITH CHECK (has_role(auth.uid(), 'admin'::app_role));
 
 CREATE TABLE public.tenant_documents (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -397,7 +413,9 @@ CREATE TABLE public.tenant_documents (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 ALTER TABLE public.tenant_documents ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Admins can manage tenant docs" ON public.tenant_documents FOR ALL TO authenticated USING (has_role(auth.uid(), 'admin'));
+CREATE POLICY "Admins can manage tenant docs" ON public.tenant_documents FOR ALL TO authenticated
+  USING (has_role(auth.uid(), 'admin'::app_role))
+  WITH CHECK (has_role(auth.uid(), 'admin'::app_role));
 
 CREATE TABLE public.sales_documents (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -411,7 +429,9 @@ CREATE TABLE public.sales_documents (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 ALTER TABLE public.sales_documents ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Admins can manage sale docs" ON public.sales_documents FOR ALL TO authenticated USING (has_role(auth.uid(), 'admin'));
+CREATE POLICY "Admins can manage sale docs" ON public.sales_documents FOR ALL TO authenticated
+  USING (has_role(auth.uid(), 'admin'::app_role))
+  WITH CHECK (has_role(auth.uid(), 'admin'::app_role));
 
 -- ============================================================
 -- Property Code Sequences
