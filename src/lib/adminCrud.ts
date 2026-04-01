@@ -96,6 +96,8 @@ export async function adminDelete(
 /**
  * Upload a file to storage via admin-storage edge function (uses service_role,
  * bypasses storage RLS — works on both Lovable Cloud and self-hosted VPS).
+ * Uses raw fetch() instead of supabase.functions.invoke() because the SDK
+ * breaks multipart/form-data encoding on self-hosted edge runtimes.
  */
 export async function adminStorageUpload(
   bucket: string,
@@ -110,20 +112,33 @@ export async function adminStorageUpload(
   formData.append("path", path);
   formData.append("file", file);
 
-  const { data, error } = await supabase.functions.invoke("admin-storage", {
-    body: formData,
-    headers: {
-      Authorization: `Bearer ${session.access_token}`,
-    },
-  });
+  // Build the functions URL from env — works for both Lovable Cloud and self-hosted
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const apiKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
-  if (error) {
-    const msg = typeof error === "object" && "message" in error
-      ? (error as any).message : String(error);
-    return { data: null, error: { message: msg } };
+  try {
+    const response = await fetch(`${supabaseUrl}/functions/v1/admin-storage`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+        apikey: apiKey,
+      },
+      body: formData,
+      // Do NOT set Content-Type — browser sets it automatically with boundary
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      return { data: null, error: { message: result?.error || `HTTP ${response.status}` } };
+    }
+    if (result?.error) {
+      return { data: null, error: { message: result.error } };
+    }
+    return { data: result?.data ?? result, error: null };
+  } catch (err: any) {
+    return { data: null, error: { message: err.message || "Erro de rede no upload" } };
   }
-  if (data?.error) return { data: null, error: { message: data.error } };
-  return { data: data?.data ?? data, error: null };
 }
 
 /**
