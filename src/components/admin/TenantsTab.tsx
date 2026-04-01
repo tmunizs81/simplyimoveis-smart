@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { adminInsert, adminUpdate, adminDelete, adminSelect } from "@/lib/adminCrud";
+import { adminInsert, adminUpdate, adminDelete, adminSelect, adminStorageUpload, adminStorageDelete, adminStorageSignedUrl } from "@/lib/adminCrud";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { Plus, Search, Users, Phone, Mail, Edit, Trash2, X, Save, FileText, Upload, Eye, FolderOpen } from "lucide-react";
@@ -104,7 +104,7 @@ const TenantsTab = () => {
       for (const { file, docType } of formFiles) {
         const ext = file.name.split(".").pop();
         const path = `${user.id}/${tenantId}/${crypto.randomUUID()}.${ext}`;
-        const { error: upErr } = await supabase.storage.from("tenant-documents").upload(path, file);
+        const { error: upErr } = await adminStorageUpload("tenant-documents", path, file);
         if (upErr) { toast.error(`Erro: ${file.name}`); continue; }
         await adminInsert("tenant_documents", {
           tenant_id: tenantId, file_path: path, file_name: file.name,
@@ -135,7 +135,7 @@ const TenantsTab = () => {
         .filter(Boolean);
 
       if (paths.length > 0) {
-        const { error: storageError } = await supabase.storage.from("tenant-documents").remove(paths);
+        const { error: storageError } = await adminStorageDelete("tenant-documents", paths);
         if (storageError) {
           toast.error(storageError.message || "Erro ao remover arquivos do inquilino");
           return;
@@ -181,7 +181,7 @@ const TenantsTab = () => {
     for (const file of uploadFiles) {
       const ext = file.name.split(".").pop();
       const path = `${user.id}/${tenantId}/${crypto.randomUUID()}.${ext}`;
-      const { error: uploadError } = await supabase.storage.from("tenant-documents").upload(path, file);
+      const { error: uploadError } = await adminStorageUpload("tenant-documents", path, file);
       if (uploadError) { toast.error(`Erro ao enviar ${file.name}`); continue; }
       await adminInsert("tenant_documents", {
         tenant_id: tenantId, file_path: path, file_name: file.name,
@@ -194,15 +194,15 @@ const TenantsTab = () => {
   };
 
   const deleteDoc = async (doc: TenantDoc) => {
-    await supabase.storage.from("tenant-documents").remove([doc.file_path]);
+    await adminStorageDelete("tenant-documents", [doc.file_path]);
     await adminDelete("tenant_documents", { id: doc.id });
     toast.success("Documento removido");
     if (viewingDocs) fetchDocs(viewingDocs);
   };
 
   const viewDoc = async (filePath: string) => {
-    const { data } = await supabase.storage.from("tenant-documents").createSignedUrl(filePath, 3600);
-    if (data?.signedUrl) window.open(data.signedUrl, "_blank");
+    const url = await adminStorageSignedUrl("tenant-documents", filePath);
+    if (url) window.open(url, "_blank");
   };
 
   const filtered = tenants.filter(t => {

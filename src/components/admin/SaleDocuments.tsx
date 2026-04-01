@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { adminInsert, adminDelete, adminSelect } from "@/lib/adminCrud";
+import { adminInsert, adminDelete, adminSelect, adminStorageUpload, adminStorageDelete, adminStorageSignedUrl } from "@/lib/adminCrud";
 import { toast } from "sonner";
 import { Upload, Trash2, FileText, Download, X, Eye } from "lucide-react";
 
@@ -53,7 +53,7 @@ const SaleDocuments = ({ saleId, onClose }: { saleId: string; onClose: () => voi
     for (const file of files) {
       const ext = file.name.split(".").pop();
       const path = `${user.id}/${saleId}/${crypto.randomUUID()}.${ext}`;
-      const { error: uploadErr } = await supabase.storage.from("sales-documents").upload(path, file);
+      const { error: uploadErr } = await adminStorageUpload("sales-documents", path, file);
       if (uploadErr) { toast.error(`Erro ao enviar ${file.name}`); continue; }
 
       await adminInsert("sales_documents", {
@@ -73,15 +73,15 @@ const SaleDocuments = ({ saleId, onClose }: { saleId: string; onClose: () => voi
 
   const handleDelete = async (doc: SaleDoc) => {
     if (!confirm(`Excluir "${doc.file_name}"?`)) return;
-    await supabase.storage.from("sales-documents").remove([doc.file_path]);
+    await adminStorageDelete("sales-documents", [doc.file_path]);
     await adminDelete("sales_documents", { id: doc.id });
     toast.success("Documento excluído");
     fetchDocs();
   };
 
   const handleView = async (doc: SaleDoc) => {
-    const { data } = await supabase.storage.from("sales-documents").createSignedUrl(doc.file_path, 300);
-    if (data?.signedUrl) window.open(data.signedUrl, "_blank");
+    const url = await adminStorageSignedUrl("sales-documents", doc.file_path, 300);
+    if (url) window.open(url, "_blank");
     else toast.error("Erro ao gerar link");
   };
 

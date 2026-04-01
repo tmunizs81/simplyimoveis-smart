@@ -12,7 +12,7 @@ cd "$SCRIPT_DIR"
 SOURCE_DIR="${1:-$SCRIPT_DIR/../supabase/functions}"
 TARGET_DIR="${2:-$SCRIPT_DIR/volumes/functions}"
 
-REQUIRED_FUNCTIONS=("chat" "notify-telegram" "create-admin-user" "admin-crud" "ai-insights")
+REQUIRED_FUNCTIONS=("chat" "notify-telegram" "create-admin-user" "admin-crud" "admin-storage" "ai-insights")
 
 mkdir -p "$TARGET_DIR/main"
 

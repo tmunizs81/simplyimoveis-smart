@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { adminInsert, adminUpdate, adminDelete, adminSelect } from "@/lib/adminCrud";
+import { adminInsert, adminUpdate, adminDelete, adminSelect, adminStorageUpload, adminStorageDelete, adminStorageSignedUrl } from "@/lib/adminCrud";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { Plus, Search, ClipboardCheck, Calendar, Home, Edit, Trash2, X, Save, Upload, FileText, Eye, Camera, Video, File, Download } from "lucide-react";
@@ -153,7 +153,7 @@ const InspectionsTab = () => {
         for (const { file, category } of formFiles) {
           const ext = file.name.split(".").pop();
           const path = `${user.id}/${editing.id}/${crypto.randomUUID()}.${ext}`;
-          const { error: upErr } = await supabase.storage.from("inspection-media").upload(path, file);
+          const { error: upErr } = await adminStorageUpload("inspection-media", path, file);
           if (upErr) { toast.error(`Erro: ${file.name}`); continue; }
           await adminInsert("inspection_media", {
             inspection_id: editing.id, file_path: path, file_name: file.name,
@@ -170,7 +170,7 @@ const InspectionsTab = () => {
         for (const { file, category } of formFiles) {
           const ext = file.name.split(".").pop();
           const path = `${user.id}/${newId}/${crypto.randomUUID()}.${ext}`;
-          const { error: upErr } = await supabase.storage.from("inspection-media").upload(path, file);
+          const { error: upErr } = await adminStorageUpload("inspection-media", path, file);
           if (upErr) { toast.error(`Erro: ${file.name}`); continue; }
           await adminInsert("inspection_media", {
             inspection_id: newId, file_path: path, file_name: file.name,
@@ -200,7 +200,7 @@ const InspectionsTab = () => {
     for (const file of uploadFiles) {
       const ext = file.name.split(".").pop();
       const path = `${user.id}/${inspectionId}/${crypto.randomUUID()}.${ext}`;
-      const { error } = await supabase.storage.from("inspection-media").upload(path, file);
+      const { error } = await adminStorageUpload("inspection-media", path, file);
       if (error) { toast.error(`Erro: ${file.name}`); continue; }
       await adminInsert("inspection_media", {
         inspection_id: inspectionId, file_path: path, file_name: file.name,
@@ -213,15 +213,15 @@ const InspectionsTab = () => {
   };
 
   const deleteMediaItem = async (item: InspectionMedia) => {
-    await supabase.storage.from("inspection-media").remove([item.file_path]);
+    await adminStorageDelete("inspection-media", [item.file_path]);
     await adminDelete("inspection_media", { id: item.id });
     toast.success("Mídia removida");
     if (viewingMedia) fetchMedia(viewingMedia);
   };
 
   const viewFile = async (filePath: string) => {
-    const { data } = await supabase.storage.from("inspection-media").createSignedUrl(filePath, 3600);
-    if (data?.signedUrl) window.open(data.signedUrl, "_blank");
+    const url = await adminStorageSignedUrl("inspection-media", filePath);
+    if (url) window.open(url, "_blank");
   };
 
   const getPropertyTitle = (id: string | null) => properties.find(p => p.id === id)?.title || "—";

@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { Edit, Trash2, Star, Eye, EyeOff, MapPin, BedDouble, Bath, Maximize2, ImageIcon, Plus, Search, Building2, Car, DoorOpen } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { adminUpdate, adminDelete } from "@/lib/adminCrud";
+import { adminUpdate, adminDelete, adminStorageDelete } from "@/lib/adminCrud";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -26,7 +26,7 @@ const PropertyList = ({ properties, onEdit, onRefresh, onNew }: PropertyListProp
     const prop = properties.find((p) => p.id === id);
     if (prop) {
       for (const m of prop.media) {
-        await supabase.storage.from("property-media").remove([m.file_path]);
+        await adminStorageDelete("property-media", [m.file_path]);
       }
     }
     await adminDelete("properties", { id });

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { adminInsert, adminUpdate, adminDelete, adminSelect } from "@/lib/adminCrud";
+import { adminInsert, adminUpdate, adminDelete, adminSelect, adminStorageUpload, adminStorageDelete, adminStorageSignedUrl } from "@/lib/adminCrud";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 import { Plus, Search, Home, Calendar, DollarSign, Edit, Trash2, X, Save, Upload, FileText, Eye, Download } from "lucide-react";
@@ -143,7 +143,7 @@ const RentalsTab = () => {
         .filter(Boolean);
 
       if (paths.length > 0) {
-        const { error: storageError } = await supabase.storage.from("contract-documents").remove(paths);
+        const { error: storageError } = await adminStorageDelete("contract-documents", paths);
         if (storageError) {
           toast.error(storageError.message || "Erro ao remover arquivos do contrato");
           return;
@@ -188,7 +188,7 @@ const RentalsTab = () => {
     for (const file of uploadFiles) {
       const ext = file.name.split(".").pop();
       const path = `${user.id}/${contractId}/${crypto.randomUUID()}.${ext}`;
-      const { error: uploadError } = await supabase.storage.from("contract-documents").upload(path, file);
+      const { error: uploadError } = await adminStorageUpload("contract-documents", path, file);
       if (uploadError) { toast.error(`Erro ao enviar ${file.name}`); continue; }
       await adminInsert("contract_documents", {
         contract_id: contractId, file_path: path, file_name: file.name,
@@ -201,15 +201,15 @@ const RentalsTab = () => {
   };
 
   const deleteDoc = async (doc: ContractDoc) => {
-    await supabase.storage.from("contract-documents").remove([doc.file_path]);
+    await adminStorageDelete("contract-documents", [doc.file_path]);
     await adminDelete("contract_documents", { id: doc.id });
     toast.success("Documento removido");
     if (viewingDocs) fetchDocs(viewingDocs);
   };
 
   const getDocUrl = async (filePath: string) => {
-    const { data } = await supabase.storage.from("contract-documents").createSignedUrl(filePath, 3600);
-    if (data?.signedUrl) window.open(data.signedUrl, "_blank");
+    const url = await adminStorageSignedUrl("contract-documents", filePath);
+    if (url) window.open(url, "_blank");
   };
 
   const getTenantName = (id: string | null) => tenants.find(t => t.id === id)?.name || "—";
