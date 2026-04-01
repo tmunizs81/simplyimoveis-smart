@@ -109,7 +109,10 @@ export async function adminStorageUpload(
   const apiKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
   try {
-    const response = await fetch(`${supabaseUrl}/functions/v1/admin-crud`, {
+    const uploadUrl = `${supabaseUrl}/functions/v1/admin-crud`;
+    console.log("[adminStorageUpload] uploading to:", uploadUrl, "bucket:", bucket, "path:", path, "file:", file.name, "size:", file.size);
+    
+    const response = await fetch(uploadUrl, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${session.access_token}`,
@@ -118,11 +121,17 @@ export async function adminStorageUpload(
       body: formData,
     });
 
-    const result = await response.json();
+    const responseText = await response.text();
+    console.log("[adminStorageUpload] response status:", response.status, "body:", responseText);
+    
+    let result: any;
+    try { result = JSON.parse(responseText); } catch { result = { error: responseText }; }
+    
     if (!response.ok) return { data: null, error: { message: result?.error || `HTTP ${response.status}` } };
     if (result?.error) return { data: null, error: { message: result.error } };
     return { data: result?.data ?? result, error: null };
   } catch (err: any) {
+    console.error("[adminStorageUpload] network error:", err);
     return { data: null, error: { message: err.message || "Erro de rede no upload" } };
   }
 }
