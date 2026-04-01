@@ -135,7 +135,7 @@ const TenantsTab = () => {
         .filter(Boolean);
 
       if (paths.length > 0) {
-        const { error: storageError } = await supabase.storage.from("tenant-documents").remove(paths);
+        const { error: storageError } = await adminStorageDelete("tenant-documents", paths);
         if (storageError) {
           toast.error(storageError.message || "Erro ao remover arquivos do inquilino");
           return;
