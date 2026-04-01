@@ -220,8 +220,8 @@ const InspectionsTab = () => {
   };
 
   const viewFile = async (filePath: string) => {
-    const { data } = await supabase.storage.from("inspection-media").createSignedUrl(filePath, 3600);
-    if (data?.signedUrl) window.open(data.signedUrl, "_blank");
+    const url = await adminStorageSignedUrl("inspection-media", filePath);
+    if (url) window.open(url, "_blank");
   };
 
   const getPropertyTitle = (id: string | null) => properties.find(p => p.id === id)?.title || "—";
