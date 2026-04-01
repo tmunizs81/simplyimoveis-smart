@@ -1,7 +1,8 @@
 /**
- * Admin CRUD helper — routes ALL operations through the admin-crud edge function
- * which uses service_role to bypass RLS. This ensures the admin panel works
- * identically on both Lovable Cloud and self-hosted VPS environments.
+ * Admin CRUD helper — routes ALL operations (CRUD + Storage) through the
+ * admin-crud edge function which uses service_role to bypass RLS.
+ * This ensures the admin panel works identically on both Lovable Cloud
+ * and self-hosted VPS environments.
  */
 import { supabase } from "@/integrations/supabase/client";
 
@@ -10,32 +11,26 @@ type CrudResult<T = any> = {
   error: { message: string } | null;
 };
 
-async function callAdminCrud(body: Record<string, unknown>): Promise<CrudResult> {
+async function getSession() {
   const { data: { session } } = await supabase.auth.getSession();
-  if (!session) {
-    return { data: null, error: { message: "Não autenticado" } };
-  }
+  return session;
+}
+
+async function callAdminCrud(body: Record<string, unknown>): Promise<CrudResult> {
+  const session = await getSession();
+  if (!session) return { data: null, error: { message: "Não autenticado" } };
 
   const { data, error } = await supabase.functions.invoke("admin-crud", {
     body,
-    headers: {
-      Authorization: `Bearer ${session.access_token}`,
-    },
+    headers: { Authorization: `Bearer ${session.access_token}` },
   });
 
   if (error) {
-    // Try to extract error message from response
     const msg = typeof error === "object" && "message" in error
-      ? (error as any).message
-      : String(error);
+      ? (error as any).message : String(error);
     return { data: null, error: { message: msg } };
   }
-
-  // The edge function returns { data: [...] } or { error: "..." }
-  if (data?.error) {
-    return { data: null, error: { message: data.error } };
-  }
-
+  if (data?.error) return { data: null, error: { message: data.error } };
   return { data: data?.data ?? data, error: null };
 }
 
@@ -94,17 +89,15 @@ export async function adminDelete(
 }
 
 /**
- * Upload a file to storage via admin-storage edge function (uses service_role,
- * bypasses storage RLS — works on both Lovable Cloud and self-hosted VPS).
- * Uses raw fetch() instead of supabase.functions.invoke() because the SDK
- * breaks multipart/form-data encoding on self-hosted edge runtimes.
+ * Upload a file to storage via admin-crud edge function (multipart/form-data).
+ * Uses raw fetch() because supabase.functions.invoke() breaks FormData encoding.
  */
 export async function adminStorageUpload(
   bucket: string,
   path: string,
   file: File
 ): Promise<CrudResult> {
-  const { data: { session } } = await supabase.auth.getSession();
+  const session = await getSession();
   if (!session) return { data: null, error: { message: "Não autenticado" } };
 
   const formData = new FormData();
@@ -112,29 +105,22 @@ export async function adminStorageUpload(
   formData.append("path", path);
   formData.append("file", file);
 
-  // Build the functions URL from env — works for both Lovable Cloud and self-hosted
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const apiKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
   try {
-    const response = await fetch(`${supabaseUrl}/functions/v1/admin-storage`, {
+    const response = await fetch(`${supabaseUrl}/functions/v1/admin-crud`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${session.access_token}`,
         apikey: apiKey,
       },
       body: formData,
-      // Do NOT set Content-Type — browser sets it automatically with boundary
     });
 
     const result = await response.json();
-
-    if (!response.ok) {
-      return { data: null, error: { message: result?.error || `HTTP ${response.status}` } };
-    }
-    if (result?.error) {
-      return { data: null, error: { message: result.error } };
-    }
+    if (!response.ok) return { data: null, error: { message: result?.error || `HTTP ${response.status}` } };
+    if (result?.error) return { data: null, error: { message: result.error } };
     return { data: result?.data ?? result, error: null };
   } catch (err: any) {
     return { data: null, error: { message: err.message || "Erro de rede no upload" } };
@@ -142,49 +128,29 @@ export async function adminStorageUpload(
 }
 
 /**
- * Delete files from storage via admin-storage edge function.
+ * Delete files from storage via admin-crud edge function.
  */
 export async function adminStorageDelete(
   bucket: string,
   paths: string[]
 ): Promise<CrudResult> {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return { data: null, error: { message: "Não autenticado" } };
-
-  const { data, error } = await supabase.functions.invoke("admin-storage", {
-    body: { action: "delete", bucket, paths },
-    headers: {
-      Authorization: `Bearer ${session.access_token}`,
-    },
-  });
-
-  if (error) {
-    const msg = typeof error === "object" && "message" in error
-      ? (error as any).message : String(error);
-    return { data: null, error: { message: msg } };
-  }
-  if (data?.error) return { data: null, error: { message: data.error } };
-  return { data: data?.data ?? data, error: null };
+  return callAdminCrud({ action: "storage-delete", bucket, paths });
 }
 
 /**
- * Get a signed URL for a private storage file via admin-storage edge function.
+ * Get a signed URL for a private storage file.
  */
 export async function adminStorageSignedUrl(
   bucket: string,
   filePath: string,
   expiresIn = 3600
 ): Promise<string | null> {
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) return null;
-
-  const { data, error } = await supabase.functions.invoke("admin-storage", {
-    body: { action: "signed-url", bucket, path: filePath, expiresIn },
-    headers: {
-      Authorization: `Bearer ${session.access_token}`,
-    },
+  const result = await callAdminCrud({
+    action: "storage-signed-url",
+    bucket,
+    path: filePath,
+    expiresIn,
   });
-
-  if (error || data?.error) return null;
-  return data?.signedUrl || null;
+  if (result.error || !result.data) return null;
+  return result.data?.signedUrl || result.data;
 }

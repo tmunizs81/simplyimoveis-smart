@@ -31,13 +31,38 @@ const ALLOWED_TABLES = [
   "user_roles",
 ] as const;
 
+const ALLOWED_BUCKETS = [
+  "property-media",
+  "contract-documents",
+  "tenant-documents",
+  "inspection-media",
+  "sales-documents",
+] as const;
+
 const getEnv = (name: string): string => {
   const value = Deno.env.get(name);
-  if (!value) {
-    throw new Error(`Variável de ambiente obrigatória ausente: ${name}`);
-  }
+  if (!value) throw new Error(`Variável de ambiente obrigatória ausente: ${name}`);
   return value;
 };
+
+async function verifyAdmin(supabaseAdmin: ReturnType<typeof createClient>, req: Request) {
+  const authHeader = req.headers.get("authorization") || req.headers.get("Authorization");
+  if (!authHeader) return null;
+  const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+  if (!token) return null;
+
+  const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+  if (error || !user) return null;
+
+  const { data: roleData } = await supabaseAdmin
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", user.id)
+    .eq("role", "admin")
+    .maybeSingle();
+
+  return roleData ? user : null;
+}
 
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
@@ -50,47 +75,95 @@ const handler = async (req: Request): Promise<Response> => {
       getEnv("SUPABASE_SERVICE_ROLE_KEY")
     );
 
-    // Verify caller is authenticated admin
-    const authHeader = req.headers.get("authorization") || req.headers.get("Authorization");
-    if (!authHeader) return json({ error: "Não autorizado" }, 401);
+    const contentType = req.headers.get("content-type") || "";
 
-    const token = authHeader.replace(/^Bearer\s+/i, "").trim();
-    if (!token) return json({ error: "Token inválido" }, 401);
+    // === MULTIPART UPLOAD (FormData) ===
+    if (contentType.includes("multipart/form-data")) {
+      const user = await verifyAdmin(supabaseAdmin, req);
+      if (!user) return json({ error: "Não autorizado ou sem permissão de admin" }, 401);
 
-    const {
-      data: { user },
-      error: authError,
-    } = await supabaseAdmin.auth.getUser(token);
+      let formData: FormData;
+      try {
+        formData = await req.formData();
+      } catch (e) {
+        console.error("admin-crud: formData parse error:", e);
+        return json({ error: "Falha ao processar upload." }, 400);
+      }
 
-    if (authError || !user) return json({ error: "Token inválido" }, 401);
+      const bucket = formData.get("bucket");
+      const path = formData.get("path");
+      const file = formData.get("file");
 
-    // Check admin role using service_role client (bypasses RLS)
-    const { data: roleData } = await supabaseAdmin
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user.id)
-      .eq("role", "admin")
-      .maybeSingle();
+      if (!bucket || !path || !file) {
+        return json({ error: "bucket, path e file obrigatórios" }, 400);
+      }
 
-    if (!roleData) return json({ error: "Sem permissão de admin" }, 403);
+      if (!ALLOWED_BUCKETS.includes(String(bucket) as (typeof ALLOWED_BUCKETS)[number])) {
+        return json({ error: `Bucket '${bucket}' não permitido` }, 400);
+      }
 
-    // Parse request
+      let fileBuffer: ArrayBuffer;
+      let fileContentType = "application/octet-stream";
+
+      if (file instanceof File || file instanceof Blob) {
+        fileBuffer = await file.arrayBuffer();
+        fileContentType = (file as File).type || "application/octet-stream";
+      } else {
+        fileBuffer = new TextEncoder().encode(String(file)).buffer;
+      }
+
+      const { data, error } = await supabaseAdmin.storage
+        .from(String(bucket))
+        .upload(String(path), fileBuffer, {
+          contentType: fileContentType,
+          upsert: false,
+        });
+
+      if (error) return json({ error: error.message }, 400);
+      return json({ data });
+    }
+
+    // === JSON ACTIONS ===
+    const user = await verifyAdmin(supabaseAdmin, req);
+    if (!user) return json({ error: "Não autorizado ou sem permissão de admin" }, 401);
+
     const body = await req.json().catch(() => ({}));
     const { action, table, data, match, select: selectCols, order } = body as {
-      action: "insert" | "update" | "delete" | "select";
-      table: string;
+      action: string;
+      table?: string;
       data?: Record<string, unknown> | Record<string, unknown>[];
       match?: Record<string, unknown>;
       select?: string;
       order?: { column: string; ascending?: boolean };
     };
 
-    if (!action || !table) return json({ error: "action e table obrigatórios" }, 400);
+    if (!action) return json({ error: "action obrigatório" }, 400);
+
+    // --- Storage actions ---
+    if (action === "storage-delete") {
+      const { bucket, paths } = body;
+      if (!bucket || !paths?.length) return json({ error: "bucket e paths obrigatórios" }, 400);
+      const { error } = await supabaseAdmin.storage.from(bucket).remove(paths);
+      if (error) return json({ error: error.message }, 400);
+      return json({ success: true });
+    }
+
+    if (action === "storage-signed-url") {
+      const { bucket, path: filePath, expiresIn } = body;
+      if (!bucket || !filePath) return json({ error: "bucket e path obrigatórios" }, 400);
+      const { data: urlData, error } = await supabaseAdmin.storage
+        .from(bucket)
+        .createSignedUrl(filePath, expiresIn || 3600);
+      if (error) return json({ error: error.message }, 400);
+      return json({ signedUrl: urlData.signedUrl });
+    }
+
+    // --- CRUD actions ---
+    if (!table) return json({ error: "table obrigatório" }, 400);
     if (!ALLOWED_TABLES.includes(table as (typeof ALLOWED_TABLES)[number])) {
       return json({ error: `Tabela '${table}' não permitida` }, 400);
     }
 
-    // Execute with service_role (bypasses RLS)
     if (action === "insert") {
       if (!data) return json({ error: "data obrigatório para insert" }, 400);
       const q = supabaseAdmin.from(table).insert(data as never);
