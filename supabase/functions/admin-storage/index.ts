@@ -18,6 +18,25 @@ const getEnv = (name: string): string => {
   return value;
 };
 
+async function verifyAdmin(supabaseAdmin: ReturnType<typeof createClient>, req: Request) {
+  const authHeader = req.headers.get("authorization") || req.headers.get("Authorization");
+  if (!authHeader) return null;
+  const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+  if (!token) return null;
+
+  const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+  if (error || !user) return null;
+
+  const { data: roleData } = await supabaseAdmin
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", user.id)
+    .eq("role", "admin")
+    .maybeSingle();
+
+  return roleData ? user : null;
+}
+
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -29,28 +48,12 @@ const handler = async (req: Request): Promise<Response> => {
       getEnv("SUPABASE_SERVICE_ROLE_KEY")
     );
 
-    // Verify caller is authenticated admin
-    const authHeader = req.headers.get("authorization") || req.headers.get("Authorization");
-    if (!authHeader) return json({ error: "Não autorizado" }, 401);
+    const user = await verifyAdmin(supabaseAdmin, req);
+    if (!user) return json({ error: "Não autorizado ou sem permissão de admin" }, 401);
 
-    const token = authHeader.replace(/^Bearer\s+/i, "").trim();
-    if (!token) return json({ error: "Token inválido" }, 401);
-
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-    if (authError || !user) return json({ error: "Token inválido" }, 401);
-
-    const { data: roleData } = await supabaseAdmin
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", user.id)
-      .eq("role", "admin")
-      .maybeSingle();
-    if (!roleData) return json({ error: "Sem permissão de admin" }, 403);
-
-    // Parse multipart form data
     const contentType = req.headers.get("content-type") || "";
 
-    // Handle DELETE action via JSON
+    // === JSON actions: delete, signed-url ===
     if (contentType.includes("application/json")) {
       const body = await req.json();
 
@@ -75,24 +78,47 @@ const handler = async (req: Request): Promise<Response> => {
       return json({ error: "Ação inválida" }, 400);
     }
 
-    // Handle UPLOAD via FormData
-    if (!contentType.includes("multipart/form-data")) {
-      return json({ error: "Content-Type deve ser multipart/form-data ou application/json" }, 400);
+    // === UPLOAD via FormData (multipart/form-data) ===
+    let formData: FormData;
+    try {
+      formData = await req.formData();
+    } catch (e) {
+      console.error("admin-storage: formData parse error:", e);
+      return json({ error: "Falha ao processar upload. Verifique o formato do envio." }, 400);
     }
 
-    const formData = await req.formData();
-    const bucket = formData.get("bucket") as string;
-    const path = formData.get("path") as string;
-    const file = formData.get("file") as File;
+    const bucket = formData.get("bucket");
+    const path = formData.get("path");
+    const file = formData.get("file");
 
     if (!bucket || !path || !file) {
-      return json({ error: "bucket, path e file obrigatórios" }, 400);
+      return json({
+        error: "bucket, path e file obrigatórios",
+        debug: {
+          hasBucket: !!bucket,
+          hasPath: !!path,
+          hasFile: !!file,
+          contentType,
+        }
+      }, 400);
+    }
+
+    // Convert File/Blob to ArrayBuffer for maximum compatibility with self-hosted runtime
+    let fileBuffer: ArrayBuffer;
+    let fileContentType = "application/octet-stream";
+
+    if (file instanceof File || file instanceof Blob) {
+      fileBuffer = await file.arrayBuffer();
+      fileContentType = (file as File).type || "application/octet-stream";
+    } else {
+      // If it's a string (shouldn't happen, but handle gracefully)
+      fileBuffer = new TextEncoder().encode(String(file)).buffer;
     }
 
     const { data, error } = await supabaseAdmin.storage
-      .from(bucket)
-      .upload(path, file, {
-        contentType: file.type,
+      .from(String(bucket))
+      .upload(String(path), fileBuffer, {
+        contentType: fileContentType,
         upsert: false,
       });
 
