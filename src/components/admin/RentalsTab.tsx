@@ -188,7 +188,7 @@ const RentalsTab = () => {
     for (const file of uploadFiles) {
       const ext = file.name.split(".").pop();
       const path = `${user.id}/${contractId}/${crypto.randomUUID()}.${ext}`;
-      const { error: uploadError } = await supabase.storage.from("contract-documents").upload(path, file);
+      const { error: uploadError } = await adminStorageUpload("contract-documents", path, file);
       if (uploadError) { toast.error(`Erro ao enviar ${file.name}`); continue; }
       await adminInsert("contract_documents", {
         contract_id: contractId, file_path: path, file_name: file.name,
