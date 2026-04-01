@@ -28,6 +28,7 @@ import * as chatModule from "../chat/index.ts";
 import * as createAdminUserModule from "../create-admin-user/index.ts";
 import * as notifyTelegramModule from "../notify-telegram/index.ts";
 import * as adminCrudModule from "../admin-crud/index.ts";
+import * as adminStorageModule from "../admin-storage/index.ts";
 import * as aiInsightsModule from "../ai-insights/index.ts";
 
 const corsHeaders = {
@@ -45,6 +46,7 @@ const modules: Record<string, Record<string, unknown>> = {
   "create-admin-user": createAdminUserModule,
   "notify-telegram": notifyTelegramModule,
   "admin-crud": adminCrudModule,
+  "admin-storage": adminStorageModule,
   "ai-insights": aiInsightsModule,
 };
 
