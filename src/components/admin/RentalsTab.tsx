@@ -201,7 +201,7 @@ const RentalsTab = () => {
   };
 
   const deleteDoc = async (doc: ContractDoc) => {
-    await supabase.storage.from("contract-documents").remove([doc.file_path]);
+    await adminStorageDelete("contract-documents", [doc.file_path]);
     await adminDelete("contract_documents", { id: doc.id });
     toast.success("Documento removido");
     if (viewingDocs) fetchDocs(viewingDocs);
