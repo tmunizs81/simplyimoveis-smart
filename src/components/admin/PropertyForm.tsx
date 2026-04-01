@@ -80,7 +80,7 @@ const PropertyForm = ({ editingProperty, userId, onSaved, onCancel }: PropertyFo
       const ext = file.name.split(".").pop();
       const path = `${userId}/${propertyId}/${crypto.randomUUID()}.${ext}`;
       const { error } = await adminStorageUpload("property-media", path, file);
-      if (error) { toast.error(`Erro ao enviar ${file.name}`); continue; }
+      if (error) { toast.error(`Erro ao enviar ${file.name}: ${error.message}`); continue; }
       const fileType = file.type.startsWith("video") ? "video" : "image";
       await adminInsert("property_media", {
         property_id: propertyId, file_path: path, file_type: fileType,
