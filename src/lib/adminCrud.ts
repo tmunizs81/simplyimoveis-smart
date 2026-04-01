@@ -151,3 +151,25 @@ export async function adminStorageDelete(
   if (data?.error) return { data: null, error: { message: data.error } };
   return { data: data?.data ?? data, error: null };
 }
+
+/**
+ * Get a signed URL for a private storage file via admin-storage edge function.
+ */
+export async function adminStorageSignedUrl(
+  bucket: string,
+  filePath: string,
+  expiresIn = 3600
+): Promise<string | null> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return null;
+
+  const { data, error } = await supabase.functions.invoke("admin-storage", {
+    body: { action: "signed-url", bucket, path: filePath, expiresIn },
+    headers: {
+      Authorization: `Bearer ${session.access_token}`,
+    },
+  });
+
+  if (error || data?.error) return null;
+  return data?.signedUrl || null;
+}
