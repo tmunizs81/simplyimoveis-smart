@@ -53,7 +53,7 @@ const SaleDocuments = ({ saleId, onClose }: { saleId: string; onClose: () => voi
     for (const file of files) {
       const ext = file.name.split(".").pop();
       const path = `${user.id}/${saleId}/${crypto.randomUUID()}.${ext}`;
-      const { error: uploadErr } = await supabase.storage.from("sales-documents").upload(path, file);
+      const { error: uploadErr } = await adminStorageUpload("sales-documents", path, file);
       if (uploadErr) { toast.error(`Erro ao enviar ${file.name}`); continue; }
 
       await adminInsert("sales_documents", {
