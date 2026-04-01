@@ -80,8 +80,8 @@ const SaleDocuments = ({ saleId, onClose }: { saleId: string; onClose: () => voi
   };
 
   const handleView = async (doc: SaleDoc) => {
-    const { data } = await supabase.storage.from("sales-documents").createSignedUrl(doc.file_path, 300);
-    if (data?.signedUrl) window.open(data.signedUrl, "_blank");
+    const url = await adminStorageSignedUrl("sales-documents", doc.file_path, 300);
+    if (url) window.open(url, "_blank");
     else toast.error("Erro ao gerar link");
   };
 

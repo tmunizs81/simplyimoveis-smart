@@ -26,7 +26,7 @@ const PropertyList = ({ properties, onEdit, onRefresh, onNew }: PropertyListProp
     const prop = properties.find((p) => p.id === id);
     if (prop) {
       for (const m of prop.media) {
-        await supabase.storage.from("property-media").remove([m.file_path]);
+        await adminStorageDelete("property-media", [m.file_path]);
       }
     }
     await adminDelete("properties", { id });

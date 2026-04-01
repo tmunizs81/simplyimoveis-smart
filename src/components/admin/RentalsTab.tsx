@@ -208,8 +208,8 @@ const RentalsTab = () => {
   };
 
   const getDocUrl = async (filePath: string) => {
-    const { data } = await supabase.storage.from("contract-documents").createSignedUrl(filePath, 3600);
-    if (data?.signedUrl) window.open(data.signedUrl, "_blank");
+    const url = await adminStorageSignedUrl("contract-documents", filePath);
+    if (url) window.open(url, "_blank");
   };
 
   const getTenantName = (id: string | null) => tenants.find(t => t.id === id)?.name || "—";
