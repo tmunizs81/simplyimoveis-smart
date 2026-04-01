@@ -201,8 +201,8 @@ const TenantsTab = () => {
   };
 
   const viewDoc = async (filePath: string) => {
-    const { data } = await supabase.storage.from("tenant-documents").createSignedUrl(filePath, 3600);
-    if (data?.signedUrl) window.open(data.signedUrl, "_blank");
+    const url = await adminStorageSignedUrl("tenant-documents", filePath);
+    if (url) window.open(url, "_blank");
   };
 
   const filtered = tenants.filter(t => {
