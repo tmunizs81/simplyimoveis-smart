@@ -53,6 +53,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Handle DELETE action via JSON
     if (contentType.includes("application/json")) {
       const body = await req.json();
+
       if (body.action === "delete") {
         const { bucket, paths } = body;
         if (!bucket || !paths?.length) return json({ error: "bucket e paths obrigatórios" }, 400);
@@ -60,6 +61,17 @@ const handler = async (req: Request): Promise<Response> => {
         if (error) return json({ error: error.message }, 400);
         return json({ success: true });
       }
+
+      if (body.action === "signed-url") {
+        const { bucket, path, expiresIn } = body;
+        if (!bucket || !path) return json({ error: "bucket e path obrigatórios" }, 400);
+        const { data, error } = await supabaseAdmin.storage
+          .from(bucket)
+          .createSignedUrl(path, expiresIn || 3600);
+        if (error) return json({ error: error.message }, 400);
+        return json({ signedUrl: data.signedUrl });
+      }
+
       return json({ error: "Ação inválida" }, 400);
     }
 
