@@ -73,7 +73,7 @@ const SaleDocuments = ({ saleId, onClose }: { saleId: string; onClose: () => voi
 
   const handleDelete = async (doc: SaleDoc) => {
     if (!confirm(`Excluir "${doc.file_name}"?`)) return;
-    await supabase.storage.from("sales-documents").remove([doc.file_path]);
+    await adminStorageDelete("sales-documents", [doc.file_path]);
     await adminDelete("sales_documents", { id: doc.id });
     toast.success("Documento excluído");
     fetchDocs();
