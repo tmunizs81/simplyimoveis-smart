@@ -92,3 +92,62 @@ export async function adminDelete(
     match,
   });
 }
+
+/**
+ * Upload a file to storage via admin-storage edge function (uses service_role,
+ * bypasses storage RLS — works on both Lovable Cloud and self-hosted VPS).
+ */
+export async function adminStorageUpload(
+  bucket: string,
+  path: string,
+  file: File
+): Promise<CrudResult> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return { data: null, error: { message: "Não autenticado" } };
+
+  const formData = new FormData();
+  formData.append("bucket", bucket);
+  formData.append("path", path);
+  formData.append("file", file);
+
+  const { data, error } = await supabase.functions.invoke("admin-storage", {
+    body: formData,
+    headers: {
+      Authorization: `Bearer ${session.access_token}`,
+    },
+  });
+
+  if (error) {
+    const msg = typeof error === "object" && "message" in error
+      ? (error as any).message : String(error);
+    return { data: null, error: { message: msg } };
+  }
+  if (data?.error) return { data: null, error: { message: data.error } };
+  return { data: data?.data ?? data, error: null };
+}
+
+/**
+ * Delete files from storage via admin-storage edge function.
+ */
+export async function adminStorageDelete(
+  bucket: string,
+  paths: string[]
+): Promise<CrudResult> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) return { data: null, error: { message: "Não autenticado" } };
+
+  const { data, error } = await supabase.functions.invoke("admin-storage", {
+    body: { action: "delete", bucket, paths },
+    headers: {
+      Authorization: `Bearer ${session.access_token}`,
+    },
+  });
+
+  if (error) {
+    const msg = typeof error === "object" && "message" in error
+      ? (error as any).message : String(error);
+    return { data: null, error: { message: msg } };
+  }
+  if (data?.error) return { data: null, error: { message: data.error } };
+  return { data: data?.data ?? data, error: null };
+}
