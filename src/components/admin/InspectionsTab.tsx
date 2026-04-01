@@ -200,7 +200,7 @@ const InspectionsTab = () => {
     for (const file of uploadFiles) {
       const ext = file.name.split(".").pop();
       const path = `${user.id}/${inspectionId}/${crypto.randomUUID()}.${ext}`;
-      const { error } = await supabase.storage.from("inspection-media").upload(path, file);
+      const { error } = await adminStorageUpload("inspection-media", path, file);
       if (error) { toast.error(`Erro: ${file.name}`); continue; }
       await adminInsert("inspection_media", {
         inspection_id: inspectionId, file_path: path, file_name: file.name,
