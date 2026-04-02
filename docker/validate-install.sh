@@ -350,6 +350,22 @@ case "$STORAGE_UPLOAD_HTTP" in
     ;;
 esac
 
+if [ "$STORAGE_UPLOAD_HTTP" = "200" ] || [ "$STORAGE_UPLOAD_HTTP" = "201" ]; then
+  STORAGE_PUBLIC_HTTP=$(curl -sS -m 20 -o /tmp/simply-storage-public-read.txt -w "%{http_code}" \
+    "http://127.0.0.1:${KONG_PORT}/storage/v1/object/public/property-media/${SMOKE_PATH}?apikey=${ANON_KEY}" \
+    2>/dev/null || echo "000")
+
+  case "$STORAGE_PUBLIC_HTTP" in
+    200)
+      check "Leitura publica de property-media com apikey na query (HTTP $STORAGE_PUBLIC_HTTP)" "ok"
+      ;;
+    *)
+      STORAGE_PUBLIC_BODY=$(tr '\n' ' ' < /tmp/simply-storage-public-read.txt 2>/dev/null | sed 's/  */ /g' | cut -c1-220)
+      check "Leitura publica de property-media com apikey na query (HTTP $STORAGE_PUBLIC_HTTP) ${STORAGE_PUBLIC_BODY}" "warn"
+      ;;
+  esac
+fi
+
 if [ -n "$ADMIN_EMAIL" ] && [ -n "$ADMIN_PASSWORD" ]; then
   ADMIN_LOGIN_BODY=$(python3 - "$ADMIN_EMAIL" "$ADMIN_PASSWORD" <<'PY'
 import json
