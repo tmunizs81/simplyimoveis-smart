@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Save, X, Upload, Video, Image, Trash2, Star, MapPin, DollarSign, Maximize2, BedDouble, Bath, Home, FileText, Tag, Car, DoorOpen, Waves, Navigation } from "lucide-react";
+import { Save, X, Upload, Video, Image, Trash2, Star, MapPin, DollarSign, Maximize2, BedDouble, Bath, Home, FileText, Tag, Car, DoorOpen, Waves, Navigation, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { deletePropertyMediaItem, savePropertyWithMedia, type PropertyFormValues } from "@/lib/propertyFormService";
@@ -23,6 +23,7 @@ type PendingMediaItem = {
   file: File;
   fileType: "image" | "video";
   previewUrl: string | null;
+  uploadStatus?: "pending" | "uploading" | "registering" | "done" | "error";
 };
 
 const buildInitialForm = (
@@ -72,6 +73,7 @@ const PropertyForm = ({ editingProperty, userId, onSaved, onCancel }: PropertyFo
   const [pendingMedia, setPendingMedia] = useState<PendingMediaItem[]>([]);
   const [existingMedia, setExistingMedia] = useState<MediaRow[]>(editingProperty?.media || []);
   const [form, setForm] = useState<PropertyFormValues>(() => buildInitialForm(editingProperty));
+  const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null);
   const pendingMediaRef = useRef<PendingMediaItem[]>([]);
 
   useEffect(() => {
@@ -131,9 +133,20 @@ const PropertyForm = ({ editingProperty, userId, onSaved, onCancel }: PropertyFo
     }
   };
 
+  const handleFileProgress = useCallback((index: number, status: "uploading" | "registering" | "done" | "error", _fileName: string) => {
+    setPendingMedia((current) =>
+      current.map((item, i) => (i === index ? { ...item, uploadStatus: status } : item))
+    );
+    if (status === "uploading") {
+      setUploadProgress((prev) => ({ current: index + 1, total: prev?.total ?? 0 }));
+    }
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
+    setUploadProgress(pendingMedia.length > 0 ? { current: 0, total: pendingMedia.length } : null);
+    setPendingMedia((current) => current.map((item) => ({ ...item, uploadStatus: "pending" })));
 
     try {
       await savePropertyWithMedia({
@@ -142,17 +155,20 @@ const PropertyForm = ({ editingProperty, userId, onSaved, onCancel }: PropertyFo
         form,
         mediaFiles: pendingMedia.map((item) => item.file),
         existingMediaCount: existingMedia.length,
+        onFileProgress: handleFileProgress,
       });
 
       pendingMediaRef.current.forEach(revokePendingMediaItem);
       pendingMediaRef.current = [];
       setPendingMedia([]);
+      setUploadProgress(null);
       toast.success(editingProperty ? "Imóvel atualizado!" : "Imóvel cadastrado!");
       onSaved();
     } catch (err: any) {
       toast.error(err.message || "Erro ao salvar");
     } finally {
       setSaving(false);
+      setUploadProgress(null);
     }
   };
 
@@ -376,9 +392,24 @@ const PropertyForm = ({ editingProperty, userId, onSaved, onCancel }: PropertyFo
           {pendingMedia.length > 0 && (
             <div>
               <p className="text-xs font-medium text-muted-foreground mb-2">Novos arquivos ({pendingMedia.length})</p>
+              {/* Upload progress bar */}
+              {uploadProgress && (
+                <div className="mb-3 space-y-1.5">
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>Enviando {uploadProgress.current} de {uploadProgress.total}</span>
+                    <span>{Math.round((uploadProgress.current / uploadProgress.total) * 100)}%</span>
+                  </div>
+                  <div className="w-full h-2 bg-secondary rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-primary rounded-full transition-all duration-300"
+                      style={{ width: `${(uploadProgress.current / uploadProgress.total) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              )}
               <div className="grid grid-cols-4 sm:grid-cols-6 gap-3">
                 {pendingMedia.map((item) => (
-                  <div key={item.id} className="relative group aspect-square">
+                  <div key={item.id} className="relative group aspect-square" title={item.file.name}>
                     {item.fileType === "video" ? (
                       <div className="w-full h-full bg-secondary rounded-xl border border-border flex items-center justify-center">
                         <Video size={24} className="text-muted-foreground" />
@@ -386,11 +417,28 @@ const PropertyForm = ({ editingProperty, userId, onSaved, onCancel }: PropertyFo
                     ) : (
                       <img src={item.previewUrl || ""} alt="Nova mídia selecionada" className="w-full h-full object-cover rounded-xl border border-border" />
                     )}
+                    {/* Upload status overlay */}
+                    {item.uploadStatus && item.uploadStatus !== "pending" && (
+                      <div className={`absolute inset-0 rounded-xl flex flex-col items-center justify-center gap-1 text-[10px] font-bold ${
+                        item.uploadStatus === "done"
+                          ? "bg-green-500/80 text-white"
+                          : item.uploadStatus === "error"
+                            ? "bg-destructive/80 text-white"
+                            : "bg-black/60 text-white"
+                      }`}>
+                        {item.uploadStatus === "uploading" && <><Loader2 size={16} className="animate-spin" /> Enviando</>}
+                        {item.uploadStatus === "registering" && <><Loader2 size={16} className="animate-spin" /> Registrando</>}
+                        {item.uploadStatus === "done" && <><CheckCircle2 size={16} /> OK</>}
+                        {item.uploadStatus === "error" && <><AlertCircle size={16} /> Erro</>}
+                      </div>
+                    )}
                     <button
                       type="button"
                       disabled={saving}
                       onClick={() => removeNewFile(item.id)}
-                      className="absolute inset-0 bg-destructive/80 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all"
+                      className={`absolute inset-0 bg-destructive/80 rounded-xl flex items-center justify-center transition-all ${
+                        item.uploadStatus && item.uploadStatus !== "pending" ? "hidden" : "opacity-0 group-hover:opacity-100"
+                      }`}
                     >
                       <Trash2 size={16} className="text-destructive-foreground" />
                     </button>
