@@ -45,6 +45,18 @@ const getEnv = (name: string): string => {
   return value;
 };
 
+const getStorageInternalUrl = () => {
+  const explicitUrl = Deno.env.get("SUPABASE_STORAGE_URL")?.trim();
+  if (explicitUrl) return explicitUrl.replace(/\/+$/, "");
+
+  const supabaseUrl = getEnv("SUPABASE_URL").replace(/\/+$/, "");
+  if (supabaseUrl.includes("http://kong:8000")) {
+    return "http://storage:5000";
+  }
+
+  return `${supabaseUrl}/storage/v1`;
+};
+
 const isAllowedBucket = (bucket: string) => (
   ALLOWED_BUCKETS.includes(bucket as (typeof ALLOWED_BUCKETS)[number])
 );
@@ -149,15 +161,16 @@ const handler = async (req: Request): Promise<Response> => {
 
       // Upload via REST API direto com service_role para garantir bypass de RLS
       // no self-hosted (SDK pode não bypassar RLS em storage em algumas configurações)
-      const supabaseUrl = getEnv("SUPABASE_URL").replace(/\/+$/, "");
       const serviceKey = getEnv("SUPABASE_SERVICE_ROLE_KEY");
       const encodedPath = binaryUpload.path.split("/").map(encodeURIComponent).join("/");
-      const storageUrl = `${supabaseUrl}/storage/v1/object/${binaryUpload.bucket}/${encodedPath}`;
+      const storageBaseUrl = getStorageInternalUrl();
+      const storageUrl = `${storageBaseUrl}/object/${binaryUpload.bucket}/${encodedPath}`;
 
       const storageResponse = await fetch(storageUrl, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${serviceKey}`,
+          apikey: serviceKey,
           "Content-Type": binaryUpload.contentType,
           ...(binaryUpload.upsert ? { "x-upsert": "true" } : {}),
         },
