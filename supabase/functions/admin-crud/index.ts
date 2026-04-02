@@ -122,7 +122,13 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     const supabaseAdmin = createClient(
       getEnv("SUPABASE_URL"),
-      getEnv("SUPABASE_SERVICE_ROLE_KEY")
+      getEnv("SUPABASE_SERVICE_ROLE_KEY"),
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+      }
     );
 
     const binaryUpload = getBinaryUploadConfig(req);
@@ -141,15 +147,33 @@ const handler = async (req: Request): Promise<Response> => {
         return json({ error: "Arquivo vazio" }, 400);
       }
 
-      const { data, error } = await supabaseAdmin.storage
-        .from(binaryUpload.bucket)
-        .upload(binaryUpload.path, fileBuffer, {
-          contentType: binaryUpload.contentType,
-          upsert: binaryUpload.upsert,
-        });
+      // Upload via REST API direto com service_role para garantir bypass de RLS
+      // no self-hosted (SDK pode não bypassar RLS em storage em algumas configurações)
+      const supabaseUrl = getEnv("SUPABASE_URL").replace(/\/+$/, "");
+      const serviceKey = getEnv("SUPABASE_SERVICE_ROLE_KEY");
+      const encodedPath = binaryUpload.path.split("/").map(encodeURIComponent).join("/");
+      const storageUrl = `${supabaseUrl}/storage/v1/object/${binaryUpload.bucket}/${encodedPath}`;
 
-      if (error) return json({ error: error.message }, 400);
-      return json({ data });
+      const storageResponse = await fetch(storageUrl, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${serviceKey}`,
+          "Content-Type": binaryUpload.contentType,
+          ...(binaryUpload.upsert ? { "x-upsert": "true" } : {}),
+        },
+        body: fileBuffer,
+      });
+
+      const storageBody = await storageResponse.text();
+      let storageResult: any;
+      try { storageResult = JSON.parse(storageBody); } catch { storageResult = { error: storageBody }; }
+
+      if (!storageResponse.ok) {
+        console.error("admin-crud storage upload failed:", storageResponse.status, storageBody);
+        return json({ error: storageResult?.message || storageResult?.error || `Storage HTTP ${storageResponse.status}` }, 400);
+      }
+
+      return json({ data: storageResult });
     }
 
     const contentType = req.headers.get("content-type") || "";
