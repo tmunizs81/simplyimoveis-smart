@@ -122,7 +122,13 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     const supabaseAdmin = createClient(
       getEnv("SUPABASE_URL"),
-      getEnv("SUPABASE_SERVICE_ROLE_KEY")
+      getEnv("SUPABASE_SERVICE_ROLE_KEY"),
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+      }
     );
 
     const binaryUpload = getBinaryUploadConfig(req);
