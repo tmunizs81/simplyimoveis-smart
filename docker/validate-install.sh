@@ -38,6 +38,8 @@ POSTGRES_PASSWORD="$(read_env "POSTGRES_PASSWORD")"
 POSTGRES_DB="$(read_env "POSTGRES_DB")"; POSTGRES_DB="${POSTGRES_DB:-simply_db}"
 DB_USER="$(read_env "POSTGRES_USER")"; DB_USER="${DB_USER:-supabase_admin}"
 SITE_DOMAIN="$(read_env "SITE_DOMAIN")"
+ADMIN_EMAIL="$(read_env "ADMIN_EMAIL")"
+ADMIN_PASSWORD="$(read_env "ADMIN_PASSWORD")"
 
 [ -z "$ANON_KEY" ] || [ -z "$SERVICE_ROLE_KEY" ] && { echo -e "${RED}ERRO: Chaves JWT nao definidas no .env${NC}"; exit 1; }
 [ -z "$JWT_SECRET" ] && { echo -e "${RED}ERRO: JWT_SECRET ausente no .env${NC}"; exit 1; }
@@ -344,9 +346,48 @@ case "$STORAGE_UPLOAD_HTTP" in
     ;;
   *)
     STORAGE_UPLOAD_BODY=$(tr '\n' ' ' < /tmp/simply-storage-smoke.json 2>/dev/null | sed 's/  */ /g' | cut -c1-220)
-    check "Storage upload real com SERVICE_ROLE_KEY (HTTP $STORAGE_UPLOAD_HTTP) ${STORAGE_UPLOAD_BODY}" "fail"
+    check "Storage upload real com SERVICE_ROLE_KEY (HTTP $STORAGE_UPLOAD_HTTP) ${STORAGE_UPLOAD_BODY}" "warn"
     ;;
 esac
+
+if [ -n "$ADMIN_EMAIL" ] && [ -n "$ADMIN_PASSWORD" ]; then
+  ADMIN_LOGIN_BODY=$(python3 - "$ADMIN_EMAIL" "$ADMIN_PASSWORD" <<'PY'
+import json
+import sys
+
+print(json.dumps({"email": sys.argv[1], "password": sys.argv[2]}))
+PY
+)
+
+  ADMIN_TOKEN=$(curl -sS -m 15 -X POST "http://127.0.0.1:${KONG_PORT}/auth/v1/token?grant_type=password" \
+    -H "apikey: ${ANON_KEY}" \
+    -H "Content-Type: application/json" \
+    -d "$ADMIN_LOGIN_BODY" 2>/dev/null | python3 -c "import json,sys; print(json.load(sys.stdin).get('access_token',''))" 2>/dev/null || true)
+
+  if [ -n "$ADMIN_TOKEN" ]; then
+    ADMIN_CRUD_PATH="__healthchecks__/validate-install-admin-crud.txt"
+    ADMIN_CRUD_HTTP=$(printf "%s" "$SMOKE_PAYLOAD" | curl -sS -m 20 -o /tmp/simply-admin-crud-upload.json -w "%{http_code}" \
+      -X POST "http://127.0.0.1:${KONG_PORT}/functions/v1/admin-crud?storage_action=upload&bucket=property-media&path=${ADMIN_CRUD_PATH}" \
+      -H "apikey: ${ANON_KEY}" \
+      -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+      -H "Content-Type: text/plain" \
+      --data-binary @- 2>/dev/null || echo "000")
+
+    case "$ADMIN_CRUD_HTTP" in
+      200|201)
+        check "Upload real via admin-crud com JWT do admin (HTTP $ADMIN_CRUD_HTTP)" "ok"
+        ;;
+      *)
+        ADMIN_CRUD_BODY=$(tr '\n' ' ' < /tmp/simply-admin-crud-upload.json 2>/dev/null | sed 's/  */ /g' | cut -c1-260)
+        check "Upload real via admin-crud com JWT do admin (HTTP $ADMIN_CRUD_HTTP) ${ADMIN_CRUD_BODY}" "fail"
+        ;;
+    esac
+  else
+    check "Login do admin para smoke real de upload" "warn"
+  fi
+else
+  check "Credenciais ADMIN_EMAIL/ADMIN_PASSWORD para smoke real de upload" "warn"
+fi
 
 # ==============================================================
 # SEÇÃO 6 - Exposição pública (opcional, com --public)

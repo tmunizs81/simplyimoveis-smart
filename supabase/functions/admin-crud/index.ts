@@ -6,7 +6,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-admin-action, x-storage-bucket, x-storage-path, x-storage-upsert, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const ADMIN_CRUD_VERSION = "2026-04-02-selfhosted-r4";
+const ADMIN_CRUD_VERSION = "2026-04-02-selfhosted-r5";
 
 const buildJsonHeaders = (requestId?: string) => ({
   ...corsHeaders,
@@ -50,6 +50,14 @@ const getStorageObjectUrl = (supabaseUrl: string, bucket: string, encodedPath: s
 
   return `${normalizedBase}/storage/v1/object/${bucket}/${encodedPath}`;
 };
+
+const getRequestAuthHeader = (req: Request) => (
+  req.headers.get("authorization") || req.headers.get("Authorization") || ""
+);
+
+const getRequestBearerToken = (req: Request) => (
+  getRequestAuthHeader(req).replace(/^Bearer\s+/i, "").trim()
+);
 
 const ALLOWED_TABLES = [
   "tenants",
@@ -139,18 +147,22 @@ const formatStorageUploadDetails = (
   bucket: string,
   path: string,
   storageUrl: string,
+  attemptLabel: string,
 ) => {
   const compactBody = storageBody.replace(/\s+/g, " ").trim().slice(0, 500);
 
   if (/row-level security/i.test(compactBody)) {
     return [
       `admin-crud=${ADMIN_CRUD_VERSION}`,
+      `attempt=${attemptLabel}`,
       "self-hosted storage bloqueou o INSERT em storage.objects",
+      attemptLabel === "admin-user-jwt"
+        ? "o storage recebeu o JWT autenticado do admin; verifique auth.uid(), user_roles e policies TO authenticated em storage.objects"
+        : "o storage recebeu SERVICE_ROLE_KEY puro; em self-hosted isso pode falhar mesmo com BYPASSRLS se o runtime não assumir a role esperada",
       "confirme que supabase_storage_admin tem BYPASSRLS e é MEMBRO de service_role",
       "confirme grants em storage.objects/storage.buckets para authenticated/service_role",
       "confirme que SERVICE_ROLE_KEY é um JWT válido com role=service_role assinado pelo JWT_SECRET atual",
-      "grants esperados: GRANT service_role TO supabase_storage_admin; GRANT authenticated TO supabase_storage_admin; GRANT anon TO supabase_storage_admin; GRANT SELECT ON TABLE storage.buckets TO authenticated, service_role; GRANT SELECT ON TABLE storage.objects TO anon, authenticated, service_role; GRANT INSERT, UPDATE, DELETE ON TABLE storage.objects TO authenticated, service_role;",
-      "reaplique: bash sync-db-passwords.sh && bash bootstrap-db.sh && docker compose up -d --force-recreate rest storage",
+      "reaplique: bash sync-db-passwords.sh && bash bootstrap-db.sh && docker compose up -d --force-recreate rest storage functions",
       `bucket=${bucket}`,
       `path=${path}`,
       `storage_url=${storageUrl}`,
@@ -158,13 +170,11 @@ const formatStorageUploadDetails = (
     ].filter(Boolean).join(" | ");
   }
 
-  return compactBody || `admin-crud=${ADMIN_CRUD_VERSION} | bucket=${bucket} | path=${path} | storage_url=${storageUrl}`;
+  return compactBody || `admin-crud=${ADMIN_CRUD_VERSION} | attempt=${attemptLabel} | bucket=${bucket} | path=${path} | storage_url=${storageUrl}`;
 };
 
 async function verifyAdmin(supabaseAdmin: any, req: Request) {
-  const authHeader = req.headers.get("authorization") || req.headers.get("Authorization");
-  if (!authHeader) return null;
-  const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+  const token = getRequestBearerToken(req);
   if (!token) return null;
 
   const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
@@ -226,58 +236,109 @@ const handler = async (req: Request): Promise<Response> => {
         });
       }
 
-      // Upload via REST API direto com service_role para garantir bypass de RLS
-      // no self-hosted (SDK pode não bypassar RLS em storage em algumas configurações)
+      // Em self-hosted, o upload mais confiável é reenviar o JWT autenticado do admin.
+      // Quando isso falha, tentamos SERVICE_ROLE_KEY puro apenas como fallback/diagnóstico.
       const supabaseUrl = getEnv("SUPABASE_URL").replace(/\/+$/, "");
       const serviceKey = getEnv("SUPABASE_SERVICE_ROLE_KEY");
+      const anonKey = (Deno.env.get("SUPABASE_ANON_KEY") || "").trim() || serviceKey;
+      const userAuthHeader = getRequestAuthHeader(req);
       const encodedPath = binaryUpload.path.split("/").map(encodeURIComponent).join("/");
       const storageUrl = getStorageObjectUrl(supabaseUrl, binaryUpload.bucket, encodedPath);
 
-      const storageResponse = await fetch(storageUrl, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${serviceKey}`,
-          apikey: serviceKey,
-          "Content-Type": binaryUpload.contentType,
-          ...(binaryUpload.upsert ? { "x-upsert": "true" } : {}),
+      const attempts = [
+        {
+          label: "admin-user-jwt",
+          authorization: userAuthHeader,
+          apiKey: anonKey,
         },
-        body: fileBuffer,
-      });
+        {
+          label: "service-role-jwt",
+          authorization: `Bearer ${serviceKey}`,
+          apiKey: serviceKey,
+        },
+      ].filter((attempt) => attempt.authorization.trim().length > 0);
 
-      const storageBody = await storageResponse.text();
-      let storageResult: any;
-      try { storageResult = JSON.parse(storageBody); } catch { storageResult = { error: storageBody }; }
+      const failedAttempts: Array<{
+        label: string;
+        status: number;
+        body: string;
+        message: string;
+        details: string;
+      }> = [];
 
-      if (!storageResponse.ok) {
-        const storageDetails = formatStorageUploadDetails(
-          typeof storageBody === "string" ? storageBody : "",
-          binaryUpload.bucket,
-          binaryUpload.path,
-          storageUrl,
-        );
-        console.error(`[admin-crud][${requestId}] storage upload failed:`, {
-          status: storageResponse.status,
-          bucket: binaryUpload.bucket,
-          path: binaryUpload.path,
-          version: ADMIN_CRUD_VERSION,
-          storageUrl,
-          body: storageBody,
-        });
-        return errorJson(
-          requestId,
-          storageResult?.message || storageResult?.error || `Storage HTTP ${storageResponse.status}`,
-          400,
-          {
-            stage: "storage.upstream_upload",
-            details: storageDetails,
-            upstreamStatus: storageResponse.status,
-            version: ADMIN_CRUD_VERSION,
-            storageUrl,
+      for (const attempt of attempts) {
+        const storageResponse = await fetch(storageUrl, {
+          method: "POST",
+          headers: {
+            Authorization: attempt.authorization,
+            apikey: attempt.apiKey,
+            "Content-Type": binaryUpload.contentType,
+            ...(binaryUpload.upsert ? { "x-upsert": "true" } : {}),
           },
-        );
+          body: fileBuffer,
+        });
+
+        const storageBody = await storageResponse.text();
+        let storageResult: any;
+        try { storageResult = JSON.parse(storageBody); } catch { storageResult = { error: storageBody }; }
+
+        if (storageResponse.ok) {
+          return jsonWithRequestId(
+            {
+              data: storageResult,
+              debugId: requestId,
+              version: ADMIN_CRUD_VERSION,
+              uploadMode: attempt.label,
+            },
+            requestId,
+          );
+        }
+
+        failedAttempts.push({
+          label: attempt.label,
+          status: storageResponse.status,
+          body: storageBody,
+          message: storageResult?.message || storageResult?.error || `Storage HTTP ${storageResponse.status}`,
+          details: formatStorageUploadDetails(
+            typeof storageBody === "string" ? storageBody : "",
+            binaryUpload.bucket,
+            binaryUpload.path,
+            storageUrl,
+            attempt.label,
+          ),
+        });
       }
 
-      return jsonWithRequestId({ data: storageResult, debugId: requestId, version: ADMIN_CRUD_VERSION }, requestId);
+      const primaryFailure = failedAttempts[0];
+      console.error(`[admin-crud][${requestId}] storage upload failed in all modes:`, {
+        bucket: binaryUpload.bucket,
+        path: binaryUpload.path,
+        version: ADMIN_CRUD_VERSION,
+        storageUrl,
+        attempts: failedAttempts.map((attempt) => ({
+          label: attempt.label,
+          status: attempt.status,
+          body: attempt.body,
+        })),
+      });
+
+      return errorJson(
+        requestId,
+        primaryFailure?.message || "Falha no upload para o storage",
+        400,
+        {
+          stage: "storage.upstream_upload",
+          details: failedAttempts.map((attempt) => attempt.details).join(" || "),
+          upstreamStatus: primaryFailure?.status,
+          version: ADMIN_CRUD_VERSION,
+          storageUrl,
+          attempts: failedAttempts.map((attempt) => ({
+            mode: attempt.label,
+            status: attempt.status,
+            body: attempt.body.replace(/\s+/g, " ").trim().slice(0, 220),
+          })),
+        },
+      );
     }
 
     const contentType = req.headers.get("content-type") || "";
