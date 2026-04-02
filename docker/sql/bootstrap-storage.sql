@@ -59,6 +59,11 @@ DROP POLICY IF EXISTS "Admins can upload property-media" ON storage.objects;
 DROP POLICY IF EXISTS "Admins can update property-media" ON storage.objects;
 DROP POLICY IF EXISTS "Admins can delete property-media" ON storage.objects;
 DROP POLICY IF EXISTS "Public can read property-media" ON storage.objects;
+DROP POLICY IF EXISTS "Service role can manage contract-documents" ON storage.objects;
+DROP POLICY IF EXISTS "Service role can manage tenant-documents" ON storage.objects;
+DROP POLICY IF EXISTS "Service role can manage inspection-media" ON storage.objects;
+DROP POLICY IF EXISTS "Service role can manage sales-documents" ON storage.objects;
+DROP POLICY IF EXISTS "Service role can manage property-media" ON storage.objects;
 
 CREATE POLICY "Admins can upload contract-documents"
   ON storage.objects FOR INSERT TO authenticated
@@ -129,5 +134,30 @@ CREATE POLICY "Admins can delete property-media"
 CREATE POLICY "Public can read property-media"
   ON storage.objects FOR SELECT TO public
   USING (bucket_id = 'property-media');
+
+CREATE POLICY "Service role can manage contract-documents"
+  ON storage.objects FOR ALL TO service_role
+  USING (bucket_id = 'contract-documents')
+  WITH CHECK (bucket_id = 'contract-documents');
+
+CREATE POLICY "Service role can manage tenant-documents"
+  ON storage.objects FOR ALL TO service_role
+  USING (bucket_id = 'tenant-documents')
+  WITH CHECK (bucket_id = 'tenant-documents');
+
+CREATE POLICY "Service role can manage inspection-media"
+  ON storage.objects FOR ALL TO service_role
+  USING (bucket_id = 'inspection-media')
+  WITH CHECK (bucket_id = 'inspection-media');
+
+CREATE POLICY "Service role can manage sales-documents"
+  ON storage.objects FOR ALL TO service_role
+  USING (bucket_id = 'sales-documents')
+  WITH CHECK (bucket_id = 'sales-documents');
+
+CREATE POLICY "Service role can manage property-media"
+  ON storage.objects FOR ALL TO service_role
+  USING (bucket_id = 'property-media')
+  WITH CHECK (bucket_id = 'property-media');
 
 COMMIT;

@@ -62,6 +62,8 @@ for role in postgres supabase_admin supabase_auth_admin supabase_storage_admin a
 done
 
 echo "• Aplicando grants de roles..."
+R "ALTER ROLE service_role WITH BYPASSRLS;" >/dev/null 2>&1 || true
+R "ALTER ROLE supabase_admin WITH BYPASSRLS;" >/dev/null 2>&1 || true
 R "GRANT anon TO authenticator;" >/dev/null 2>&1 || true
 R "GRANT authenticated TO authenticator;" >/dev/null 2>&1 || true
 R "GRANT service_role TO authenticator;" >/dev/null 2>&1 || true
