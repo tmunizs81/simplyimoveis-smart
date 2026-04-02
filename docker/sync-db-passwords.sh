@@ -134,7 +134,7 @@ R "GRANT USAGE, CREATE ON SCHEMA storage TO supabase_storage_admin;" >/dev/null 
 R "GRANT ALL ON ALL TABLES IN SCHEMA storage TO supabase_storage_admin;" >/dev/null 2>&1 || true
 R "GRANT ALL ON ALL SEQUENCES IN SCHEMA storage TO supabase_storage_admin;" >/dev/null 2>&1 || true
 R "GRANT EXECUTE ON ALL ROUTINES IN SCHEMA storage TO supabase_storage_admin;" >/dev/null 2>&1 || true
-R "GRANT USAGE ON SCHEMA storage TO authenticator, service_role;" >/dev/null 2>&1 || true
+R "GRANT USAGE ON SCHEMA storage TO authenticator, anon, authenticated, service_role;" >/dev/null 2>&1 || true
 
 R "GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role, authenticator;" >/dev/null 2>&1 || true
 R "GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, service_role;" >/dev/null 2>&1 || true

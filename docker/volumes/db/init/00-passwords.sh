@@ -122,7 +122,7 @@ R "GRANT USAGE, CREATE ON SCHEMA storage TO supabase_storage_admin;"
 R "GRANT ALL ON ALL TABLES IN SCHEMA storage TO supabase_storage_admin;"
 R "GRANT ALL ON ALL SEQUENCES IN SCHEMA storage TO supabase_storage_admin;"
 R "GRANT ALL ON ALL ROUTINES IN SCHEMA storage TO supabase_storage_admin;"
-R "GRANT USAGE ON SCHEMA storage TO authenticator, service_role;"
+R "GRANT USAGE ON SCHEMA storage TO authenticator, anon, authenticated, service_role;"
 
 R "GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role, authenticator;"
 R "GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, service_role;"

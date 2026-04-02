@@ -35,6 +35,11 @@ ON CONFLICT (id) DO NOTHING;
 
 ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
 
+GRANT USAGE ON SCHEMA storage TO authenticator, anon, authenticated, service_role;
+GRANT SELECT ON TABLE storage.objects TO anon, authenticated, service_role;
+GRANT INSERT, UPDATE, DELETE ON TABLE storage.objects TO authenticated, service_role;
+GRANT SELECT ON TABLE storage.buckets TO authenticated, service_role;
+
 DROP POLICY IF EXISTS "Admins can upload contract-documents" ON storage.objects;
 DROP POLICY IF EXISTS "Admins can read contract-documents" ON storage.objects;
 DROP POLICY IF EXISTS "Admins can update contract-documents" ON storage.objects;
