@@ -104,6 +104,7 @@ type SavePropertyWithMediaParams = {
   form: PropertyFormValues;
   mediaFiles: File[];
   existingMediaCount: number;
+  onFileProgress?: (index: number, status: "uploading" | "registering" | "done" | "error", fileName: string) => void;
 };
 
 export async function savePropertyWithMedia({
@@ -112,6 +113,7 @@ export async function savePropertyWithMedia({
   form,
   mediaFiles,
   existingMediaCount,
+  onFileProgress,
 }: SavePropertyWithMediaParams): Promise<{ propertyId: string; uploadedCount: number }> {
   const payload = buildPropertyPayload(form);
   let propertyId = editingProperty?.id ?? null;
@@ -143,13 +145,16 @@ export async function savePropertyWithMedia({
       const file = mediaFiles[index];
       const storagePath = `${userId}/${propertyId}/${crypto.randomUUID()}.${getFileExtension(file)}`;
 
+      onFileProgress?.(index, "uploading", file.name);
       const uploadResult = await adminStorageUpload("property-media", storagePath, file);
       if (uploadResult.error) {
+        onFileProgress?.(index, "error", file.name);
         throw new Error(`Falha ao enviar ${file.name}: ${uploadResult.error.message}`);
       }
 
       uploadedPaths.push(storagePath);
 
+      onFileProgress?.(index, "registering", file.name);
       const mediaResult = await adminInsert("property_media", {
         property_id: propertyId,
         file_path: storagePath,
@@ -159,6 +164,7 @@ export async function savePropertyWithMedia({
 
       if (mediaResult.error) {
         await adminStorageDelete("property-media", [storagePath]);
+        onFileProgress?.(index, "error", file.name);
         throw new Error(`Falha ao registrar ${file.name}: ${mediaResult.error.message}`);
       }
 
@@ -169,6 +175,7 @@ export async function savePropertyWithMedia({
       if (insertedMedia?.id) {
         createdMediaIds.push(insertedMedia.id);
       }
+      onFileProgress?.(index, "done", file.name);
     }
 
     if (!propertyId) {
