@@ -6,7 +6,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-admin-action, x-storage-bucket, x-storage-path, x-storage-upsert, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const ADMIN_CRUD_VERSION = "2026-04-02-selfhosted-r3";
+const ADMIN_CRUD_VERSION = "2026-04-02-selfhosted-r4";
 
 const buildJsonHeaders = (requestId?: string) => ({
   ...corsHeaders,
@@ -147,8 +147,10 @@ const formatStorageUploadDetails = (
       `admin-crud=${ADMIN_CRUD_VERSION}`,
       "self-hosted storage bloqueou o INSERT em storage.objects",
       "confirme que supabase_storage_admin tem BYPASSRLS e é MEMBRO de service_role",
-      "grants esperados: GRANT service_role TO supabase_storage_admin; GRANT authenticated TO supabase_storage_admin; GRANT anon TO supabase_storage_admin;",
-      "reaplique: bash sync-db-passwords.sh && bash bootstrap-db.sh",
+      "confirme grants em storage.objects/storage.buckets para authenticated/service_role",
+      "confirme que SERVICE_ROLE_KEY é um JWT válido com role=service_role assinado pelo JWT_SECRET atual",
+      "grants esperados: GRANT service_role TO supabase_storage_admin; GRANT authenticated TO supabase_storage_admin; GRANT anon TO supabase_storage_admin; GRANT SELECT ON TABLE storage.buckets TO authenticated, service_role; GRANT SELECT ON TABLE storage.objects TO anon, authenticated, service_role; GRANT INSERT, UPDATE, DELETE ON TABLE storage.objects TO authenticated, service_role;",
+      "reaplique: bash sync-db-passwords.sh && bash bootstrap-db.sh && docker compose up -d --force-recreate rest storage",
       `bucket=${bucket}`,
       `path=${path}`,
       `storage_url=${storageUrl}`,
@@ -159,7 +161,7 @@ const formatStorageUploadDetails = (
   return compactBody || `admin-crud=${ADMIN_CRUD_VERSION} | bucket=${bucket} | path=${path} | storage_url=${storageUrl}`;
 };
 
-async function verifyAdmin(supabaseAdmin: ReturnType<typeof createClient>, req: Request) {
+async function verifyAdmin(supabaseAdmin: any, req: Request) {
   const authHeader = req.headers.get("authorization") || req.headers.get("Authorization");
   if (!authHeader) return null;
   const token = authHeader.replace(/^Bearer\s+/i, "").trim();
@@ -308,9 +310,9 @@ const handler = async (req: Request): Promise<Response> => {
       let fileBuffer: ArrayBuffer;
       let fileContentType = "application/octet-stream";
 
-      if (file instanceof File || file instanceof Blob) {
+      if (typeof file !== "string") {
         fileBuffer = await file.arrayBuffer();
-        fileContentType = (file as File).type || "application/octet-stream";
+        fileContentType = file.type || "application/octet-stream";
       } else {
         fileBuffer = new TextEncoder().encode(String(file)).buffer;
       }

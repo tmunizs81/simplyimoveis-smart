@@ -33,12 +33,14 @@ KONG_PORT="$(read_env "KONG_HTTP_PORT")"; KONG_PORT="${KONG_PORT:-8000}"
 FRONTEND_PORT="$(read_env "FRONTEND_PORT")"; FRONTEND_PORT="${FRONTEND_PORT:-3000}"
 ANON_KEY="$(read_env "ANON_KEY")"
 SERVICE_ROLE_KEY="$(read_env "SERVICE_ROLE_KEY")"
+JWT_SECRET="$(read_env "JWT_SECRET")"
 POSTGRES_PASSWORD="$(read_env "POSTGRES_PASSWORD")"
 POSTGRES_DB="$(read_env "POSTGRES_DB")"; POSTGRES_DB="${POSTGRES_DB:-simply_db}"
 DB_USER="$(read_env "POSTGRES_USER")"; DB_USER="${DB_USER:-supabase_admin}"
 SITE_DOMAIN="$(read_env "SITE_DOMAIN")"
 
 [ -z "$ANON_KEY" ] || [ -z "$SERVICE_ROLE_KEY" ] && { echo -e "${RED}ERRO: Chaves JWT nao definidas no .env${NC}"; exit 1; }
+[ -z "$JWT_SECRET" ] && { echo -e "${RED}ERRO: JWT_SECRET ausente no .env${NC}"; exit 1; }
 [ -z "$POSTGRES_PASSWORD" ] && { echo -e "${RED}ERRO: POSTGRES_PASSWORD ausente no .env${NC}"; exit 1; }
 
 PASS=0; FAIL=0; WARN=0
@@ -61,6 +63,55 @@ require_file() {
 run_sql() {
   compose exec -T -e PGPASSWORD="$POSTGRES_PASSWORD" db \
     psql -tA -w -h 127.0.0.1 -U "$DB_USER" -d "$POSTGRES_DB" -c "$1" 2>/dev/null || echo ""
+}
+
+validate_jwt_role() {
+  local token="$1" expected_role="$2"
+
+  python3 - "$token" "$JWT_SECRET" "$expected_role" <<'PY'
+import base64
+import hashlib
+import hmac
+import json
+import sys
+import time
+
+token, secret, expected_role = sys.argv[1], sys.argv[2], sys.argv[3]
+
+def b64decode_urlsafe(value: str) -> bytes:
+    value += "=" * (-len(value) % 4)
+    return base64.urlsafe_b64decode(value.encode())
+
+status = "invalid"
+
+try:
+    parts = token.split('.')
+    if len(parts) != 3:
+        status = 'invalid-format'
+    else:
+        header_b64, payload_b64, signature_b64 = parts
+        payload = json.loads(b64decode_urlsafe(payload_b64))
+        expected_signature = base64.urlsafe_b64encode(
+            hmac.new(
+                secret.encode(),
+                f"{header_b64}.{payload_b64}".encode(),
+                hashlib.sha256,
+            ).digest()
+        ).decode().rstrip('=')
+
+        if not hmac.compare_digest(expected_signature, signature_b64):
+            status = 'invalid-signature'
+        elif payload.get('role') != expected_role:
+            status = f"invalid-role:{payload.get('role')}"
+        elif int(payload.get('exp', 0) or 0) <= int(time.time()):
+            status = 'expired'
+        else:
+            status = 'ok'
+except Exception as exc:
+    status = f'invalid:{type(exc).__name__}'
+
+print(status)
+PY
 }
 
 echo -e "${BLUE}══════════════════════════════════════════════════${NC}"
@@ -255,6 +306,27 @@ STORAGE_ADMIN_BYPASS=$(run_sql "SELECT CASE WHEN rolbypassrls THEN 'ok' ELSE 'fa
 
 STORAGE_ADMIN_SERVICE_ROLE=$(run_sql "SELECT CASE WHEN pg_has_role('supabase_storage_admin', 'service_role', 'MEMBER') THEN 'ok' ELSE 'fail' END;")
 [ "$STORAGE_ADMIN_SERVICE_ROLE" = "ok" ] && check "supabase_storage_admin membro de service_role" "ok" || check "supabase_storage_admin sem grant de service_role" "fail"
+
+SERVICE_ROLE_JWT_STATUS="$(validate_jwt_role "$SERVICE_ROLE_KEY" "service_role" 2>/dev/null || echo "invalid")"
+[ "$SERVICE_ROLE_JWT_STATUS" = "ok" ] && check "SERVICE_ROLE_KEY assinado pelo JWT_SECRET com role=service_role" "ok" || check "SERVICE_ROLE_KEY inválida (${SERVICE_ROLE_JWT_STATUS})" "fail"
+
+STORAGE_GRANTS_OK=$(run_sql "
+SELECT CASE WHEN
+  has_schema_privilege('authenticated', 'storage', 'USAGE')
+  AND has_schema_privilege('service_role', 'storage', 'USAGE')
+  AND has_table_privilege('anon', 'storage.objects', 'SELECT')
+  AND has_table_privilege('authenticated', 'storage.objects', 'SELECT')
+  AND has_table_privilege('authenticated', 'storage.objects', 'INSERT')
+  AND has_table_privilege('authenticated', 'storage.objects', 'UPDATE')
+  AND has_table_privilege('authenticated', 'storage.objects', 'DELETE')
+  AND has_table_privilege('service_role', 'storage.objects', 'SELECT')
+  AND has_table_privilege('service_role', 'storage.objects', 'INSERT')
+  AND has_table_privilege('service_role', 'storage.objects', 'UPDATE')
+  AND has_table_privilege('service_role', 'storage.objects', 'DELETE')
+  AND has_table_privilege('authenticated', 'storage.buckets', 'SELECT')
+  AND has_table_privilege('service_role', 'storage.buckets', 'SELECT')
+THEN 'ok' ELSE 'fail' END;")
+[ "$STORAGE_GRANTS_OK" = "ok" ] && check "Grants em storage.objects/buckets para authenticated + service_role" "ok" || check "Grants ausentes em storage.objects/buckets para authenticated + service_role" "fail"
 
 SMOKE_PATH="__healthchecks__/validate-install.txt"
 SMOKE_PAYLOAD="storage-smoke $(date -u +%Y-%m-%dT%H:%M:%SZ)"

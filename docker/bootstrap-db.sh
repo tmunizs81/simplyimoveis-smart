@@ -188,6 +188,25 @@ WHERE schemaname='storage'
 
 [ "${STORAGE_POLICIES:-0}" -lt 25 ] && fail "Policies de storage incompletas (${STORAGE_POLICIES}/25)"
 
-echo -e "   ${GREEN}✅ Storage validado (buckets + policies)${NC}"
+STORAGE_GRANTS_OK=$(run_db_sql "
+SELECT CASE WHEN
+  has_schema_privilege('authenticated', 'storage', 'USAGE')
+  AND has_schema_privilege('service_role', 'storage', 'USAGE')
+  AND has_table_privilege('anon', 'storage.objects', 'SELECT')
+  AND has_table_privilege('authenticated', 'storage.objects', 'SELECT')
+  AND has_table_privilege('authenticated', 'storage.objects', 'INSERT')
+  AND has_table_privilege('authenticated', 'storage.objects', 'UPDATE')
+  AND has_table_privilege('authenticated', 'storage.objects', 'DELETE')
+  AND has_table_privilege('service_role', 'storage.objects', 'SELECT')
+  AND has_table_privilege('service_role', 'storage.objects', 'INSERT')
+  AND has_table_privilege('service_role', 'storage.objects', 'UPDATE')
+  AND has_table_privilege('service_role', 'storage.objects', 'DELETE')
+  AND has_table_privilege('authenticated', 'storage.buckets', 'SELECT')
+  AND has_table_privilege('service_role', 'storage.buckets', 'SELECT')
+THEN 'ok' ELSE 'fail' END;" 2>/dev/null || echo "fail")
+
+[ "$(echo "$STORAGE_GRANTS_OK" | tr -d '[:space:]')" != "ok" ] && fail "Grants críticos ausentes em storage.objects/storage.buckets para authenticated/service_role"
+
+echo -e "   ${GREEN}✅ Storage validado (buckets + policies + grants)${NC}"
 
 echo -e "\n${GREEN}✅ Bootstrap DB + Storage concluído com sucesso!${NC}"
