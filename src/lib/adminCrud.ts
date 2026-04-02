@@ -16,6 +16,41 @@ async function getSession() {
   return session;
 }
 
+function getAdminCrudUrl() {
+  const envUrl = String(import.meta.env.VITE_SUPABASE_URL ?? "").trim().replace(/\/+$/, "");
+
+  if (envUrl) {
+    return `${envUrl}/functions/v1/admin-crud`;
+  }
+
+  if (typeof window !== "undefined") {
+    return `${window.location.origin}/api/functions/v1/admin-crud`;
+  }
+
+  throw new Error("URL do backend não configurada");
+}
+
+async function parseAdminCrudResponse(response: Response): Promise<CrudResult> {
+  const responseText = await response.text();
+
+  let result: any = null;
+  try {
+    result = responseText ? JSON.parse(responseText) : null;
+  } catch {
+    result = { error: responseText || `HTTP ${response.status}` };
+  }
+
+  if (!response.ok) {
+    return { data: null, error: { message: result?.error || `HTTP ${response.status}` } };
+  }
+
+  if (result?.error) {
+    return { data: null, error: { message: result.error } };
+  }
+
+  return { data: result?.data ?? result, error: null };
+}
+
 async function callAdminCrud(body: Record<string, unknown>): Promise<CrudResult> {
   const session = await getSession();
   if (!session) return { data: null, error: { message: "Não autenticado" } };
@@ -89,8 +124,8 @@ export async function adminDelete(
 }
 
 /**
- * Upload a file to storage via admin-crud edge function (multipart/form-data).
- * Uses raw fetch() because supabase.functions.invoke() breaks FormData encoding.
+ * Upload a file to storage via admin-crud edge function using a raw binary body.
+ * This avoids multipart parsing issues in self-hosted edge-runtime deployments.
  */
 export async function adminStorageUpload(
   bucket: string,
@@ -100,38 +135,28 @@ export async function adminStorageUpload(
   const session = await getSession();
   if (!session) return { data: null, error: { message: "Não autenticado" } };
 
-  const formData = new FormData();
-  formData.append("bucket", bucket);
-  formData.append("path", path);
-  formData.append("file", file);
-
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
   const apiKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+  if (!apiKey) {
+    return { data: null, error: { message: "Chave pública do backend não configurada" } };
+  }
 
   try {
-    const uploadUrl = `${supabaseUrl}/functions/v1/admin-crud`;
-    console.log("[adminStorageUpload] uploading to:", uploadUrl, "bucket:", bucket, "path:", path, "file:", file.name, "size:", file.size);
-    
-    const response = await fetch(uploadUrl, {
+    const response = await fetch(getAdminCrudUrl(), {
       method: "POST",
       headers: {
         Authorization: `Bearer ${session.access_token}`,
         apikey: apiKey,
+        "x-admin-action": "storage-upload",
+        "x-storage-bucket": bucket,
+        "x-storage-path": path,
+        "x-storage-upsert": "false",
+        "Content-Type": file.type || "application/octet-stream",
       },
-      body: formData,
+      body: file,
     });
 
-    const responseText = await response.text();
-    console.log("[adminStorageUpload] response status:", response.status, "body:", responseText);
-    
-    let result: any;
-    try { result = JSON.parse(responseText); } catch { result = { error: responseText }; }
-    
-    if (!response.ok) return { data: null, error: { message: result?.error || `HTTP ${response.status}` } };
-    if (result?.error) return { data: null, error: { message: result.error } };
-    return { data: result?.data ?? result, error: null };
+    return await parseAdminCrudResponse(response);
   } catch (err: any) {
-    console.error("[adminStorageUpload] network error:", err);
     return { data: null, error: { message: err.message || "Erro de rede no upload" } };
   }
 }

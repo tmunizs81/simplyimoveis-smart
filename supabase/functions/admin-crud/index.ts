@@ -45,6 +45,22 @@ const getEnv = (name: string): string => {
   return value;
 };
 
+const isAllowedBucket = (bucket: string) => (
+  ALLOWED_BUCKETS.includes(bucket as (typeof ALLOWED_BUCKETS)[number])
+);
+
+const getBinaryUploadConfig = (req: Request) => {
+  const action = req.headers.get("x-admin-action") || req.headers.get("x-storage-action");
+  if (action !== "storage-upload") return null;
+
+  return {
+    bucket: (req.headers.get("x-storage-bucket") || "").trim(),
+    path: (req.headers.get("x-storage-path") || "").trim(),
+    upsert: (req.headers.get("x-storage-upsert") || "false").toLowerCase() === "true",
+    contentType: req.headers.get("content-type") || "application/octet-stream",
+  };
+};
+
 async function verifyAdmin(supabaseAdmin: ReturnType<typeof createClient>, req: Request) {
   const authHeader = req.headers.get("authorization") || req.headers.get("Authorization");
   if (!authHeader) return null;
@@ -75,6 +91,33 @@ const handler = async (req: Request): Promise<Response> => {
       getEnv("SUPABASE_SERVICE_ROLE_KEY")
     );
 
+    const binaryUpload = getBinaryUploadConfig(req);
+    if (binaryUpload) {
+      const user = await verifyAdmin(supabaseAdmin, req);
+      if (!user) return json({ error: "Não autorizado ou sem permissão de admin" }, 401);
+      if (!binaryUpload.bucket || !binaryUpload.path) {
+        return json({ error: "bucket e path obrigatórios" }, 400);
+      }
+      if (!isAllowedBucket(binaryUpload.bucket)) {
+        return json({ error: `Bucket '${binaryUpload.bucket}' não permitido` }, 400);
+      }
+
+      const fileBuffer = await req.arrayBuffer();
+      if (!fileBuffer.byteLength) {
+        return json({ error: "Arquivo vazio" }, 400);
+      }
+
+      const { data, error } = await supabaseAdmin.storage
+        .from(binaryUpload.bucket)
+        .upload(binaryUpload.path, fileBuffer, {
+          contentType: binaryUpload.contentType,
+          upsert: binaryUpload.upsert,
+        });
+
+      if (error) return json({ error: error.message }, 400);
+      return json({ data });
+    }
+
     const contentType = req.headers.get("content-type") || "";
 
     // === MULTIPART UPLOAD (FormData) ===
@@ -98,7 +141,7 @@ const handler = async (req: Request): Promise<Response> => {
         return json({ error: "bucket, path e file obrigatórios" }, 400);
       }
 
-      if (!ALLOWED_BUCKETS.includes(String(bucket) as (typeof ALLOWED_BUCKETS)[number])) {
+      if (!isAllowedBucket(String(bucket))) {
         return json({ error: `Bucket '${bucket}' não permitido` }, 400);
       }
 
@@ -143,6 +186,9 @@ const handler = async (req: Request): Promise<Response> => {
     if (action === "storage-delete") {
       const { bucket, paths } = body;
       if (!bucket || !paths?.length) return json({ error: "bucket e paths obrigatórios" }, 400);
+      if (!isAllowedBucket(String(bucket))) {
+        return json({ error: `Bucket '${bucket}' não permitido` }, 400);
+      }
       const { error } = await supabaseAdmin.storage.from(bucket).remove(paths);
       if (error) return json({ error: error.message }, 400);
       return json({ success: true });
@@ -151,6 +197,9 @@ const handler = async (req: Request): Promise<Response> => {
     if (action === "storage-signed-url") {
       const { bucket, path: filePath, expiresIn } = body;
       if (!bucket || !filePath) return json({ error: "bucket e path obrigatórios" }, 400);
+      if (!isAllowedBucket(String(bucket))) {
+        return json({ error: `Bucket '${bucket}' não permitido` }, 400);
+      }
       const { data: urlData, error } = await supabaseAdmin.storage
         .from(bucket)
         .createSignedUrl(filePath, expiresIn || 3600);

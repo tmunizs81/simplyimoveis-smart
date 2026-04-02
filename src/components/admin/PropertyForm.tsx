@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Save, X, Upload, Video, Image, Trash2, Star, MapPin, DollarSign, Maximize2, BedDouble, Bath, Home, FileText, Tag, Car, DoorOpen, Waves, Navigation } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { adminInsert, adminUpdate, adminDelete, adminStorageUpload, adminStorageDelete } from "@/lib/adminCrud";
+import { deletePropertyMediaItem, savePropertyWithMedia, type PropertyFormValues } from "@/lib/propertyFormService";
 import type { Database } from "@/integrations/supabase/types";
 
 type Property = Database["public"]["Tables"]["properties"]["Row"];
@@ -18,30 +18,71 @@ interface PropertyFormProps {
   onCancel: () => void;
 }
 
+type PendingMediaItem = {
+  id: string;
+  file: File;
+  fileType: "image" | "video";
+  previewUrl: string | null;
+};
+
+const buildInitialForm = (
+  editingProperty?: (Property & { media: MediaRow[] }) | null
+): PropertyFormValues => ({
+  title: editingProperty?.title || "",
+  address: editingProperty?.address || "",
+  neighborhood: editingProperty?.neighborhood || "",
+  city: editingProperty?.city || "Fortaleza",
+  price: editingProperty ? Number(editingProperty.price) : 0,
+  bedrooms: editingProperty?.bedrooms ?? 1,
+  suites: editingProperty?.suites ?? 0,
+  bathrooms: editingProperty?.bathrooms ?? 1,
+  garage_spots: editingProperty?.garage_spots ?? 0,
+  area: editingProperty ? Number(editingProperty.area) : 0,
+  pool_size: editingProperty?.pool_size ? Number(editingProperty.pool_size) : 0,
+  nearby_points: editingProperty?.nearby_points || "",
+  type: editingProperty?.type || "Apartamento",
+  status: editingProperty?.status || "venda",
+  description: editingProperty?.description || "",
+  featured: editingProperty?.featured ?? false,
+  active: editingProperty?.active ?? true,
+});
+
+const revokePendingMediaItem = (item: PendingMediaItem) => {
+  if (item.previewUrl) {
+    URL.revokeObjectURL(item.previewUrl);
+  }
+};
+
+const createPendingMediaItem = (file: File): PendingMediaItem | null => {
+  if (!file.type.startsWith("image/") && !file.type.startsWith("video/")) {
+    return null;
+  }
+
+  return {
+    id: crypto.randomUUID(),
+    file,
+    fileType: file.type.startsWith("video/") ? "video" : "image",
+    previewUrl: file.type.startsWith("image/") ? URL.createObjectURL(file) : null,
+  };
+};
+
 const PropertyForm = ({ editingProperty, userId, onSaved, onCancel }: PropertyFormProps) => {
   const [saving, setSaving] = useState(false);
-  const [mediaFiles, setMediaFiles] = useState<File[]>([]);
-  const [mediaPreviews, setMediaPreviews] = useState<string[]>([]);
+  const [deletingMediaId, setDeletingMediaId] = useState<string | null>(null);
+  const [pendingMedia, setPendingMedia] = useState<PendingMediaItem[]>([]);
   const [existingMedia, setExistingMedia] = useState<MediaRow[]>(editingProperty?.media || []);
-  const [form, setForm] = useState({
-    title: editingProperty?.title || "",
-    address: editingProperty?.address || "",
-    neighborhood: (editingProperty as any)?.neighborhood || "",
-    city: (editingProperty as any)?.city || "Fortaleza",
-    price: editingProperty ? Number(editingProperty.price) : 0,
-    bedrooms: editingProperty?.bedrooms ?? 1,
-    suites: (editingProperty as any)?.suites ?? 0,
-    bathrooms: editingProperty?.bathrooms ?? 1,
-    garage_spots: (editingProperty as any)?.garage_spots ?? 0,
-    area: editingProperty ? Number(editingProperty.area) : 0,
-    pool_size: (editingProperty as any)?.pool_size ? Number((editingProperty as any).pool_size) : 0,
-    nearby_points: (editingProperty as any)?.nearby_points || "",
-    type: (editingProperty?.type || "Apartamento") as typeof PROPERTY_TYPES[number],
-    status: (editingProperty?.status || "venda") as "venda" | "aluguel",
-    description: editingProperty?.description || "",
-    featured: editingProperty?.featured ?? false,
-    active: editingProperty?.active ?? true,
-  });
+  const [form, setForm] = useState<PropertyFormValues>(() => buildInitialForm(editingProperty));
+  const pendingMediaRef = useRef<PendingMediaItem[]>([]);
+
+  useEffect(() => {
+    pendingMediaRef.current = pendingMedia;
+  }, [pendingMedia]);
+
+  useEffect(() => {
+    return () => {
+      pendingMediaRef.current.forEach(revokePendingMediaItem);
+    };
+  }, []);
 
   const getMediaUrl = (filePath: string) => {
     const { data } = supabase.storage.from("property-media").getPublicUrl(filePath);
@@ -50,76 +91,63 @@ const PropertyForm = ({ editingProperty, userId, onSaved, onCancel }: PropertyFo
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    setMediaFiles((prev) => [...prev, ...files]);
-    files.forEach((f) => {
-      if (f.type.startsWith("image")) {
-        const reader = new FileReader();
-        reader.onload = (ev) => setMediaPreviews((p) => [...p, ev.target?.result as string]);
-        reader.readAsDataURL(f);
-      } else {
-        setMediaPreviews((p) => [...p, "video"]);
+    const nextItems = files
+      .map(createPendingMediaItem)
+      .filter((item): item is PendingMediaItem => Boolean(item));
+
+    if (nextItems.length !== files.length) {
+      toast.error("Alguns arquivos foram ignorados. Envie apenas imagens ou vídeos válidos.");
+    }
+
+    if (nextItems.length > 0) {
+      setPendingMedia((current) => [...current, ...nextItems]);
+    }
+
+    e.target.value = "";
+  };
+
+  const removeNewFile = (id: string) => {
+    setPendingMedia((current) => {
+      const item = current.find((entry) => entry.id === id);
+      if (item) {
+        revokePendingMediaItem(item);
       }
+
+      return current.filter((entry) => entry.id !== id);
     });
   };
 
-  const removeNewFile = (index: number) => {
-    setMediaFiles((prev) => prev.filter((_, i) => i !== index));
-    setMediaPreviews((prev) => prev.filter((_, i) => i !== index));
-  };
-
   const deleteExistingMedia = async (media: MediaRow) => {
-    await adminStorageDelete("property-media", [media.file_path]);
-    await adminDelete("property_media", { id: media.id });
-    setExistingMedia((prev) => prev.filter((m) => m.id !== media.id));
-    toast.success("Mídia removida!");
-  };
+    setDeletingMediaId(media.id);
 
-  const uploadMedia = async (propertyId: string) => {
-    for (let i = 0; i < mediaFiles.length; i++) {
-      const file = mediaFiles[i];
-      const ext = file.name.split(".").pop();
-      const path = `${userId}/${propertyId}/${crypto.randomUUID()}.${ext}`;
-      const { error } = await adminStorageUpload("property-media", path, file);
-      if (error) { toast.error(`Erro ao enviar ${file.name}: ${error.message}`); continue; }
-      const fileType = file.type.startsWith("video") ? "video" : "image";
-      await adminInsert("property_media", {
-        property_id: propertyId, file_path: path, file_type: fileType,
-        sort_order: existingMedia.length + i,
-      });
+    try {
+      await deletePropertyMediaItem(media);
+      setExistingMedia((current) => current.filter((entry) => entry.id !== media.id));
+      toast.success("Mídia removida!");
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao remover mídia");
+    } finally {
+      setDeletingMediaId(null);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
+
     try {
-      if (editingProperty) {
-        const { error } = await adminUpdate("properties", {
-          title: form.title, address: form.address,
-          neighborhood: form.neighborhood || null, city: form.city || null,
-          price: form.price, bedrooms: form.bedrooms, suites: form.suites,
-          bathrooms: form.bathrooms, garage_spots: form.garage_spots, area: form.area,
-          pool_size: form.pool_size, nearby_points: form.nearby_points || null,
-          type: form.type, status: form.status, description: form.description,
-          featured: form.featured, active: form.active,
-        }, { id: editingProperty.id });
-        if (error) throw new Error(error.message);
-        if (mediaFiles.length) await uploadMedia(editingProperty.id);
-        toast.success("Imóvel atualizado!");
-      } else {
-        const { data, error } = await adminInsert("properties", {
-          user_id: userId, title: form.title, address: form.address,
-          neighborhood: form.neighborhood || null, city: form.city || null,
-          price: form.price, bedrooms: form.bedrooms, suites: form.suites,
-          bathrooms: form.bathrooms, garage_spots: form.garage_spots,
-          area: form.area, pool_size: form.pool_size, nearby_points: form.nearby_points || null,
-          type: form.type, status: form.status,
-          description: form.description, featured: form.featured, active: form.active,
-        });
-        if (error) throw new Error(error.message);
-        if (mediaFiles.length && data?.[0]) await uploadMedia(data[0].id);
-        toast.success("Imóvel cadastrado!");
-      }
+      await savePropertyWithMedia({
+        editingProperty,
+        userId,
+        form,
+        mediaFiles: pendingMedia.map((item) => item.file),
+        existingMediaCount: existingMedia.length,
+      });
+
+      pendingMediaRef.current.forEach(revokePendingMediaItem);
+      pendingMediaRef.current = [];
+      setPendingMedia([]);
+      toast.success(editingProperty ? "Imóvel atualizado!" : "Imóvel cadastrado!");
       onSaved();
     } catch (err: any) {
       toast.error(err.message || "Erro ao salvar");
@@ -320,7 +348,7 @@ const PropertyForm = ({ editingProperty, userId, onSaved, onCancel }: PropertyFo
                 {existingMedia.map((m) => (
                   <div key={m.id} className="relative group aspect-square">
                     {m.file_type === "image" ? (
-                      <img src={getMediaUrl(m.file_path)} alt="" className="w-full h-full object-cover rounded-xl border border-border" />
+                      <img src={getMediaUrl(m.file_path)} alt="Mídia já cadastrada do imóvel" className="w-full h-full object-cover rounded-xl border border-border" />
                     ) : (
                       <div className="w-full h-full bg-secondary rounded-xl border border-border flex items-center justify-center">
                         <Video size={24} className="text-muted-foreground" />
@@ -328,10 +356,15 @@ const PropertyForm = ({ editingProperty, userId, onSaved, onCancel }: PropertyFo
                     )}
                     <button
                       type="button"
+                      disabled={saving || deletingMediaId === m.id}
                       onClick={() => deleteExistingMedia(m)}
-                      className="absolute inset-0 bg-destructive/80 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all"
+                      className="absolute inset-0 bg-destructive/80 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all disabled:cursor-not-allowed disabled:opacity-100"
                     >
-                      <Trash2 size={16} className="text-destructive-foreground" />
+                      {deletingMediaId === m.id ? (
+                        <div className="w-4 h-4 border-2 border-destructive-foreground/40 border-t-destructive-foreground rounded-full animate-spin" />
+                      ) : (
+                        <Trash2 size={16} className="text-destructive-foreground" />
+                      )}
                     </button>
                   </div>
                 ))}
@@ -340,22 +373,23 @@ const PropertyForm = ({ editingProperty, userId, onSaved, onCancel }: PropertyFo
           )}
 
           {/* New file previews */}
-          {mediaPreviews.length > 0 && (
+          {pendingMedia.length > 0 && (
             <div>
-              <p className="text-xs font-medium text-muted-foreground mb-2">Novos arquivos ({mediaPreviews.length})</p>
+              <p className="text-xs font-medium text-muted-foreground mb-2">Novos arquivos ({pendingMedia.length})</p>
               <div className="grid grid-cols-4 sm:grid-cols-6 gap-3">
-                {mediaPreviews.map((preview, i) => (
-                  <div key={i} className="relative group aspect-square">
-                    {preview === "video" ? (
+                {pendingMedia.map((item) => (
+                  <div key={item.id} className="relative group aspect-square">
+                    {item.fileType === "video" ? (
                       <div className="w-full h-full bg-secondary rounded-xl border border-border flex items-center justify-center">
                         <Video size={24} className="text-muted-foreground" />
                       </div>
                     ) : (
-                      <img src={preview} alt="" className="w-full h-full object-cover rounded-xl border border-border" />
+                      <img src={item.previewUrl || ""} alt="Nova mídia selecionada" className="w-full h-full object-cover rounded-xl border border-border" />
                     )}
                     <button
                       type="button"
-                      onClick={() => removeNewFile(i)}
+                      disabled={saving}
+                      onClick={() => removeNewFile(item.id)}
                       className="absolute inset-0 bg-destructive/80 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all"
                     >
                       <Trash2 size={16} className="text-destructive-foreground" />
@@ -373,9 +407,9 @@ const PropertyForm = ({ editingProperty, userId, onSaved, onCancel }: PropertyFo
             </div>
             <div className="text-center">
               <p className="text-sm font-semibold text-foreground">Clique para enviar</p>
-              <p className="text-xs text-muted-foreground">Fotos (JPG, PNG) ou Vídeos (MP4)</p>
+              <p className="text-xs text-muted-foreground">Fotos e vídeos são enviados junto com o salvamento do imóvel</p>
             </div>
-            <input type="file" multiple accept="image/*,video/*" onChange={handleFileSelect} className="sr-only" />
+            <input type="file" multiple accept="image/*,video/*" onChange={handleFileSelect} className="sr-only" disabled={saving} />
           </label>
         </div>
 

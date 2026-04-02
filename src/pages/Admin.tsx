@@ -171,6 +171,7 @@ const Admin = () => {
 
           {activeTab === "properties" && showForm && (
             <PropertyForm
+              key={editingProperty?.id ?? "new-property"}
               editingProperty={editingProperty}
               userId={user.id}
               onSaved={() => { setShowForm(false); setEditingProperty(null); fetchProperties(); }}
