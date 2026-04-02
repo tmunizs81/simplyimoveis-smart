@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { Edit, Trash2, Star, Eye, EyeOff, MapPin, BedDouble, Bath, Maximize2, ImageIcon, Plus, Search, Building2, Car, DoorOpen } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { adminUpdate, adminDelete, adminStorageDelete } from "@/lib/adminCrud";
+import { getMediaUrl } from "@/lib/mediaUrl";
 import { toast } from "sonner";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -16,10 +16,6 @@ interface PropertyListProps {
 }
 
 const PropertyList = ({ properties, onEdit, onRefresh, onNew }: PropertyListProps) => {
-  const getMediaUrl = (filePath: string) => {
-    const { data } = supabase.storage.from("property-media").getPublicUrl(filePath);
-    return data.publicUrl;
-  };
 
   const deleteProperty = async (id: string) => {
     if (!confirm("Tem certeza que deseja remover este imóvel?")) return;
