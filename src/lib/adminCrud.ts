@@ -30,6 +30,15 @@ function getAdminCrudUrl() {
   throw new Error("URL do backend não configurada");
 }
 
+function buildAdminCrudUploadUrl(bucket: string, path: string, upsert = false) {
+  const url = new URL(getAdminCrudUrl());
+  url.searchParams.set("storage_action", "upload");
+  url.searchParams.set("bucket", bucket);
+  url.searchParams.set("path", path);
+  url.searchParams.set("upsert", String(upsert));
+  return url.toString();
+}
+
 async function parseAdminCrudResponse(response: Response): Promise<CrudResult> {
   const responseText = await response.text();
 
@@ -141,15 +150,11 @@ export async function adminStorageUpload(
   }
 
   try {
-    const response = await fetch(getAdminCrudUrl(), {
+    const response = await fetch(buildAdminCrudUploadUrl(bucket, path), {
       method: "POST",
       headers: {
         Authorization: `Bearer ${session.access_token}`,
         apikey: apiKey,
-        "x-admin-action": "storage-upload",
-        "x-storage-bucket": bucket,
-        "x-storage-path": path,
-        "x-storage-upsert": "false",
         "Content-Type": file.type || "application/octet-stream",
       },
       body: file,
