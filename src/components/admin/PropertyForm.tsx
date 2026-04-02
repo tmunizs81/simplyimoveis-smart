@@ -2,8 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Save, X, Upload, Video, Image, Trash2, Star, MapPin, DollarSign, Maximize2, BedDouble, Bath, Home, FileText, Tag, Car, DoorOpen, Waves, Navigation, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
 import { deletePropertyMediaItem, savePropertyWithMedia, type PropertyFormValues } from "@/lib/propertyFormService";
+import { getMediaUrl } from "@/lib/mediaUrl";
 import type { Database } from "@/integrations/supabase/types";
 
 type Property = Database["public"]["Tables"]["properties"]["Row"];
