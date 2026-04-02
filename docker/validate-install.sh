@@ -253,6 +253,26 @@ SERVICE_ROLE_BYPASS=$(run_sql "SELECT CASE WHEN rolbypassrls THEN 'ok' ELSE 'fai
 STORAGE_ADMIN_BYPASS=$(run_sql "SELECT CASE WHEN rolbypassrls THEN 'ok' ELSE 'fail' END FROM pg_roles WHERE rolname='supabase_storage_admin';")
 [ "$STORAGE_ADMIN_BYPASS" = "ok" ] && check "supabase_storage_admin com BYPASSRLS" "ok" || check "supabase_storage_admin sem BYPASSRLS" "fail"
 
+SMOKE_PATH="__healthchecks__/validate-install.txt"
+SMOKE_PAYLOAD="storage-smoke $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+STORAGE_UPLOAD_HTTP=$(printf "%s" "$SMOKE_PAYLOAD" | curl -sS -m 20 -o /tmp/simply-storage-smoke.json -w "%{http_code}" \
+  -X POST "http://127.0.0.1:${KONG_PORT}/storage/v1/object/property-media/${SMOKE_PATH}" \
+  -H "apikey: ${SERVICE_ROLE_KEY}" \
+  -H "Authorization: Bearer ${SERVICE_ROLE_KEY}" \
+  -H "Content-Type: text/plain" \
+  -H "x-upsert: true" \
+  --data-binary @- 2>/dev/null || echo "000")
+
+case "$STORAGE_UPLOAD_HTTP" in
+  200|201)
+    check "Storage upload real com SERVICE_ROLE_KEY (HTTP $STORAGE_UPLOAD_HTTP)" "ok"
+    ;;
+  *)
+    STORAGE_UPLOAD_BODY=$(tr '\n' ' ' < /tmp/simply-storage-smoke.json 2>/dev/null | sed 's/  */ /g' | cut -c1-220)
+    check "Storage upload real com SERVICE_ROLE_KEY (HTTP $STORAGE_UPLOAD_HTTP) ${STORAGE_UPLOAD_BODY}" "fail"
+    ;;
+esac
+
 # ==============================================================
 # SEÇÃO 6 - Exposição pública (opcional, com --public)
 # ==============================================================

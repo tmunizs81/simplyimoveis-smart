@@ -6,9 +6,12 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-admin-action, x-storage-bucket, x-storage-path, x-storage-upsert, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const ADMIN_CRUD_VERSION = "2026-04-02-selfhosted-r3";
+
 const buildJsonHeaders = (requestId?: string) => ({
   ...corsHeaders,
   "Content-Type": "application/json",
+  "x-admin-crud-version": ADMIN_CRUD_VERSION,
   ...(requestId ? { "x-admin-crud-request-id": requestId } : {}),
 });
 
@@ -32,6 +35,21 @@ const errorJson = (
 ) => jsonWithRequestId({ error, debugId: requestId, ...extra }, requestId, status);
 
 const createRequestId = () => globalThis.crypto?.randomUUID?.() ?? `req-${Date.now()}`;
+
+const getStorageObjectUrl = (supabaseUrl: string, bucket: string, encodedPath: string) => {
+  const normalizedBase = supabaseUrl.replace(/\/+$/, "");
+
+  try {
+    const parsed = new URL(normalizedBase);
+    if (parsed.hostname === "kong") {
+      return `http://storage:5000/object/${bucket}/${encodedPath}`;
+    }
+  } catch {
+    // fallback abaixo
+  }
+
+  return `${normalizedBase}/storage/v1/object/${bucket}/${encodedPath}`;
+};
 
 const ALLOWED_TABLES = [
   "tenants",
@@ -120,21 +138,24 @@ const formatStorageUploadDetails = (
   storageBody: string,
   bucket: string,
   path: string,
+  storageUrl: string,
 ) => {
   const compactBody = storageBody.replace(/\s+/g, " ").trim().slice(0, 500);
 
   if (/row-level security/i.test(compactBody)) {
     return [
+      `admin-crud=${ADMIN_CRUD_VERSION}`,
       "self-hosted storage bloqueou o INSERT em storage.objects",
       "confirme que a role supabase_storage_admin está com BYPASSRLS",
       "reaplique: bash sync-db-passwords.sh && bash bootstrap-db.sh",
       `bucket=${bucket}`,
       `path=${path}`,
+      `storage_url=${storageUrl}`,
       compactBody ? `upstream=${compactBody}` : null,
     ].filter(Boolean).join(" | ");
   }
 
-  return compactBody || `bucket=${bucket} | path=${path}`;
+  return compactBody || `admin-crud=${ADMIN_CRUD_VERSION} | bucket=${bucket} | path=${path} | storage_url=${storageUrl}`;
 };
 
 async function verifyAdmin(supabaseAdmin: ReturnType<typeof createClient>, req: Request) {
@@ -207,7 +228,7 @@ const handler = async (req: Request): Promise<Response> => {
       const supabaseUrl = getEnv("SUPABASE_URL").replace(/\/+$/, "");
       const serviceKey = getEnv("SUPABASE_SERVICE_ROLE_KEY");
       const encodedPath = binaryUpload.path.split("/").map(encodeURIComponent).join("/");
-      const storageUrl = `${supabaseUrl}/storage/v1/object/${binaryUpload.bucket}/${encodedPath}`;
+      const storageUrl = getStorageObjectUrl(supabaseUrl, binaryUpload.bucket, encodedPath);
 
       const storageResponse = await fetch(storageUrl, {
         method: "POST",
@@ -229,11 +250,14 @@ const handler = async (req: Request): Promise<Response> => {
           typeof storageBody === "string" ? storageBody : "",
           binaryUpload.bucket,
           binaryUpload.path,
+          storageUrl,
         );
         console.error(`[admin-crud][${requestId}] storage upload failed:`, {
           status: storageResponse.status,
           bucket: binaryUpload.bucket,
           path: binaryUpload.path,
+          version: ADMIN_CRUD_VERSION,
+          storageUrl,
           body: storageBody,
         });
         return errorJson(
@@ -244,11 +268,13 @@ const handler = async (req: Request): Promise<Response> => {
             stage: "storage.upstream_upload",
             details: storageDetails,
             upstreamStatus: storageResponse.status,
+            version: ADMIN_CRUD_VERSION,
+            storageUrl,
           },
         );
       }
 
-      return jsonWithRequestId({ data: storageResult, debugId: requestId }, requestId);
+      return jsonWithRequestId({ data: storageResult, debugId: requestId, version: ADMIN_CRUD_VERSION }, requestId);
     }
 
     const contentType = req.headers.get("content-type") || "";
@@ -301,7 +327,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // === JSON ACTIONS ===
     const user = await verifyAdmin(supabaseAdmin, req);
-    if (!user) return json({ error: "Não autorizado ou sem permissão de admin" }, 401);
+    if (!user) return json({ error: "Não autorizado ou sem permissão de admin", version: ADMIN_CRUD_VERSION }, 401);
 
     const body = await req.json().catch(() => ({}));
     const { action, table, data, match, select: selectCols, order } = body as {
@@ -313,69 +339,69 @@ const handler = async (req: Request): Promise<Response> => {
       order?: { column: string; ascending?: boolean };
     };
 
-    if (!action) return json({ error: "action obrigatório" }, 400);
+    if (!action) return json({ error: "action obrigatório", version: ADMIN_CRUD_VERSION }, 400);
 
     // --- Storage actions ---
     if (action === "storage-delete") {
       const { bucket, paths } = body;
-      if (!bucket || !paths?.length) return json({ error: "bucket e paths obrigatórios" }, 400);
+       if (!bucket || !paths?.length) return json({ error: "bucket e paths obrigatórios", version: ADMIN_CRUD_VERSION }, 400);
       if (!isAllowedBucket(String(bucket))) {
-        return json({ error: `Bucket '${bucket}' não permitido` }, 400);
+         return json({ error: `Bucket '${bucket}' não permitido`, version: ADMIN_CRUD_VERSION }, 400);
       }
       const { error } = await supabaseAdmin.storage.from(bucket).remove(paths);
-      if (error) return json({ error: error.message }, 400);
+       if (error) return json({ error: error.message, version: ADMIN_CRUD_VERSION }, 400);
       return json({ success: true });
     }
 
     if (action === "storage-signed-url") {
       const { bucket, path: filePath, expiresIn } = body;
-      if (!bucket || !filePath) return json({ error: "bucket e path obrigatórios" }, 400);
+       if (!bucket || !filePath) return json({ error: "bucket e path obrigatórios", version: ADMIN_CRUD_VERSION }, 400);
       if (!isAllowedBucket(String(bucket))) {
-        return json({ error: `Bucket '${bucket}' não permitido` }, 400);
+         return json({ error: `Bucket '${bucket}' não permitido`, version: ADMIN_CRUD_VERSION }, 400);
       }
       const { data: urlData, error } = await supabaseAdmin.storage
         .from(bucket)
         .createSignedUrl(filePath, expiresIn || 3600);
-      if (error) return json({ error: error.message }, 400);
-      return json({ signedUrl: urlData.signedUrl });
+       if (error) return json({ error: error.message, version: ADMIN_CRUD_VERSION }, 400);
+       return json({ signedUrl: urlData.signedUrl, version: ADMIN_CRUD_VERSION });
     }
 
     // --- CRUD actions ---
-    if (!table) return json({ error: "table obrigatório" }, 400);
+    if (!table) return json({ error: "table obrigatório", version: ADMIN_CRUD_VERSION }, 400);
     if (!ALLOWED_TABLES.includes(table as (typeof ALLOWED_TABLES)[number])) {
-      return json({ error: `Tabela '${table}' não permitida` }, 400);
+      return json({ error: `Tabela '${table}' não permitida`, version: ADMIN_CRUD_VERSION }, 400);
     }
 
     if (action === "insert") {
-      if (!data) return json({ error: "data obrigatório para insert" }, 400);
+      if (!data) return json({ error: "data obrigatório para insert", version: ADMIN_CRUD_VERSION }, 400);
       const q = supabaseAdmin.from(table).insert(data as never);
       const result = selectCols !== undefined
         ? await q.select(selectCols || "*")
         : await q.select("*");
-      if (result.error) return json({ error: result.error.message }, 400);
-      return json({ data: result.data });
+      if (result.error) return json({ error: result.error.message, version: ADMIN_CRUD_VERSION }, 400);
+      return json({ data: result.data, version: ADMIN_CRUD_VERSION });
     }
 
     if (action === "update") {
-      if (!data || !match) return json({ error: "data e match obrigatórios para update" }, 400);
+      if (!data || !match) return json({ error: "data e match obrigatórios para update", version: ADMIN_CRUD_VERSION }, 400);
       let q = supabaseAdmin.from(table).update(data as never);
       for (const [k, v] of Object.entries(match)) {
         q = q.eq(k, v as never);
       }
       const result = await q.select("*");
-      if (result.error) return json({ error: result.error.message }, 400);
-      return json({ data: result.data });
+      if (result.error) return json({ error: result.error.message, version: ADMIN_CRUD_VERSION }, 400);
+      return json({ data: result.data, version: ADMIN_CRUD_VERSION });
     }
 
     if (action === "delete") {
-      if (!match) return json({ error: "match obrigatório para delete" }, 400);
+      if (!match) return json({ error: "match obrigatório para delete", version: ADMIN_CRUD_VERSION }, 400);
       let q = supabaseAdmin.from(table).delete();
       for (const [k, v] of Object.entries(match)) {
         q = q.eq(k, v as never);
       }
       const result = await q;
-      if (result.error) return json({ error: result.error.message }, 400);
-      return json({ success: true });
+      if (result.error) return json({ error: result.error.message, version: ADMIN_CRUD_VERSION }, 400);
+      return json({ success: true, version: ADMIN_CRUD_VERSION });
     }
 
     if (action === "select") {
@@ -389,15 +415,15 @@ const handler = async (req: Request): Promise<Response> => {
         q = q.order(order.column, { ascending: order.ascending ?? true });
       }
       const result = await q;
-      if (result.error) return json({ error: result.error.message }, 400);
-      return json({ data: result.data });
+      if (result.error) return json({ error: result.error.message, version: ADMIN_CRUD_VERSION }, 400);
+      return json({ data: result.data, version: ADMIN_CRUD_VERSION });
     }
 
-    return json({ error: "Ação inválida" }, 400);
+    return json({ error: "Ação inválida", version: ADMIN_CRUD_VERSION }, 400);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Erro interno";
     console.error(`[admin-crud][${requestId}] error:`, err);
-    return errorJson(requestId, message, 500, { stage: "handler.catch" });
+    return errorJson(requestId, message, 500, { stage: "handler.catch", version: ADMIN_CRUD_VERSION });
   }
 };
 
