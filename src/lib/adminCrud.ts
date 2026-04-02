@@ -6,9 +6,18 @@
  */
 import { supabase } from "@/integrations/supabase/client";
 
-type CrudResult<T = any> = {
+export type CrudError = {
+  message: string;
+  code?: string;
+  stage?: string;
+  debugId?: string;
+  details?: string;
+  status?: number;
+};
+
+export type CrudResult<T = any> = {
   data: T | null;
-  error: { message: string } | null;
+  error: CrudError | null;
 };
 
 async function getSession() {
@@ -16,18 +25,28 @@ async function getSession() {
   return session;
 }
 
-function getAdminCrudUrl() {
+function getAdminCrudBaseUrl() {
   const envUrl = String(import.meta.env.VITE_SUPABASE_URL ?? "").trim().replace(/\/+$/, "");
 
-  if (envUrl) {
-    return `${envUrl}/functions/v1/admin-crud`;
+  if (typeof window !== "undefined") {
+    const sameOriginBase = `${window.location.origin}/api`;
+    const hostname = window.location.hostname;
+    const isLovableHost = hostname.includes("lovable.app") || hostname.includes("lovableproject.com");
+
+    return isLovableHost ? envUrl || sameOriginBase : sameOriginBase;
   }
 
-  if (typeof window !== "undefined") {
-    return `${window.location.origin}/api/functions/v1/admin-crud`;
-  }
+  if (envUrl) return envUrl;
 
   throw new Error("URL do backend não configurada");
+}
+
+function getAdminCrudUrl() {
+  return `${getAdminCrudBaseUrl()}/functions/v1/admin-crud`;
+}
+
+function getAdminCrudApiKey() {
+  return String(import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? "").trim();
 }
 
 function buildAdminCrudUploadUrl(bucket: string, path: string, upsert = false) {
@@ -49,33 +68,91 @@ async function parseAdminCrudResponse(response: Response): Promise<CrudResult> {
     result = { error: responseText || `HTTP ${response.status}` };
   }
 
+  const debugId = response.headers.get("x-admin-crud-request-id") || result?.debugId || result?.requestId;
+  const details = typeof result?.details === "string" && result.details.trim()
+    ? result.details.trim()
+    : undefined;
+
   if (!response.ok) {
-    return { data: null, error: { message: result?.error || `HTTP ${response.status}` } };
+    return {
+      data: null,
+      error: {
+        message: result?.error || result?.message || `HTTP ${response.status}`,
+        code: result?.code,
+        stage: result?.stage,
+        debugId,
+        details,
+        status: response.status,
+      },
+    };
   }
 
   if (result?.error) {
-    return { data: null, error: { message: result.error } };
+    return {
+      data: null,
+      error: {
+        message: result.error,
+        code: result?.code,
+        stage: result?.stage,
+        debugId,
+        details,
+        status: response.status,
+      },
+    };
   }
 
   return { data: result?.data ?? result, error: null };
 }
 
-async function callAdminCrud(body: Record<string, unknown>): Promise<CrudResult> {
+async function performAdminCrudRequest(
+  url: string,
+  options: {
+    body: BodyInit;
+    headers?: HeadersInit;
+  }
+): Promise<CrudResult> {
   const session = await getSession();
   if (!session) return { data: null, error: { message: "Não autenticado" } };
 
-  const { data, error } = await supabase.functions.invoke("admin-crud", {
-    body,
-    headers: { Authorization: `Bearer ${session.access_token}` },
-  });
-
-  if (error) {
-    const msg = typeof error === "object" && "message" in error
-      ? (error as any).message : String(error);
-    return { data: null, error: { message: msg } };
+  const apiKey = getAdminCrudApiKey();
+  if (!apiKey) {
+    return {
+      data: null,
+      error: {
+        message: "Chave pública do backend não configurada",
+        stage: "client.config",
+      },
+    };
   }
-  if (data?.error) return { data: null, error: { message: data.error } };
-  return { data: data?.data ?? data, error: null };
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+        apikey: apiKey,
+        ...options.headers,
+      },
+      body: options.body,
+    });
+
+    return await parseAdminCrudResponse(response);
+  } catch (err: any) {
+    return {
+      data: null,
+      error: {
+        message: err?.message || "Erro de rede ao chamar admin-crud",
+        stage: "client.network",
+      },
+    };
+  }
+}
+
+async function callAdminCrud(body: Record<string, unknown>): Promise<CrudResult> {
+  return performAdminCrudRequest(getAdminCrudUrl(), {
+    body: JSON.stringify(body),
+    headers: { "Content-Type": "application/json" },
+  });
 }
 
 export async function adminSelect(
@@ -141,29 +218,12 @@ export async function adminStorageUpload(
   path: string,
   file: File
 ): Promise<CrudResult> {
-  const session = await getSession();
-  if (!session) return { data: null, error: { message: "Não autenticado" } };
-
-  const apiKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-  if (!apiKey) {
-    return { data: null, error: { message: "Chave pública do backend não configurada" } };
-  }
-
-  try {
-    const response = await fetch(buildAdminCrudUploadUrl(bucket, path), {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${session.access_token}`,
-        apikey: apiKey,
-        "Content-Type": file.type || "application/octet-stream",
-      },
-      body: file,
-    });
-
-    return await parseAdminCrudResponse(response);
-  } catch (err: any) {
-    return { data: null, error: { message: err.message || "Erro de rede no upload" } };
-  }
+  return performAdminCrudRequest(buildAdminCrudUploadUrl(bucket, path), {
+    body: file,
+    headers: {
+      "Content-Type": file.type || "application/octet-stream",
+    },
+  });
 }
 
 /**

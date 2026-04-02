@@ -6,11 +6,32 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-admin-action, x-storage-bucket, x-storage-path, x-storage-upsert, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const buildJsonHeaders = (requestId?: string) => ({
+  ...corsHeaders,
+  "Content-Type": "application/json",
+  ...(requestId ? { "x-admin-crud-request-id": requestId } : {}),
+});
+
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: buildJsonHeaders(),
   });
+
+const jsonWithRequestId = (body: unknown, requestId: string, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: buildJsonHeaders(requestId),
+  });
+
+const errorJson = (
+  requestId: string,
+  error: string,
+  status = 400,
+  extra: Record<string, unknown> = {},
+) => jsonWithRequestId({ error, debugId: requestId, ...extra }, requestId, status);
+
+const createRequestId = () => globalThis.crypto?.randomUUID?.() ?? `req-${Date.now()}`;
 
 const ALLOWED_TABLES = [
   "tenants",
@@ -115,6 +136,8 @@ async function verifyAdmin(supabaseAdmin: ReturnType<typeof createClient>, req: 
 }
 
 const handler = async (req: Request): Promise<Response> => {
+  const requestId = createRequestId();
+
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -134,17 +157,28 @@ const handler = async (req: Request): Promise<Response> => {
     const binaryUpload = getBinaryUploadConfig(req);
     if (binaryUpload) {
       const user = await verifyAdmin(supabaseAdmin, req);
-      if (!user) return json({ error: "Não autorizado ou sem permissão de admin" }, 401);
+      if (!user) {
+        return errorJson(requestId, "Não autorizado ou sem permissão de admin", 401, {
+          stage: "storage.auth.verify_admin",
+        });
+      }
       if (!binaryUpload.bucket || !binaryUpload.path) {
-        return json({ error: "bucket e path obrigatórios" }, 400);
+        return errorJson(requestId, "bucket e path obrigatórios", 400, {
+          stage: "storage.validate_input",
+        });
       }
       if (!isAllowedBucket(binaryUpload.bucket)) {
-        return json({ error: `Bucket '${binaryUpload.bucket}' não permitido` }, 400);
+        return errorJson(requestId, `Bucket '${binaryUpload.bucket}' não permitido`, 400, {
+          stage: "storage.validate_bucket",
+          details: `bucket=${binaryUpload.bucket}`,
+        });
       }
 
       const fileBuffer = await req.arrayBuffer();
       if (!fileBuffer.byteLength) {
-        return json({ error: "Arquivo vazio" }, 400);
+        return errorJson(requestId, "Arquivo vazio", 400, {
+          stage: "storage.read_body",
+        });
       }
 
       // Upload via REST API direto com service_role para garantir bypass de RLS
@@ -170,11 +204,25 @@ const handler = async (req: Request): Promise<Response> => {
       try { storageResult = JSON.parse(storageBody); } catch { storageResult = { error: storageBody }; }
 
       if (!storageResponse.ok) {
-        console.error("admin-crud storage upload failed:", storageResponse.status, storageBody);
-        return json({ error: storageResult?.message || storageResult?.error || `Storage HTTP ${storageResponse.status}` }, 400);
+        console.error(`[admin-crud][${requestId}] storage upload failed:`, {
+          status: storageResponse.status,
+          bucket: binaryUpload.bucket,
+          path: binaryUpload.path,
+          body: storageBody,
+        });
+        return errorJson(
+          requestId,
+          storageResult?.message || storageResult?.error || `Storage HTTP ${storageResponse.status}`,
+          400,
+          {
+            stage: "storage.upstream_upload",
+            details: typeof storageBody === "string" ? storageBody.slice(0, 500) : undefined,
+            upstreamStatus: storageResponse.status,
+          },
+        );
       }
 
-      return json({ data: storageResult });
+      return jsonWithRequestId({ data: storageResult, debugId: requestId }, requestId);
     }
 
     const contentType = req.headers.get("content-type") || "";
@@ -322,8 +370,8 @@ const handler = async (req: Request): Promise<Response> => {
     return json({ error: "Ação inválida" }, 400);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Erro interno";
-    console.error("admin-crud error:", err);
-    return json({ error: message }, 500);
+    console.error(`[admin-crud][${requestId}] error:`, err);
+    return errorJson(requestId, message, 500, { stage: "handler.catch" });
   }
 };
 
