@@ -161,7 +161,7 @@ const formatStorageUploadDetails = (
   return compactBody || `admin-crud=${ADMIN_CRUD_VERSION} | bucket=${bucket} | path=${path} | storage_url=${storageUrl}`;
 };
 
-async function verifyAdmin(supabaseAdmin: ReturnType<typeof createClient>, req: Request) {
+async function verifyAdmin(supabaseAdmin: any, req: Request) {
   const authHeader = req.headers.get("authorization") || req.headers.get("Authorization");
   if (!authHeader) return null;
   const token = authHeader.replace(/^Bearer\s+/i, "").trim();
@@ -310,9 +310,9 @@ const handler = async (req: Request): Promise<Response> => {
       let fileBuffer: ArrayBuffer;
       let fileContentType = "application/octet-stream";
 
-      if (file instanceof File || file instanceof Blob) {
+      if (typeof file !== "string") {
         fileBuffer = await file.arrayBuffer();
-        fileContentType = (file as File).type || "application/octet-stream";
+        fileContentType = file.type || "application/octet-stream";
       } else {
         fileBuffer = new TextEncoder().encode(String(file)).buffer;
       }
