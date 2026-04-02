@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { Bed, Bath, Maximize, MapPin, ArrowRight, Tag, Car, DoorOpen } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { getMediaUrl } from "@/lib/mediaUrl";
 import type { Database } from "@/integrations/supabase/types";
 
 type Property = Database["public"]["Tables"]["properties"]["Row"];
@@ -12,11 +13,6 @@ type PropertyWithMedia = Property & { media: MediaRow[] };
 const formatPrice = (price: number, status: string) => {
   const formatted = price.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
   return status === "aluguel" ? `${formatted}/mês` : formatted;
-};
-
-const getMediaUrl = (filePath: string) => {
-  const { data } = supabase.storage.from("property-media").getPublicUrl(filePath);
-  return data.publicUrl;
 };
 
 const OpportunitiesSection = () => {

@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Bed, Bath, Maximize, MapPin, Phone, Mail, ChevronLeft, ChevronRight, Car, DoorOpen, Share2, Heart, Calendar, X, MessageCircle, Home, Shield, Star, Waves, Navigation } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { getMediaUrl } from "@/lib/mediaUrl";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import ChatWidget from "@/components/ChatWidget";
@@ -14,11 +15,6 @@ type MediaRow = Database["public"]["Tables"]["property_media"]["Row"];
 const formatPrice = (price: number, status: string) => {
   const formatted = price.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
   return status === "aluguel" ? `${formatted}/mês` : formatted;
-};
-
-const getMediaUrl = (filePath: string) => {
-  const { data } = supabase.storage.from("property-media").getPublicUrl(filePath);
-  return data.publicUrl;
 };
 
 const PropertyDetail = () => {

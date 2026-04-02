@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { Search, SlidersHorizontal, Bed, Bath, Maximize, MapPin, Car, X, ChevronDown } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { getMediaUrl } from "@/lib/mediaUrl";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import ChatWidget from "@/components/ChatWidget";
@@ -26,11 +27,6 @@ const priceRanges = [
 const formatPrice = (price: number, status: string) => {
   const formatted = price.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
   return status === "aluguel" ? `${formatted}/mês` : formatted;
-};
-
-const getMediaUrl = (filePath: string) => {
-  const { data } = supabase.storage.from("property-media").getPublicUrl(filePath);
-  return data.publicUrl;
 };
 
 const Properties = () => {
