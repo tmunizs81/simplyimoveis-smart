@@ -253,6 +253,9 @@ SERVICE_ROLE_BYPASS=$(run_sql "SELECT CASE WHEN rolbypassrls THEN 'ok' ELSE 'fai
 STORAGE_ADMIN_BYPASS=$(run_sql "SELECT CASE WHEN rolbypassrls THEN 'ok' ELSE 'fail' END FROM pg_roles WHERE rolname='supabase_storage_admin';")
 [ "$STORAGE_ADMIN_BYPASS" = "ok" ] && check "supabase_storage_admin com BYPASSRLS" "ok" || check "supabase_storage_admin sem BYPASSRLS" "fail"
 
+STORAGE_ADMIN_SERVICE_ROLE=$(run_sql "SELECT CASE WHEN pg_has_role('supabase_storage_admin', 'service_role', 'MEMBER') THEN 'ok' ELSE 'fail' END;")
+[ "$STORAGE_ADMIN_SERVICE_ROLE" = "ok" ] && check "supabase_storage_admin membro de service_role" "ok" || check "supabase_storage_admin sem grant de service_role" "fail"
+
 SMOKE_PATH="__healthchecks__/validate-install.txt"
 SMOKE_PAYLOAD="storage-smoke $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 STORAGE_UPLOAD_HTTP=$(printf "%s" "$SMOKE_PAYLOAD" | curl -sS -m 20 -o /tmp/simply-storage-smoke.json -w "%{http_code}" \

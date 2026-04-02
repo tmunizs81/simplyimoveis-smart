@@ -146,7 +146,8 @@ const formatStorageUploadDetails = (
     return [
       `admin-crud=${ADMIN_CRUD_VERSION}`,
       "self-hosted storage bloqueou o INSERT em storage.objects",
-      "confirme que a role supabase_storage_admin está com BYPASSRLS",
+      "confirme que supabase_storage_admin tem BYPASSRLS e é MEMBRO de service_role",
+      "grants esperados: GRANT service_role TO supabase_storage_admin; GRANT authenticated TO supabase_storage_admin; GRANT anon TO supabase_storage_admin;",
       "reaplique: bash sync-db-passwords.sh && bash bootstrap-db.sh",
       `bucket=${bucket}`,
       `path=${path}`,
