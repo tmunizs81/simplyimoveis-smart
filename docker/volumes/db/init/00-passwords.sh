@@ -51,6 +51,9 @@ done
 R "GRANT anon TO authenticator;"
 R "GRANT authenticated TO authenticator;"
 R "GRANT service_role TO authenticator;"
+R "GRANT anon TO supabase_storage_admin;"
+R "GRANT authenticated TO supabase_storage_admin;"
+R "GRANT service_role TO supabase_storage_admin;"
 
 # ── Database ──
 R "ALTER DATABASE \"${DB_NAME}\" OWNER TO supabase_admin;"

@@ -68,6 +68,9 @@ R "ALTER ROLE supabase_storage_admin WITH BYPASSRLS;" >/dev/null 2>&1
 R "GRANT anon TO authenticator;" >/dev/null 2>&1 || true
 R "GRANT authenticated TO authenticator;" >/dev/null 2>&1 || true
 R "GRANT service_role TO authenticator;" >/dev/null 2>&1 || true
+R "GRANT anon TO supabase_storage_admin;" >/dev/null 2>&1 || true
+R "GRANT authenticated TO supabase_storage_admin;" >/dev/null 2>&1 || true
+R "GRANT service_role TO supabase_storage_admin;" >/dev/null 2>&1 || true
 
 echo "• Garantindo schemas/extensões base..."
 R "CREATE SCHEMA IF NOT EXISTS extensions;" >/dev/null 2>&1 || true
@@ -130,6 +133,7 @@ R "GRANT EXECUTE ON FUNCTION auth.email() TO anon, authenticated, service_role, 
 R "GRANT USAGE, CREATE ON SCHEMA storage TO supabase_storage_admin;" >/dev/null 2>&1 || true
 R "GRANT ALL ON ALL TABLES IN SCHEMA storage TO supabase_storage_admin;" >/dev/null 2>&1 || true
 R "GRANT ALL ON ALL SEQUENCES IN SCHEMA storage TO supabase_storage_admin;" >/dev/null 2>&1 || true
+R "GRANT EXECUTE ON ALL ROUTINES IN SCHEMA storage TO supabase_storage_admin;" >/dev/null 2>&1 || true
 R "GRANT USAGE ON SCHEMA storage TO authenticator, service_role;" >/dev/null 2>&1 || true
 
 R "GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role, authenticator;" >/dev/null 2>&1 || true
