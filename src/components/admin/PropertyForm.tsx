@@ -86,10 +86,6 @@ const PropertyForm = ({ editingProperty, userId, onSaved, onCancel }: PropertyFo
     };
   }, []);
 
-  const getMediaUrl = (filePath: string) => {
-    const { data } = supabase.storage.from("property-media").getPublicUrl(filePath);
-    return data.publicUrl;
-  };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
