@@ -3,7 +3,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+    "authorization, x-client-info, apikey, content-type, x-admin-action, x-storage-bucket, x-storage-path, x-storage-upsert, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 const json = (body: unknown, status = 200) =>
@@ -49,7 +49,41 @@ const isAllowedBucket = (bucket: string) => (
   ALLOWED_BUCKETS.includes(bucket as (typeof ALLOWED_BUCKETS)[number])
 );
 
+const isLikelyJsonRequest = (contentType: string) => {
+  const normalized = contentType.toLowerCase();
+  return normalized.includes("application/json") || normalized.includes("text/json");
+};
+
 const getBinaryUploadConfig = (req: Request) => {
+  const url = new URL(req.url);
+  const contentType = req.headers.get("content-type") || "application/octet-stream";
+  const queryAction = (
+    url.searchParams.get("storage_action") ||
+    url.searchParams.get("storageAction") ||
+    url.searchParams.get("action") ||
+    ""
+  ).trim();
+  const queryBucket = (url.searchParams.get("bucket") || "").trim();
+  const queryPath = (url.searchParams.get("path") || "").trim();
+  const queryUpsert = (url.searchParams.get("upsert") || "false").trim().toLowerCase() === "true";
+
+  if (
+    queryBucket &&
+    queryPath &&
+    (
+      queryAction === "upload" ||
+      queryAction === "storage-upload" ||
+      !isLikelyJsonRequest(contentType)
+    )
+  ) {
+    return {
+      bucket: queryBucket,
+      path: queryPath,
+      upsert: queryUpsert,
+      contentType,
+    };
+  }
+
   const action = req.headers.get("x-admin-action") || req.headers.get("x-storage-action");
   if (action !== "storage-upload") return null;
 
@@ -57,7 +91,7 @@ const getBinaryUploadConfig = (req: Request) => {
     bucket: (req.headers.get("x-storage-bucket") || "").trim(),
     path: (req.headers.get("x-storage-path") || "").trim(),
     upsert: (req.headers.get("x-storage-upsert") || "false").toLowerCase() === "true",
-    contentType: req.headers.get("content-type") || "application/octet-stream",
+    contentType,
   };
 };
 
