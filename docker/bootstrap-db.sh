@@ -86,6 +86,16 @@ echo -e "   ${GREEN}✅ PostgreSQL pronto${NC}"
 echo -e "${BLUE}🔐 Sincronizando roles/senhas/grants...${NC}"
 bash "$SCRIPT_DIR/sync-db-passwords.sh"
 
+echo -e "${BLUE}🔎 Validando roles internas com BYPASSRLS...${NC}"
+MISSING_BYPASS_ROLES=$(run_db_sql "
+SELECT COALESCE(string_agg(rolname, ', '), '')
+FROM pg_roles
+WHERE rolname IN ('service_role', 'supabase_storage_admin')
+  AND rolbypassrls IS DISTINCT FROM true;" | sed 's/^ *//; s/ *$//')
+
+[ -n "$MISSING_BYPASS_ROLES" ] && fail "Roles sem BYPASSRLS após sync: $MISSING_BYPASS_ROLES"
+echo -e "   ${GREEN}✅ service_role + supabase_storage_admin com BYPASSRLS${NC}"
+
 run_db_file "$CORE_SQL" "Core schema (types/tables/functions/RLS/policies/grants)"
 
 echo -e "${BLUE}🔎 Validando objetos críticos do core...${NC}"

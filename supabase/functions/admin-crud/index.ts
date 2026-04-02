@@ -116,6 +116,27 @@ const getBinaryUploadConfig = (req: Request) => {
   };
 };
 
+const formatStorageUploadDetails = (
+  storageBody: string,
+  bucket: string,
+  path: string,
+) => {
+  const compactBody = storageBody.replace(/\s+/g, " ").trim().slice(0, 500);
+
+  if (/row-level security/i.test(compactBody)) {
+    return [
+      "self-hosted storage bloqueou o INSERT em storage.objects",
+      "confirme que a role supabase_storage_admin está com BYPASSRLS",
+      "reaplique: bash sync-db-passwords.sh && bash bootstrap-db.sh",
+      `bucket=${bucket}`,
+      `path=${path}`,
+      compactBody ? `upstream=${compactBody}` : null,
+    ].filter(Boolean).join(" | ");
+  }
+
+  return compactBody || `bucket=${bucket} | path=${path}`;
+};
+
 async function verifyAdmin(supabaseAdmin: ReturnType<typeof createClient>, req: Request) {
   const authHeader = req.headers.get("authorization") || req.headers.get("Authorization");
   if (!authHeader) return null;
@@ -204,6 +225,11 @@ const handler = async (req: Request): Promise<Response> => {
       try { storageResult = JSON.parse(storageBody); } catch { storageResult = { error: storageBody }; }
 
       if (!storageResponse.ok) {
+        const storageDetails = formatStorageUploadDetails(
+          typeof storageBody === "string" ? storageBody : "",
+          binaryUpload.bucket,
+          binaryUpload.path,
+        );
         console.error(`[admin-crud][${requestId}] storage upload failed:`, {
           status: storageResponse.status,
           bucket: binaryUpload.bucket,
@@ -216,7 +242,7 @@ const handler = async (req: Request): Promise<Response> => {
           400,
           {
             stage: "storage.upstream_upload",
-            details: typeof storageBody === "string" ? storageBody.slice(0, 500) : undefined,
+            details: storageDetails,
             upstreamStatus: storageResponse.status,
           },
         );

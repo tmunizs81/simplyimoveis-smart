@@ -250,6 +250,9 @@ STORAGE_POLICIES=$(run_sql "SELECT count(*) FROM pg_policies WHERE schemaname='s
 SERVICE_ROLE_BYPASS=$(run_sql "SELECT CASE WHEN rolbypassrls THEN 'ok' ELSE 'fail' END FROM pg_roles WHERE rolname='service_role';")
 [ "$SERVICE_ROLE_BYPASS" = "ok" ] && check "service_role com BYPASSRLS" "ok" || check "service_role sem BYPASSRLS" "fail"
 
+STORAGE_ADMIN_BYPASS=$(run_sql "SELECT CASE WHEN rolbypassrls THEN 'ok' ELSE 'fail' END FROM pg_roles WHERE rolname='supabase_storage_admin';")
+[ "$STORAGE_ADMIN_BYPASS" = "ok" ] && check "supabase_storage_admin com BYPASSRLS" "ok" || check "supabase_storage_admin sem BYPASSRLS" "fail"
+
 # ==============================================================
 # SEÇÃO 6 - Exposição pública (opcional, com --public)
 # ==============================================================
