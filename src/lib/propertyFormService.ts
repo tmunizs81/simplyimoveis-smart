@@ -1,4 +1,4 @@
-import { adminDelete, adminInsert, adminStorageDelete, adminStorageUpload, adminUpdate } from "@/lib/adminCrud";
+import { adminDelete, adminInsert, adminStorageDelete, adminStorageUpload, adminUpdate, type CrudError } from "@/lib/adminCrud";
 import type { Database } from "@/integrations/supabase/types";
 
 type Property = Database["public"]["Tables"]["properties"]["Row"];
@@ -57,6 +57,19 @@ const getFileExtension = (file: File) => {
 const getMediaFileType = (file: File) => (
   file.type.startsWith("video/") ? "video" : "image"
 );
+
+const formatCrudError = (prefix: string, error: CrudError | null | undefined) => {
+  if (!error) return prefix;
+
+  const details = error.details?.replace(/\s+/g, " ").trim();
+  const meta = [
+    error.stage ? `etapa: ${error.stage}` : null,
+    error.debugId ? `ref: ${error.debugId}` : null,
+    details ? `detalhe: ${details.slice(0, 220)}` : null,
+  ].filter(Boolean).join(" | ");
+
+  return meta ? `${prefix}: ${error.message} (${meta})` : `${prefix}: ${error.message}`;
+};
 
 function buildPropertyPayload(form: PropertyFormValues) {
   const title = normalizeText(form.title);
@@ -149,7 +162,7 @@ export async function savePropertyWithMedia({
       const uploadResult = await adminStorageUpload("property-media", storagePath, file);
       if (uploadResult.error) {
         onFileProgress?.(index, "error", file.name);
-        throw new Error(`Falha ao enviar ${file.name}: ${uploadResult.error.message}`);
+        throw new Error(formatCrudError(`Falha ao enviar ${file.name}`, uploadResult.error));
       }
 
       uploadedPaths.push(storagePath);
@@ -165,7 +178,7 @@ export async function savePropertyWithMedia({
       if (mediaResult.error) {
         await adminStorageDelete("property-media", [storagePath]);
         onFileProgress?.(index, "error", file.name);
-        throw new Error(`Falha ao registrar ${file.name}: ${mediaResult.error.message}`);
+        throw new Error(formatCrudError(`Falha ao registrar ${file.name}`, mediaResult.error));
       }
 
       const insertedMedia = Array.isArray(mediaResult.data)
