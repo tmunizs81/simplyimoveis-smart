@@ -243,8 +243,12 @@ STORAGE_POLICIES=$(run_sql "SELECT count(*) FROM pg_policies WHERE schemaname='s
 'Admins can upload tenant-documents','Admins can read tenant-documents','Admins can update tenant-documents','Admins can delete tenant-documents',
 'Admins can upload inspection-media','Admins can read inspection-media','Admins can update inspection-media','Admins can delete inspection-media',
 'Admins can upload sales-documents','Admins can read sales-documents','Admins can update sales-documents','Admins can delete sales-documents',
-'Admins can upload property-media','Admins can update property-media','Admins can delete property-media','Public can read property-media');")
-[ "${STORAGE_POLICIES:-0}" -ge 20 ] && check "Policies storage (${STORAGE_POLICIES}/20)" "ok" || check "Policies storage (${STORAGE_POLICIES:-0}/20)" "fail"
+'Admins can upload property-media','Admins can update property-media','Admins can delete property-media','Public can read property-media',
+'Service role can manage contract-documents','Service role can manage tenant-documents','Service role can manage inspection-media','Service role can manage sales-documents','Service role can manage property-media');")
+[ "${STORAGE_POLICIES:-0}" -ge 25 ] && check "Policies storage (${STORAGE_POLICIES}/25)" "ok" || check "Policies storage (${STORAGE_POLICIES:-0}/25)" "fail"
+
+SERVICE_ROLE_BYPASS=$(run_sql "SELECT CASE WHEN rolbypassrls THEN 'ok' ELSE 'fail' END FROM pg_roles WHERE rolname='service_role';")
+[ "$SERVICE_ROLE_BYPASS" = "ok" ] && check "service_role com BYPASSRLS" "ok" || check "service_role sem BYPASSRLS" "fail"
 
 # ==============================================================
 # SEÇÃO 6 - Exposição pública (opcional, com --public)

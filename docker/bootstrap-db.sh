@@ -171,10 +171,12 @@ WHERE schemaname='storage'
     'Admins can upload tenant-documents','Admins can read tenant-documents','Admins can update tenant-documents','Admins can delete tenant-documents',
     'Admins can upload inspection-media','Admins can read inspection-media','Admins can update inspection-media','Admins can delete inspection-media',
     'Admins can upload sales-documents','Admins can read sales-documents','Admins can update sales-documents','Admins can delete sales-documents',
-    'Admins can upload property-media','Admins can update property-media','Admins can delete property-media','Public can read property-media'
+    'Admins can upload property-media','Admins can update property-media','Admins can delete property-media','Public can read property-media',
+    'Service role can manage contract-documents','Service role can manage tenant-documents','Service role can manage inspection-media',
+    'Service role can manage sales-documents','Service role can manage property-media'
   );" 2>/dev/null || echo "0")
 
-[ "${STORAGE_POLICIES:-0}" -lt 20 ] && fail "Policies de storage incompletas (${STORAGE_POLICIES}/20)"
+[ "${STORAGE_POLICIES:-0}" -lt 25 ] && fail "Policies de storage incompletas (${STORAGE_POLICIES}/25)"
 
 echo -e "   ${GREEN}✅ Storage validado (buckets + policies)${NC}"
 
