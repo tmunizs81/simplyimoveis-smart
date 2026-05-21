@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { Shield, Award, CheckCircle, Star } from "lucide-react";
 
 const badges = [
-  { icon: Shield, label: "CRECI Ativo", desc: "Registro profissional verificado" },
+  { icon: Shield, label: "CRECI 29379", desc: "Registro profissional verificado" },
   { icon: Award, label: "Top Corretor", desc: "Reconhecimento de excelência" },
   { icon: CheckCircle, label: "Contratos Seguros", desc: "Assessoria jurídica completa" },
   { icon: Star, label: "5 Estrelas", desc: "Avaliação dos clientes" },
@@ -55,7 +55,7 @@ const TrustSection = () => {
           viewport={{ once: true }}
           className="mt-10 flex flex-wrap items-center justify-center gap-6 text-muted-foreground/60 text-xs uppercase tracking-widest font-medium"
         >
-          <span>CRECI/CE • Registro Ativo</span>
+          <span>CRECI/CE 29379</span>
           <span className="hidden sm:inline">•</span>
           <span>Atendimento Personalizado</span>
           <span className="hidden sm:inline">•</span>
