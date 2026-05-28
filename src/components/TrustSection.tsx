@@ -3,6 +3,7 @@ import { Shield, Award, CheckCircle, Star } from "lucide-react";
 
 const badges = [
   { icon: Shield, label: "CRECI 29379", desc: "Registro profissional verificado" },
+
   { icon: Award, label: "Top Corretor", desc: "Reconhecimento de excelência" },
   { icon: CheckCircle, label: "Contratos Seguros", desc: "Assessoria jurídica completa" },
   { icon: Star, label: "5 Estrelas", desc: "Avaliação dos clientes" },
