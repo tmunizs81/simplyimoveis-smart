@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { 
   Plus, Search, Phone, Mail, Calendar, Edit, Trash2, 
   Users, X, Save, LayoutGrid, List, MessageSquare, 
-  Clock, History, Building2, Sparkles, TrendingUp
+  Clock, History, Building2, Sparkles, TrendingUp, ArrowRight
 } from "lucide-react";
 
 const STATUS_LABELS: Record<string, { label: string; color: string; border: string; bg: string }> = {
