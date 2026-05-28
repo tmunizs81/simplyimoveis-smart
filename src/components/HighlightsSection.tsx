@@ -20,7 +20,7 @@ const formatPrice = (price: number, status: string) => {
 const HighlightsSection = () => {
   const [properties, setProperties] = useState<PropertyWithMedia[]>([]);
   const [loading, setLoading] = useState(true);
-  const [scrollIndex, setScrollIndex] = useState(0);
+  const [api, setApi] = useState<CarouselApi>();
 
   useEffect(() => {
     const fetchHighlights = async () => {
