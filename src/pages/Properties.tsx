@@ -158,7 +158,7 @@ const Properties = () => {
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                 <div>
                   <label className="text-xs font-semibold text-muted-foreground mb-1 block">Tipo</label>
-                  <select value={type} onChange={(e) => setType(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-background border border-input text-sm text-foreground focus:ring-2 focus:ring-ring outline-none">
+                  <select value={type} onChange={(e) => setType(e.target.value)} className="w-full px-3 py-3 sm:py-2 rounded-lg bg-background border border-input text-sm text-foreground focus:ring-2 focus:ring-ring outline-none">
                     {propertyTypes.map((t) => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
