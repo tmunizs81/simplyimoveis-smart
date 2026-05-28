@@ -387,7 +387,7 @@ const PropertyDetail = () => {
                 <div className="p-6 space-y-4">
                   {/* CTA Buttons */}
                   <a
-                    href={`https://wa.me/5585999990000?text=${encodeURIComponent(`Olá! Tenho interesse no imóvel: ${property.title}`)}`}
+                    href={`https://wa.me/5585984326253?text=${encodeURIComponent(`Olá! Tenho interesse no imóvel: ${property.title}`)}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="w-full bg-[#25D366] text-white py-3.5 rounded-xl font-bold hover:opacity-90 transition-opacity flex items-center justify-center gap-2 text-sm shadow-lg shadow-[#25D366]/20"
@@ -395,7 +395,7 @@ const PropertyDetail = () => {
                     <MessageCircle size={18} /> Chamar no WhatsApp
                   </a>
                   <a
-                    href="tel:+5585999990000"
+                    href="tel:+5585984326253"
                     className="w-full gradient-primary text-primary-foreground py-3.5 rounded-xl font-bold hover:opacity-90 transition-opacity flex items-center justify-center gap-2 text-sm"
                   >
                     <Phone size={18} /> Ligar Agora

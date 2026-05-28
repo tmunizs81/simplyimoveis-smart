@@ -274,7 +274,7 @@ const ChatWidget = ({ propertyId }: { propertyId?: string }) => {
         {
           role: "assistant",
           content:
-            `Desculpe, ocorreu um erro no atendimento automático: **${message}**.\n\nTente novamente ou fale pelo WhatsApp: **(85) 99999-0000**.`,
+            `Desculpe, ocorreu um erro no atendimento automático: **${message}**.\n\nTente novamente ou fale pelo WhatsApp: **(85) 98432-6253**.`,
         },
       ]);
     } finally {

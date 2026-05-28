@@ -51,7 +51,7 @@ const Footer = () => {
               <a href="#" className="text-accent-foreground/70 hover:text-terracotta-light transition-colors">
                 <Instagram size={20} />
               </a>
-              <a href="tel:+5585999990000" className="text-accent-foreground/70 hover:text-terracotta-light transition-colors">
+              <a href="tel:+5585984326253" className="text-accent-foreground/70 hover:text-terracotta-light transition-colors">
                 <Phone size={20} />
               </a>
               <a href="mailto:tmunizs89@proton.me" className="text-accent-foreground/70 hover:text-terracotta-light transition-colors">
