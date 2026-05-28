@@ -4,6 +4,8 @@ import { Bed, Bath, Maximize, MapPin, ChevronLeft, ChevronRight, Sparkles, Car }
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { getMediaUrl } from "@/lib/mediaUrl";
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious, type CarouselApi } from "@/components/ui/carousel";
+
 import type { Database } from "@/integrations/supabase/types";
 
 type Property = Database["public"]["Tables"]["properties"]["Row"];
