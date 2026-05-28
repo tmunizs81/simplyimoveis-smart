@@ -49,15 +49,12 @@ const TrustSection = () => {
           })}
         </div>
 
-        {/* CRECI bar */}
         <motion.div
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
           className="mt-10 flex flex-wrap items-center justify-center gap-6 text-muted-foreground/60 text-xs uppercase tracking-widest font-medium"
         >
-          <span>CRECI 29379</span>
-          <span className="hidden sm:inline">•</span>
           <span>Atendimento Personalizado</span>
           <span className="hidden sm:inline">•</span>
           <span>Fortaleza e Região Metropolitana</span>
