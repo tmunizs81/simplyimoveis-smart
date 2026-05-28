@@ -56,7 +56,7 @@ const TrustSection = () => {
           viewport={{ once: true }}
           className="mt-10 flex flex-wrap items-center justify-center gap-6 text-muted-foreground/60 text-xs uppercase tracking-widest font-medium"
         >
-          <span>CRECI/CE 29379</span>
+          <span>CRECI 29379</span>
           <span className="hidden sm:inline">•</span>
           <span>Atendimento Personalizado</span>
           <span className="hidden sm:inline">•</span>
