@@ -164,28 +164,29 @@ const Properties = () => {
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-muted-foreground mb-1 block">Finalidade</label>
-                  <select value={status} onChange={(e) => setStatus(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-background border border-input text-sm text-foreground focus:ring-2 focus:ring-ring outline-none">
+                  <select value={status} onChange={(e) => setStatus(e.target.value)} className="w-full px-3 py-3 sm:py-2 rounded-lg bg-background border border-input text-sm text-foreground focus:ring-2 focus:ring-ring outline-none">
                     {statusOptions.map((s) => <option key={s} value={s}>{s === "Todos" ? "Todos" : s === "venda" ? "Venda" : "Aluguel"}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-muted-foreground mb-1 block">Quartos</label>
-                  <select value={bedrooms} onChange={(e) => setBedrooms(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-background border border-input text-sm text-foreground focus:ring-2 focus:ring-ring outline-none">
+                  <select value={bedrooms} onChange={(e) => setBedrooms(e.target.value)} className="w-full px-3 py-3 sm:py-2 rounded-lg bg-background border border-input text-sm text-foreground focus:ring-2 focus:ring-ring outline-none">
                     {bedroomOptions.map((b) => <option key={b} value={b}>{b === "Todos" ? "Todos" : b === "4+" ? "4 ou mais" : `${b} quarto${b !== "1" ? "s" : ""}`}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-muted-foreground mb-1 block">Faixa de preço</label>
-                  <select value={priceRange} onChange={(e) => setPriceRange(parseInt(e.target.value))} className="w-full px-3 py-2 rounded-lg bg-background border border-input text-sm text-foreground focus:ring-2 focus:ring-ring outline-none">
+                  <select value={priceRange} onChange={(e) => setPriceRange(parseInt(e.target.value))} className="w-full px-3 py-3 sm:py-2 rounded-lg bg-background border border-input text-sm text-foreground focus:ring-2 focus:ring-ring outline-none">
                     {priceRanges.map((r, i) => <option key={i} value={i}>{r.label}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-muted-foreground mb-1 block">Cidade</label>
-                  <select value={city} onChange={(e) => setCity(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-background border border-input text-sm text-foreground focus:ring-2 focus:ring-ring outline-none">
+                  <select value={city} onChange={(e) => setApi(e.target.value)} className="w-full px-3 py-3 sm:py-2 rounded-lg bg-background border border-input text-sm text-foreground focus:ring-2 focus:ring-ring outline-none">
                     {cities.map((c) => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>
+
               </div>
               {activeFilterCount > 0 && (
                 <button onClick={clearFilters} className="mt-3 text-xs text-primary hover:underline flex items-center gap-1">
