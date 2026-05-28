@@ -25,6 +25,7 @@ type Stats = {
   totalExpenses: number;
   pendingPayments: number;
   overduePayments: number;
+  forecastValue: number;
   recentLeads: { id: string; name: string; status: string; source: string; created_at: string }[];
   recentTransactions: { id: string; description: string; amount: number; type: string; status: string; date: string }[];
   monthlyData: { month: string; receitas: number; despesas: number; lucro: number }[];
