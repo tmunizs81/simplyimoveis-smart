@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Send, Phone, Mail, MapPin } from "lucide-react";
+import { Send, Phone, Mail, MapPin, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -63,7 +63,10 @@ const ContactSection = () => {
               </div>
               <div>
                 <h3 className="font-semibold text-foreground">Telefone</h3>
-                <p className="text-muted-foreground text-sm">(85) 99999-0000</p>
+                <p className="text-muted-foreground text-sm flex items-center gap-2">
+                  (85) 98432-6253
+                  <MessageCircle size={14} className="text-[#25D366] fill-[#25D366]" />
+                </p>
               </div>
             </div>
             <div className="glass-card rounded-xl p-6 flex items-start gap-4">
