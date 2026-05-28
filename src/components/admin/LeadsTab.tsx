@@ -2,17 +2,21 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { adminInsert, adminUpdate, adminDelete, adminSelect } from "@/lib/adminCrud";
 import { toast } from "sonner";
-import { motion } from "framer-motion";
-import { Plus, Search, Phone, Mail, Calendar, ChevronDown, Edit, Trash2, Users, Filter, X, Save, ArrowRight } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { 
+  Plus, Search, Phone, Mail, Calendar, ChevronDown, Edit, Trash2, 
+  Users, Filter, X, Save, ArrowRight, LayoutGrid, List, MessageSquare, 
+  Clock, CheckCircle2, History, Building2, Sparkles, TrendingUp
+} from "lucide-react";
 
-const STATUS_LABELS: Record<string, { label: string; color: string }> = {
-  novo: { label: "Novo", color: "bg-blue-500" },
-  contato_feito: { label: "Contato Feito", color: "bg-cyan-500" },
-  visita_agendada: { label: "Visita Agendada", color: "bg-amber-500" },
-  proposta: { label: "Proposta", color: "bg-purple-500" },
-  negociacao: { label: "Negociação", color: "bg-orange-500" },
-  fechado_ganho: { label: "Fechado (Ganho)", color: "bg-green-500" },
-  fechado_perdido: { label: "Fechado (Perdido)", color: "bg-destructive" },
+const STATUS_LABELS: Record<string, { label: string; color: string; border: string; bg: string }> = {
+  novo: { label: "Novo", color: "bg-blue-500", border: "border-blue-500", bg: "bg-blue-50" },
+  contato_feito: { label: "Contato Feito", color: "bg-cyan-500", border: "border-cyan-500", bg: "bg-cyan-50" },
+  visita_agendada: { label: "Visita Agendada", color: "bg-amber-500", border: "border-amber-500", bg: "bg-amber-50" },
+  proposta: { label: "Proposta", color: "bg-purple-500", border: "border-purple-500", bg: "bg-purple-50" },
+  negociacao: { label: "Negociação", color: "bg-orange-500", border: "border-orange-500", bg: "bg-orange-50" },
+  fechado_ganho: { label: "Fechado (Ganho)", color: "bg-green-500", border: "border-green-500", bg: "bg-green-50" },
+  fechado_perdido: { label: "Fechado (Perdido)", color: "bg-destructive", border: "border-destructive", bg: "bg-destructive/10" },
 };
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -26,6 +30,10 @@ type Lead = {
   budget_min: number | null; budget_max: number | null; notes: string | null;
   next_follow_up: string | null; property_id: string | null;
   created_at: string; user_id: string;
+};
+
+type LeadActivity = {
+  id: string; lead_id: string; type: string; description: string; created_at: string;
 };
 
 const LeadsTab = () => {
