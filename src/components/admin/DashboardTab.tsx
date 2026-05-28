@@ -182,8 +182,61 @@ const DashboardTab = () => {
         <p className="text-sm text-muted-foreground">Visão geral do seu negócio imobiliário</p>
       </div>
 
-      {/* Financial Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* Financial Summary & Forecast */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
+          className="bg-card rounded-2xl border border-border p-5 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-green-500/5 rounded-full -translate-y-8 translate-x-8" />
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center">
+              <ArrowUpRight size={20} className="text-green-500" />
+            </div>
+            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Receitas</p>
+          </div>
+          <p className="text-2xl font-bold text-green-600 font-display">{formatCurrency(stats.totalRevenue)}</p>
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
+          className="bg-card rounded-2xl border border-border p-5 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-red-500/5 rounded-full -translate-y-8 translate-x-8" />
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center">
+              <ArrowDownRight size={20} className="text-red-500" />
+            </div>
+            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Despesas</p>
+          </div>
+          <p className="text-2xl font-bold text-red-600 font-display">{formatCurrency(stats.totalExpenses)}</p>
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
+          className="bg-card rounded-2xl border border-border p-5 relative overflow-hidden">
+          <div className={`absolute top-0 right-0 w-24 h-24 ${profit >= 0 ? "bg-primary/5" : "bg-red-500/5"} rounded-full -translate-y-8 translate-x-8`} />
+          <div className="flex items-center gap-3 mb-3">
+            <div className={`w-10 h-10 rounded-xl ${profit >= 0 ? "bg-primary/10" : "bg-red-500/10"} flex items-center justify-center`}>
+              <DollarSign size={20} className={profit >= 0 ? "text-primary" : "text-red-500"} />
+            </div>
+            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Lucro</p>
+          </div>
+          <p className={`text-2xl font-bold font-display ${profit >= 0 ? "text-primary" : "text-red-600"}`}>{formatCurrency(profit)}</p>
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
+          className="bg-card rounded-2xl border border-primary/20 p-5 relative overflow-hidden bg-primary/5 shadow-lg shadow-primary/5">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-primary/10 rounded-full -translate-y-8 translate-x-8" />
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
+              <Sparkles size={20} className="text-primary" />
+            </div>
+            <p className="text-xs font-bold text-primary uppercase tracking-wider">Previsão 30d</p>
+          </div>
+          <p className="text-2xl font-bold text-primary font-display">
+            {formatCurrency(
+              (stats as any).forecastValue || 0
+            )}
+          </p>
+          <p className="text-[10px] text-muted-foreground mt-1">Estimativa de conversões em andamento</p>
+        </motion.div>
+      </div>
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
           className="bg-card rounded-2xl border border-border p-5 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-24 h-24 bg-green-500/5 rounded-full -translate-y-8 translate-x-8" />
