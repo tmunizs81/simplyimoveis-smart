@@ -182,7 +182,7 @@ const Properties = () => {
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-muted-foreground mb-1 block">Cidade</label>
-                  <select value={city} onChange={(e) => setApi(e.target.value)} className="w-full px-3 py-3 sm:py-2 rounded-lg bg-background border border-input text-sm text-foreground focus:ring-2 focus:ring-ring outline-none">
+                  <select value={city} onChange={(e) => setCity(e.target.value)} className="w-full px-3 py-3 sm:py-2 rounded-lg bg-background border border-input text-sm text-foreground focus:ring-2 focus:ring-ring outline-none">
                     {cities.map((c) => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </div>
