@@ -132,7 +132,7 @@ const HeroSection = () => {
               </div>
               <Link
                 to="/imoveis"
-                className="gradient-primary text-primary-foreground px-8 py-3 rounded-xl text-sm font-bold uppercase tracking-wider hover:opacity-90 transition-all flex items-center justify-center gap-2 shadow-xl shadow-primary/30"
+                className="gradient-primary text-primary-foreground px-8 py-4 sm:py-3 rounded-xl text-base sm:text-sm font-bold uppercase tracking-wider hover:opacity-90 transition-all flex items-center justify-center gap-2 shadow-xl shadow-primary/30"
               >
                 <Search size={16} />
                 Buscar
