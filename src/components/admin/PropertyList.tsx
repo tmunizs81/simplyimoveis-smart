@@ -168,6 +168,13 @@ const PropertyList = ({ properties, onEdit, onRefresh, onNew }: PropertyListProp
               {/* Actions */}
               <div className="flex flex-col gap-1.5 shrink-0">
                 <button
+                  onClick={() => setMarketingProperty(p)}
+                  title="Marketing Kit"
+                  className="p-2 rounded-lg border border-border text-muted-foreground hover:text-accent hover:border-accent hover:bg-accent/5 transition-all"
+                >
+                  <Share2 size={14} />
+                </button>
+                <button
                   onClick={() => onEdit(p)}
                   title="Editar"
                   className="p-2 rounded-lg border border-border text-muted-foreground hover:text-primary hover:border-primary hover:bg-primary/5 transition-all"
