@@ -150,6 +150,34 @@ const SalesTab = () => {
           <form onSubmit={handleSubmit} className="p-6 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5 block">Imóvel</label>
+                <select
+                  value={form.property_id}
+                  onChange={e => {
+                    const id = e.target.value;
+                    const p = properties.find(pr => pr.id === id);
+                    setForm({
+                      ...form,
+                      property_id: id,
+                      sale_value: p?.price ? Number(p.price) : form.sale_value,
+                    });
+                  }}
+                  className={inputClass}
+                >
+                  <option value="">— Selecione o imóvel desta venda —</option>
+                  {properties.map(p => {
+                    const code = p.short_code ? `[${p.short_code}] ` : "";
+                    const loc = [p.neighborhood, p.city].filter(Boolean).join(", ");
+                    const price = p.price ? ` — ${Number(p.price).toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 })}` : "";
+                    return (
+                      <option key={p.id} value={p.id}>
+                        {code}{p.title}{loc ? ` (${loc})` : ""}{price}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+              <div className="md:col-span-2">
                 <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1.5 block">Comprador *</label>
                 <input required value={form.buyer_name} onChange={e => setForm({ ...form, buyer_name: e.target.value })} className={inputClass} placeholder="Nome do comprador" />
               </div>
