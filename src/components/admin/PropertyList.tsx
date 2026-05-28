@@ -209,6 +209,13 @@ const PropertyList = ({ properties, onEdit, onRefresh, onNew }: PropertyListProp
           ))}
         </div>
       )}
+
+      {marketingProperty && (
+        <MarketingKit 
+          property={marketingProperty} 
+          onClose={() => setMarketingProperty(null)} 
+        />
+      )}
     </div>
   );
 };
