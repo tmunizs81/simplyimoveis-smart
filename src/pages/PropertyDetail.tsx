@@ -27,6 +27,16 @@ const PropertyDetail = () => {
   const [currentImage, setCurrentImage] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [liked, setLiked] = useState(false);
+  const [api, setApi] = useState<CarouselApi>();
+
+  useEffect(() => {
+    if (!api) return;
+    
+    api.on("select", () => {
+      setCurrentImage(api.selectedScrollSnap());
+    });
+  }, [api]);
+
 
   useEffect(() => {
     const fetchData = async () => {
