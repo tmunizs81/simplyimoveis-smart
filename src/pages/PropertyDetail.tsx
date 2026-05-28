@@ -105,32 +105,52 @@ const PropertyDetail = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] bg-black/95 flex items-center justify-center"
-            onClick={() => setLightboxOpen(false)}
+            className="fixed inset-0 z-[60] bg-black/95 flex items-center justify-center p-0 sm:p-4"
           >
-            <button onClick={() => setLightboxOpen(false)} className="absolute top-6 right-6 text-white/70 hover:text-white z-10">
+            <button 
+              onClick={() => setLightboxOpen(false)} 
+              className="absolute top-4 right-4 text-white/70 hover:text-white z-20 p-2 bg-black/20 rounded-full backdrop-blur-sm"
+            >
               <X size={28} />
             </button>
-            <button
-              onClick={(e) => { e.stopPropagation(); setCurrentImage((p) => (p - 1 + images.length) % images.length); }}
-              className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/10 hover:bg-white/20 text-white p-3 rounded-full transition-colors z-10"
-            >
-              <ChevronLeft size={24} />
-            </button>
-            <button
-              onClick={(e) => { e.stopPropagation(); setCurrentImage((p) => (p + 1) % images.length); }}
-              className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/10 hover:bg-white/20 text-white p-3 rounded-full transition-colors z-10"
-            >
-              <ChevronRight size={24} />
-            </button>
-            <img
-              src={getMediaUrl(images[currentImage].file_path)}
-              alt={property.title}
-              className="max-w-[90vw] max-h-[85vh] object-contain rounded-lg"
-              onClick={(e) => e.stopPropagation()}
-            />
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-white/60 text-sm font-medium">
-              {currentImage + 1} / {images.length}
+
+            <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
+              <Carousel 
+                className="w-full h-full"
+                opts={{
+                  startIndex: currentImage,
+                  loop: true,
+                }}
+                setApi={(api) => {
+                  api?.on("select", () => {
+                    setCurrentImage(api.selectedScrollSnap());
+                  });
+                }}
+              >
+                <CarouselContent className="h-full ml-0">
+                  {images.map((img, i) => (
+                    <CarouselItem key={img.id} className="h-full pl-0 flex items-center justify-center">
+                      <img
+                        src={getMediaUrl(img.file_path)}
+                        alt={property.title}
+                        className="max-w-full max-h-full object-contain select-none"
+                        draggable={false}
+                      />
+                    </CarouselItem>
+                  ))}
+                </CarouselContent>
+                
+                {/* Desktop controls */}
+                <div className="hidden sm:block">
+                  <CarouselPrevious className="left-6 w-12 h-12 bg-white/10 hover:bg-white/20 border-none text-white backdrop-blur-md" />
+                  <CarouselNext className="right-6 w-12 h-12 bg-white/10 hover:bg-white/20 border-none text-white backdrop-blur-md" />
+                </div>
+
+                {/* Counter indicator */}
+                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-black/50 backdrop-blur-md text-white px-4 py-2 rounded-full text-sm font-medium z-10">
+                  {currentImage + 1} / {images.length}
+                </div>
+              </Carousel>
             </div>
           </motion.div>
         )}
