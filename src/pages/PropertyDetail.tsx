@@ -158,62 +158,67 @@ const PropertyDetail = () => {
           </div>
         </div>
 
-        {/* Gallery Section - Full Width */}
-        {images.length > 0 ? (
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            {images.length === 1 ? (
-              <div className="rounded-2xl overflow-hidden cursor-pointer" onClick={() => setLightboxOpen(true)}>
-                <img src={getMediaUrl(images[0].file_path)} alt={property.title} className="w-full max-h-[500px] object-contain bg-secondary rounded-2xl" />
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-3 max-h-[500px]">
-                {/* Main image */}
-                <div
-                  className="md:col-span-2 md:row-span-2 rounded-2xl overflow-hidden cursor-pointer relative group"
-                  onClick={() => { setCurrentImage(0); setLightboxOpen(true); }}
-                >
-                  <img src={getMediaUrl(images[0].file_path)} alt={property.title} className="w-full h-full min-h-[300px] max-h-[500px] object-cover group-hover:scale-105 transition-transform duration-500" />
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
-                </div>
-                {/* Side images */}
-                {images.slice(1, 5).map((img, i) => (
-                  <div
-                    key={img.id}
-                    className="hidden md:block rounded-xl overflow-hidden cursor-pointer relative group h-[245px]"
-                    onClick={() => { setCurrentImage(i + 1); setLightboxOpen(true); }}
-                  >
-                    <img src={getMediaUrl(img.file_path)} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
-                    {i === 3 && images.length > 5 && (
-                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                        <span className="text-white font-bold text-lg">+{images.length - 5} fotos</span>
+        {/* Gallery Section */}
+        <div className="container mx-auto px-0 sm:px-6 lg:px-8 py-0 sm:py-6">
+          {images.length > 0 ? (
+            <div className="relative group">
+              <Carousel 
+                setApi={setApi} 
+                className="w-full"
+                opts={{
+                  loop: true,
+                }}
+              >
+                <CarouselContent className="-ml-0">
+                  {images.map((img, i) => (
+                    <CarouselItem key={img.id} className="pl-0">
+                      <div 
+                        className="relative aspect-[4/3] sm:aspect-video md:aspect-[21/9] overflow-hidden sm:rounded-2xl cursor-pointer"
+                        onClick={() => { setCurrentImage(i); setLightboxOpen(true); }}
+                      >
+                        <img 
+                          src={getMediaUrl(img.file_path)} 
+                          alt={property.title} 
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute inset-0 bg-black/5 sm:hidden" />
                       </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
+                    </CarouselItem>
+                  ))}
+                </CarouselContent>
+                
+                {/* Desktop controls */}
+                <div className="hidden sm:block">
+                  <CarouselPrevious className="left-4 bg-white/20 hover:bg-white/40 border-none text-white backdrop-blur-md" />
+                  <CarouselNext className="right-4 bg-white/20 hover:bg-white/40 border-none text-white backdrop-blur-md" />
+                </div>
 
-            {/* Thumbnails strip for mobile */}
-            {images.length > 1 && (
-              <div className="flex gap-2 mt-4 overflow-x-auto pb-2 md:hidden">
-                {images.map((img, i) => (
-                  <button
-                    key={img.id}
-                    onClick={() => { setCurrentImage(i); setLightboxOpen(true); }}
-                    className={`shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-colors ${i === currentImage ? "border-primary" : "border-border"}`}
-                  >
-                    <img src={getMediaUrl(img.file_path)} alt="" className="w-full h-full object-cover" />
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        ) : (
-          <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6">
+                {/* Counter indicator */}
+                <div className="absolute bottom-4 right-4 sm:bottom-6 sm:right-10 bg-black/50 backdrop-blur-md text-white px-3 py-1 rounded-full text-xs font-medium z-10">
+                  {currentImage + 1} / {images.length}
+                </div>
+              </Carousel>
+
+              {/* Thumbnails strip - Hidden on smallest mobile, visible from sm up */}
+              {images.length > 1 && (
+                <div className="hidden sm:flex gap-3 mt-4 overflow-x-auto pb-2 scrollbar-hide">
+                  {images.map((img, i) => (
+                    <button
+                      key={img.id}
+                      onClick={() => { api?.scrollTo(i); }}
+                      className={`shrink-0 w-20 h-20 rounded-xl overflow-hidden border-2 transition-all ${i === currentImage ? "border-primary scale-105 shadow-lg" : "border-transparent opacity-60 hover:opacity-100"}`}
+                    >
+                      <img src={getMediaUrl(img.file_path)} alt="" className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
             <div className="rounded-2xl bg-secondary h-[300px] flex items-center justify-center text-muted-foreground">Sem fotos disponíveis</div>
-          </div>
-        )}
+          )}
+        </div>
+
 
         {/* Main Content */}
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 pb-16">
