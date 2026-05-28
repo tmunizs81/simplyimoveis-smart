@@ -96,21 +96,23 @@ const HeroSection = () => {
             {slides[current].location}
           </motion.span>
 
-          <h1 className="font-display text-3xl sm:text-5xl lg:text-7xl font-bold text-white leading-[1.1] mb-4 sm:mb-6">
+          <h1 className="font-display text-4xl sm:text-5xl lg:text-7xl font-bold text-white leading-tight sm:leading-[1.1] mb-4 sm:mb-6">
             A excelência que o seu{" "}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-yellow-400">
               patrimônio exige.
             </span>
           </h1>
 
+
           <p className="text-white/70 text-base sm:text-xl mb-6 sm:mb-10 font-body leading-relaxed max-w-xl">
             Comprometimento absoluto com a sua tranquilidade. Da busca inicial à entrega das chaves, garantimos uma jornada segura e impecável nos melhores endereços.
           </p>
 
           {/* Search bar */}
-          <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-2 border border-white/20 mb-10 max-w-2xl">
-            <div className="flex flex-col sm:flex-row gap-2">
-              <div className="flex-1 flex items-center gap-2 bg-white/10 rounded-xl px-4 py-3">
+          <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-3 border border-white/20 mb-10 max-w-2xl">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex-1 flex items-center gap-2 bg-white/15 rounded-xl px-4 py-4 sm:py-3">
+
                 <Home size={16} className="text-white/50" />
                 <select className="bg-transparent text-white text-sm outline-none flex-1 appearance-none cursor-pointer">
                   <option value="" className="text-foreground">Tipo do Imóvel</option>
@@ -120,7 +122,7 @@ const HeroSection = () => {
                   <option value="Terreno" className="text-foreground">Terreno</option>
                 </select>
               </div>
-              <div className="flex-1 flex items-center gap-2 bg-white/10 rounded-xl px-4 py-3">
+              <div className="flex-1 flex items-center gap-2 bg-white/15 rounded-xl px-4 py-4 sm:py-3">
                 <Building2 size={16} className="text-white/50" />
                 <select className="bg-transparent text-white text-sm outline-none flex-1 appearance-none cursor-pointer">
                   <option value="" className="text-foreground">Finalidade</option>
@@ -130,7 +132,7 @@ const HeroSection = () => {
               </div>
               <Link
                 to="/imoveis"
-                className="gradient-primary text-primary-foreground px-8 py-3 rounded-xl text-sm font-bold uppercase tracking-wider hover:opacity-90 transition-all flex items-center justify-center gap-2 shadow-xl shadow-primary/30"
+                className="gradient-primary text-primary-foreground px-8 py-4 sm:py-3 rounded-xl text-base sm:text-sm font-bold uppercase tracking-wider hover:opacity-90 transition-all flex items-center justify-center gap-2 shadow-xl shadow-primary/30"
               >
                 <Search size={16} />
                 Buscar

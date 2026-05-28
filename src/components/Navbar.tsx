@@ -123,16 +123,17 @@ const Navbar = () => {
             exit={{ opacity: 0, height: 0 }}
             className="md:hidden bg-background/98 backdrop-blur-xl border-t border-border overflow-hidden"
           >
-            <div className="px-6 py-6 space-y-1">
+            <div className="px-6 py-10 space-y-4">
               {navLinks.map((link) => (
                 <button
                   key={link.label}
                   onClick={() => { handleNavClick(link); setOpen(false); }}
-                  className="block w-full text-left px-4 py-3 text-sm font-bold uppercase tracking-wider text-muted-foreground hover:text-primary hover:bg-primary/5 rounded-xl transition-all"
+                  className="block w-full text-left px-6 py-4 text-lg font-bold uppercase tracking-[0.1em] text-muted-foreground hover:text-primary hover:bg-primary/5 rounded-2xl transition-all"
                 >
                   {link.label}
                 </button>
               ))}
+
               <Link
                 to="/admin"
                 className="block border border-border text-muted-foreground hover:text-primary px-4 py-3 rounded-xl text-sm font-bold text-center uppercase tracking-wider mt-4"
