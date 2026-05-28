@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Bed, Bath, Maximize, MapPin, Phone, Mail, ChevronLeft, ChevronRight, Car, DoorOpen, Share2, Heart, Calendar, X, MessageCircle, Home, Shield, Star, Waves, Navigation } from "lucide-react";
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious, type CarouselApi } from "@/components/ui/carousel";
+
 import { supabase } from "@/integrations/supabase/client";
 import { getMediaUrl } from "@/lib/mediaUrl";
 import Navbar from "@/components/Navbar";
