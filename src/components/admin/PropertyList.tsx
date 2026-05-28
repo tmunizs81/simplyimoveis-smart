@@ -18,6 +18,7 @@ interface PropertyListProps {
 }
 
 const PropertyList = ({ properties, onEdit, onRefresh, onNew }: PropertyListProps) => {
+  const [marketingProperty, setMarketingProperty] = useState<any | null>(null);
 
   const deleteProperty = async (id: string) => {
     if (!confirm("Tem certeza que deseja remover este imóvel?")) return;
