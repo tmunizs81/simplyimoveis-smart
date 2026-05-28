@@ -109,9 +109,10 @@ const HeroSection = () => {
           </p>
 
           {/* Search bar */}
-          <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-2 border border-white/20 mb-10 max-w-2xl">
-            <div className="flex flex-col sm:flex-row gap-2">
-              <div className="flex-1 flex items-center gap-2 bg-white/10 rounded-xl px-4 py-3">
+          <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-3 border border-white/20 mb-10 max-w-2xl">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex-1 flex items-center gap-2 bg-white/15 rounded-xl px-4 py-4 sm:py-3">
+
                 <Home size={16} className="text-white/50" />
                 <select className="bg-transparent text-white text-sm outline-none flex-1 appearance-none cursor-pointer">
                   <option value="" className="text-foreground">Tipo do Imóvel</option>
