@@ -418,7 +418,7 @@ const PropertyDetail = () => {
                       <div className="w-12 h-12 rounded-full gradient-primary flex items-center justify-center text-primary-foreground font-bold text-lg">T</div>
                       <div>
                         <p className="text-sm text-foreground font-bold">Talita Muniz</p>
-                        <p className="text-xs text-muted-foreground">Corretora | CRECI 29379</p>
+                        <p className="text-xs text-muted-foreground">Corretora</p>
 
                         <p className="text-xs text-primary font-medium">Simply Imóveis</p>
                       </div>
