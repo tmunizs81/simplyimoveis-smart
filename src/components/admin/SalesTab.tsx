@@ -14,6 +14,16 @@ type Sale = {
   closing_date: string | null; notes: string | null; created_at: string; user_id: string;
 };
 
+type PropertyOption = {
+  id: string;
+  title: string;
+  short_code: string | null;
+  city: string | null;
+  neighborhood: string | null;
+  price: number | null;
+  status: string | null;
+};
+
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   em_andamento: { label: "Em Andamento", color: "bg-blue-500" },
   proposta_enviada: { label: "Proposta Enviada", color: "bg-amber-500" },
@@ -29,7 +39,9 @@ const SalesTab = () => {
   const [editingSale, setEditingSale] = useState<Sale | null>(null);
   const [search, setSearch] = useState("");
   const [viewDocsSaleId, setViewDocsSaleId] = useState<string | null>(null);
+  const [properties, setProperties] = useState<PropertyOption[]>([]);
   const [form, setForm] = useState({
+    property_id: "",
     buyer_name: "", buyer_email: "", buyer_phone: "", buyer_cpf: "",
     sale_value: 0, commission_rate: 5, status: "em_andamento",
     proposal_date: "", closing_date: "", notes: "",
@@ -42,17 +54,26 @@ const SalesTab = () => {
     setLoading(false);
   };
 
-  useEffect(() => { fetchSales(); }, []);
+  const fetchProperties = async () => {
+    const { data, error } = await adminSelect("properties", {
+      select: "id, title, short_code, city, neighborhood, price, status",
+      order: { column: "created_at", ascending: false },
+    });
+    if (!error) setProperties((data as PropertyOption[]) || []);
+  };
+
+  useEffect(() => { fetchSales(); fetchProperties(); }, []);
 
   const openNewForm = () => {
     setEditingSale(null);
-    setForm({ buyer_name: "", buyer_email: "", buyer_phone: "", buyer_cpf: "", sale_value: 0, commission_rate: 5, status: "em_andamento", proposal_date: "", closing_date: "", notes: "" });
+    setForm({ property_id: "", buyer_name: "", buyer_email: "", buyer_phone: "", buyer_cpf: "", sale_value: 0, commission_rate: 5, status: "em_andamento", proposal_date: "", closing_date: "", notes: "" });
     setShowForm(true);
   };
 
   const openEditForm = (s: Sale) => {
     setEditingSale(s);
     setForm({
+      property_id: s.property_id || "",
       buyer_name: s.buyer_name || "", buyer_email: s.buyer_email || "",
       buyer_phone: s.buyer_phone || "", buyer_cpf: s.buyer_cpf || "",
       sale_value: s.sale_value ? Number(s.sale_value) : 0,
@@ -70,6 +91,7 @@ const SalesTab = () => {
 
     const commissionValue = (form.sale_value * form.commission_rate) / 100;
     const payload = {
+      property_id: form.property_id || null,
       buyer_name: form.buyer_name || null, buyer_email: form.buyer_email || null,
       buyer_phone: form.buyer_phone || null, buyer_cpf: form.buyer_cpf || null,
       sale_value: form.sale_value || null, commission_rate: form.commission_rate,
