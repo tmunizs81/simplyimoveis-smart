@@ -226,6 +226,41 @@ export type Database = {
           },
         ]
       }
+      lead_activities: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          lead_id: string
+          type: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          id?: string
+          lead_id: string
+          type: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          lead_id?: string
+          type?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_activities_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leads: {
         Row: {
           assigned_to: string | null
@@ -598,6 +633,7 @@ export type Database = {
           id: string
           lead_id: string | null
           notes: string | null
+          probability: number | null
           property_id: string | null
           proposal_date: string | null
           sale_value: number | null
@@ -617,6 +653,7 @@ export type Database = {
           id?: string
           lead_id?: string | null
           notes?: string | null
+          probability?: number | null
           property_id?: string | null
           proposal_date?: string | null
           sale_value?: number | null
@@ -636,6 +673,7 @@ export type Database = {
           id?: string
           lead_id?: string | null
           notes?: string | null
+          probability?: number | null
           property_id?: string | null
           proposal_date?: string | null
           sale_value?: number | null
