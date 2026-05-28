@@ -193,15 +193,20 @@ const PropertyDetail = () => {
                   {images.map((img, i) => (
                     <CarouselItem key={img.id} className="pl-0">
                       <div 
-                        className="relative aspect-[4/3] sm:aspect-video md:aspect-[21/9] overflow-hidden sm:rounded-2xl cursor-pointer"
+                        className="relative aspect-square sm:aspect-video lg:aspect-[21/9] overflow-hidden sm:rounded-2xl cursor-pointer bg-secondary"
                         onClick={() => { setCurrentImage(i); setLightboxOpen(true); }}
                       >
                         <img 
                           src={getMediaUrl(img.file_path)} 
                           alt={property.title} 
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-contain sm:object-cover"
                         />
-                        <div className="absolute inset-0 bg-black/5 sm:hidden" />
+                        <div className="absolute inset-0 bg-black/5" />
+                        
+                        {/* Zoom Hint Icon */}
+                        <div className="absolute top-4 right-4 bg-black/30 backdrop-blur-sm p-2 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Maximize size={18} />
+                        </div>
                       </div>
                     </CarouselItem>
                   ))}
