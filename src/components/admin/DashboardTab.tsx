@@ -3,7 +3,7 @@ import { adminSelect } from "@/lib/adminCrud";
 import { motion } from "framer-motion";
 import {
   Building2, Users, TrendingUp, DollarSign, Home, ClipboardCheck,
-  ArrowUpRight, ArrowDownRight, Calendar, FileText, AlertCircle
+  ArrowUpRight, ArrowDownRight, Calendar, FileText, AlertCircle, Sparkles
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
@@ -25,6 +25,7 @@ type Stats = {
   totalExpenses: number;
   pendingPayments: number;
   overduePayments: number;
+  forecastValue: number;
   recentLeads: { id: string; name: string; status: string; source: string; created_at: string }[];
   recentTransactions: { id: string; description: string; amount: number; type: string; status: string; date: string }[];
   monthlyData: { month: string; receitas: number; despesas: number; lucro: number }[];
@@ -73,6 +74,7 @@ const DashboardTab = () => {
         { data: contracts },
         { data: inspections },
         { data: transactions },
+        { data: sales },
       ] = await Promise.all([
         adminSelect("properties", { select: "id, status, active" }),
         adminSelect("leads", { select: "id, name, status, source, created_at", order: { column: "created_at", ascending: false } }),
@@ -80,6 +82,7 @@ const DashboardTab = () => {
         adminSelect("rental_contracts", { select: "id, status" }),
         adminSelect("property_inspections", { select: "id, status" }),
         adminSelect("financial_transactions", { select: "id, description, amount, type, status, date, category", order: { column: "date", ascending: false } }),
+        adminSelect("sales", { select: "sale_value, commission_value, status, probability" }),
       ]);
 
       const allProps = props || [];
@@ -88,6 +91,7 @@ const DashboardTab = () => {
       const allContracts = contracts || [];
       const allInspections = inspections || [];
       const allTx = transactions || [];
+      const allSales = sales || [];
 
       const revenue = allTx
         .filter((t: any) => t.type === "receita" && t.status === "pago")
@@ -98,7 +102,15 @@ const DashboardTab = () => {
       const pending = allTx.filter((t: any) => t.status === "pendente").length;
       const overdue = allTx.filter((t: any) => t.status === "atrasado").length;
 
-      // Build monthly data for last 12 months
+      // Forecast calculation
+      const forecast = allSales
+        .filter((s: any) => s.status !== 'fechado' && s.status !== 'cancelado')
+        .reduce((sum: number, s: any) => {
+          const prob = s.probability ? Number(s.probability) / 100 : (s.status === 'proposta_enviada' ? 0.5 : 0.2);
+          return sum + (Number(s.commission_value || 0) * prob);
+        }, 0);
+
+      // Build monthly data
       const monthlyMap = new Map<string, { receitas: number; despesas: number }>();
       const now = new Date();
       for (let i = 11; i >= 0; i--) {
@@ -143,6 +155,7 @@ const DashboardTab = () => {
         totalExpenses: expenses,
         pendingPayments: pending,
         overduePayments: overdue,
+        forecastValue: forecast,
         recentLeads: (allLeads.slice(0, 5) as any),
         recentTransactions: (allTx.slice(0, 5) as any),
         monthlyData,
@@ -177,13 +190,15 @@ const DashboardTab = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-foreground font-display">Dashboard</h1>
-        <p className="text-sm text-muted-foreground">Visão geral do seu negócio imobiliário</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground font-display">Dashboard</h1>
+          <p className="text-sm text-muted-foreground">Visão geral do seu negócio imobiliário</p>
+        </div>
       </div>
 
-      {/* Financial Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* Financial Summary & Forecast */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
           className="bg-card rounded-2xl border border-border p-5 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-24 h-24 bg-green-500/5 rounded-full -translate-y-8 translate-x-8" />
@@ -218,6 +233,19 @@ const DashboardTab = () => {
             <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Lucro</p>
           </div>
           <p className={`text-2xl font-bold font-display ${profit >= 0 ? "text-primary" : "text-red-600"}`}>{formatCurrency(profit)}</p>
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
+          className="bg-card rounded-2xl border border-primary/20 p-5 relative overflow-hidden bg-primary/5 shadow-lg shadow-primary/5">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-primary/10 rounded-full -translate-y-8 translate-x-8" />
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
+              <Sparkles size={20} className="text-primary" />
+            </div>
+            <p className="text-xs font-bold text-primary uppercase tracking-wider">Previsão 30d</p>
+          </div>
+          <p className="text-2xl font-bold text-primary font-display">{formatCurrency(stats.forecastValue)}</p>
+          <p className="text-[10px] text-muted-foreground mt-1">Estimativa de conversões em andamento</p>
         </motion.div>
       </div>
 
@@ -343,13 +371,11 @@ const DashboardTab = () => {
                       tx.status === "pago" ? "bg-green-500/10 text-green-600" :
                       tx.status === "atrasado" ? "bg-red-500/10 text-red-600" :
                       "bg-amber-500/10 text-amber-600"
-                    }`}>{INVOICE_LABELS[tx.status] || tx.status}</span>
+                    }`}>{tx.status}</span>
                   </div>
                   <div className="text-right">
-                    <p className={`text-sm font-bold ${tx.type === "receita" ? "text-green-600" : "text-red-600"}`}>
-                      {tx.type === "receita" ? "+" : "-"}{formatCurrency(Number(tx.amount))}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground">{new Date(tx.date).toLocaleDateString("pt-BR")}</p>
+                    <p className="text-sm font-bold text-foreground">{formatCurrency(tx.amount)}</p>
+                    <p className="text-[10px] text-muted-foreground">{new Date(tx.date || "").toLocaleDateString("pt-BR")}</p>
                   </div>
                 </div>
               ))}

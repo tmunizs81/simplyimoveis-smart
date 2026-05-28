@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { Edit, Trash2, Star, Eye, EyeOff, MapPin, BedDouble, Bath, Maximize2, ImageIcon, Plus, Search, Building2, Car, DoorOpen } from "lucide-react";
+import { Edit, Trash2, Star, Eye, EyeOff, MapPin, BedDouble, Bath, Maximize2, ImageIcon, Plus, Search, Building2, Car, DoorOpen, Share2, Users, Sparkles } from "lucide-react";
 import { adminUpdate, adminDelete, adminStorageDelete } from "@/lib/adminCrud";
 import { getMediaUrl } from "@/lib/mediaUrl";
 import { toast } from "sonner";
+import MarketingKit from "./MarketingKit";
 import type { Database } from "@/integrations/supabase/types";
 
 type Property = Database["public"]["Tables"]["properties"]["Row"];
@@ -16,6 +18,7 @@ interface PropertyListProps {
 }
 
 const PropertyList = ({ properties, onEdit, onRefresh, onNew }: PropertyListProps) => {
+  const [marketingProperty, setMarketingProperty] = useState<any | null>(null);
 
   const deleteProperty = async (id: string) => {
     if (!confirm("Tem certeza que deseja remover este imóvel?")) return;
@@ -165,6 +168,13 @@ const PropertyList = ({ properties, onEdit, onRefresh, onNew }: PropertyListProp
               {/* Actions */}
               <div className="flex flex-col gap-1.5 shrink-0">
                 <button
+                  onClick={() => setMarketingProperty(p)}
+                  title="Marketing Kit"
+                  className="p-2 rounded-lg border border-border text-muted-foreground hover:text-accent hover:border-accent hover:bg-accent/5 transition-all"
+                >
+                  <Share2 size={14} />
+                </button>
+                <button
                   onClick={() => onEdit(p)}
                   title="Editar"
                   className="p-2 rounded-lg border border-border text-muted-foreground hover:text-primary hover:border-primary hover:bg-primary/5 transition-all"
@@ -198,6 +208,13 @@ const PropertyList = ({ properties, onEdit, onRefresh, onNew }: PropertyListProp
             </motion.div>
           ))}
         </div>
+      )}
+
+      {marketingProperty && (
+        <MarketingKit 
+          property={marketingProperty} 
+          onClose={() => setMarketingProperty(null)} 
+        />
       )}
     </div>
   );
