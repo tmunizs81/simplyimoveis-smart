@@ -122,7 +122,7 @@ const HeroSection = () => {
                   <option value="Terreno" className="text-foreground">Terreno</option>
                 </select>
               </div>
-              <div className="flex-1 flex items-center gap-2 bg-white/10 rounded-xl px-4 py-3">
+              <div className="flex-1 flex items-center gap-2 bg-white/15 rounded-xl px-4 py-4 sm:py-3">
                 <Building2 size={16} className="text-white/50" />
                 <select className="bg-transparent text-white text-sm outline-none flex-1 appearance-none cursor-pointer">
                   <option value="" className="text-foreground">Finalidade</option>
