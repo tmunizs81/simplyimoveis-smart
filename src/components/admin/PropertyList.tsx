@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { Edit, Trash2, Star, Eye, EyeOff, MapPin, BedDouble, Bath, Maximize2, ImageIcon, Plus, Search, Building2, Car, DoorOpen } from "lucide-react";
+import { Edit, Trash2, Star, Eye, EyeOff, MapPin, BedDouble, Bath, Maximize2, ImageIcon, Plus, Search, Building2, Car, DoorOpen, Share2, Users, Sparkles } from "lucide-react";
 import { adminUpdate, adminDelete, adminStorageDelete } from "@/lib/adminCrud";
 import { getMediaUrl } from "@/lib/mediaUrl";
 import { toast } from "sonner";
+import MarketingKit from "./MarketingKit";
 import type { Database } from "@/integrations/supabase/types";
 
 type Property = Database["public"]["Tables"]["properties"]["Row"];
