@@ -13,7 +13,7 @@ cd "$SCRIPT_DIR"
 FUNC_DIR="${1:-volumes/functions}"
 mkdir -p "$FUNC_DIR/main"
 
-REQUIRED_FUNCTIONS=("chat" "create-admin-user" "notify-telegram" "admin-crud" "admin-storage" "ai-insights")
+REQUIRED_FUNCTIONS=("chat" "create-admin-user" "notify-telegram" "admin-crud" "admin-storage" "ai-insights" "ai-generate")
 
 for fn in "${REQUIRED_FUNCTIONS[@]}"; do
   if [ ! -f "$FUNC_DIR/$fn/index.ts" ]; then
@@ -30,6 +30,7 @@ import * as notifyTelegramModule from "../notify-telegram/index.ts";
 import * as adminCrudModule from "../admin-crud/index.ts";
 import * as adminStorageModule from "../admin-storage/index.ts";
 import * as aiInsightsModule from "../ai-insights/index.ts";
+import * as aiGenerateModule from "../ai-generate/index.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -48,6 +49,7 @@ const modules: Record<string, Record<string, unknown>> = {
   "admin-crud": adminCrudModule,
   "admin-storage": adminStorageModule,
   "ai-insights": aiInsightsModule,
+  "ai-generate": aiGenerateModule,
 };
 
 const getHandler = (functionName: string): Handler | null => {
