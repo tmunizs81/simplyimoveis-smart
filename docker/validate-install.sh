@@ -185,6 +185,12 @@ case "$CRUD_ST" in
   *) check "Edge Function admin-crud (HTTP $CRUD_ST)" "warn" ;;
 esac
 
+AI_GEN_ST=$(curl -sS -m 10 -o /dev/null -w "%{http_code}" -X POST "http://127.0.0.1:${KONG_PORT}/functions/v1/ai-generate" -H "apikey: ${ANON_KEY}" -H "Content-Type: application/json" -d '{}' 2>/dev/null || echo "000")
+case "$AI_GEN_ST" in
+  400|401|403) check "Edge Function ai-generate (HTTP $AI_GEN_ST)" "ok" ;;
+  *) check "Edge Function ai-generate (HTTP $AI_GEN_ST)" "warn" ;;
+esac
+
 # ==============================================================
 # SEÇÃO 4 - Banco de dados (objetos críticos)
 # ==============================================================
