@@ -6,7 +6,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-admin-action, x-storage-bucket, x-storage-path, x-storage-upsert, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const ADMIN_CRUD_VERSION = "2026-04-02-selfhosted-r5";
+const ADMIN_CRUD_VERSION = "2026-04-02-selfhosted-r6";
 
 const buildJsonHeaders = (requestId?: string) => ({
   ...corsHeaders,
@@ -403,6 +403,8 @@ const handler = async (req: Request): Promise<Response> => {
       order?: { column: string; ascending?: boolean };
     };
 
+    console.log(`[admin-crud][${requestId}] Action: ${action}, Table: ${table}`);
+
     if (!action) return json({ error: "action obrigatório", version: ADMIN_CRUD_VERSION }, 400);
 
     // --- AI actions ---
@@ -484,10 +486,13 @@ const handler = async (req: Request): Promise<Response> => {
        return json({ signedUrl: urlData.signedUrl, version: ADMIN_CRUD_VERSION });
     }
 
-    // --- CRUD actions ---
+    // --- CRUD actions (Validation) ---
     const CRUD_ACTIONS = ["insert", "update", "delete", "select"];
     if (CRUD_ACTIONS.includes(action)) {
-      if (!table) return json({ error: "table obrigatório", version: ADMIN_CRUD_VERSION }, 400);
+      if (!table) {
+        console.error(`[admin-crud][${requestId}] Erro: Ação '${action}' exige parâmetro 'table'`);
+        return json({ error: "table obrigatório", version: ADMIN_CRUD_VERSION }, 400);
+      }
       if (!ALLOWED_TABLES.includes(table as (typeof ALLOWED_TABLES)[number])) {
         return json({ error: `Tabela '${table}' não permitida`, version: ADMIN_CRUD_VERSION }, 400);
       }
