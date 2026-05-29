@@ -6,7 +6,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-admin-action, x-storage-bucket, x-storage-path, x-storage-upsert, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const ADMIN_CRUD_VERSION = "2026-04-02-selfhosted-r9";
+const ADMIN_CRUD_VERSION = "2026-05-29-selfhosted-r10-ai-fallback";
 
 const buildJsonHeaders = (requestId?: string) => ({
   ...corsHeaders,
@@ -90,6 +90,41 @@ const getEnv = (name: string): string => {
   const value = Deno.env.get(name);
   if (!value) throw new Error(`Variável de ambiente obrigatória ausente: ${name}`);
   return value;
+};
+
+const resolveAiProvider = (requestedModel?: string) => {
+  const deepseekKey = (Deno.env.get("DEEPSEEK_API_KEY") || "").trim();
+  const groqKey = (Deno.env.get("GROQ_API_KEY") || "").trim();
+  const lovableKey = (Deno.env.get("LOVABLE_API_KEY") || "").trim();
+
+  if (deepseekKey) {
+    return {
+      name: "DeepSeek",
+      url: "https://api.deepseek.com/v1/chat/completions",
+      model: requestedModel || "deepseek-chat",
+      headers: { Authorization: `Bearer ${deepseekKey}` },
+    };
+  }
+
+  if (groqKey) {
+    return {
+      name: "Groq",
+      url: "https://api.groq.com/openai/v1/chat/completions",
+      model: requestedModel && !requestedModel.includes("deepseek") ? requestedModel : "llama-3.3-70b-versatile",
+      headers: { Authorization: `Bearer ${groqKey}` },
+    };
+  }
+
+  if (lovableKey) {
+    return {
+      name: "Lovable AI",
+      url: "https://ai.gateway.lovable.dev/v1/chat/completions",
+      model: requestedModel && requestedModel.includes("/") ? requestedModel : "google/gemini-3-flash-preview",
+      headers: { "Lovable-API-Key": lovableKey },
+    };
+  }
+
+  return null;
 };
 
 const isAllowedBucket = (bucket: string) => (
