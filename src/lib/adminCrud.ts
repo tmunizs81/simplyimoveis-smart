@@ -49,6 +49,12 @@ function getSelfHostedFunctionUrl(functionName: string) {
   return `${getAdminCrudBaseUrl()}/functions/v1/${functionName}`;
 }
 
+const isFunctionNotFoundError = (error: CrudError | null | undefined, functionName: string) => {
+  if (!error) return false;
+  const text = `${error.message || ""} ${error.details || ""}`.toLowerCase();
+  return error.status === 404 || (text.includes(functionName.toLowerCase()) && text.includes("not found"));
+};
+
 function getAdminCrudApiKey() {
   return String(import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? "").trim();
 }
@@ -269,13 +275,26 @@ export async function adminAiGenerate(
     model?: string;
   }
 ): Promise<CrudResult<string>> {
-  return performAdminCrudRequest(getSelfHostedFunctionUrl("ai-generate"), {
-    body: JSON.stringify({
-      prompt,
-      systemPrompt: options?.systemPrompt,
-      temperature: options?.temperature,
-      model: options?.model,
-    }),
+  const payload = {
+    action: "ai-generate",
+    table: "properties",
+    prompt,
+    systemPrompt: options?.systemPrompt,
+    temperature: options?.temperature,
+    model: options?.model,
+  };
+
+  const legacyRouterResult = await callAdminCrud(payload);
+  if (!legacyRouterResult.error) return legacyRouterResult as CrudResult<string>;
+
+  const dedicatedResult = await performAdminCrudRequest(getSelfHostedFunctionUrl("ai-generate"), {
+    body: JSON.stringify(payload),
     headers: { "Content-Type": "application/json" },
   });
+
+  if (isFunctionNotFoundError(dedicatedResult.error, "ai-generate")) {
+    return legacyRouterResult as CrudResult<string>;
+  }
+
+  return dedicatedResult as CrudResult<string>;
 }
