@@ -6,7 +6,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-admin-action, x-storage-bucket, x-storage-path, x-storage-upsert, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const ADMIN_CRUD_VERSION = "2026-04-02-selfhosted-r7";
+const ADMIN_CRUD_VERSION = "2026-04-02-selfhosted-r8";
 
 const buildJsonHeaders = (requestId?: string) => ({
   ...corsHeaders,
@@ -403,12 +403,13 @@ const handler = async (req: Request): Promise<Response> => {
       order?: { column: string; ascending?: boolean };
     };
 
+    console.log(`[admin-crud][${requestId}] Request Body:`, JSON.stringify(body));
     console.log(`[admin-crud][${requestId}] Action: ${action}, Table: ${table}`);
 
     if (!action) return json({ error: "action obrigatório", version: ADMIN_CRUD_VERSION }, 400);
 
     // --- AI actions (Execute before any validation) ---
-    if (action === "ai-generate") {
+    if (action === "ai-generate" || (action as string).includes("ai")) {
       const { prompt, systemPrompt, temperature, model } = body as any;
       if (!prompt) return json({ error: "prompt obrigatório", version: ADMIN_CRUD_VERSION }, 400);
 
