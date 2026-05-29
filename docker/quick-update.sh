@@ -106,6 +106,13 @@ AUTH_ST=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:${KONG_HTTP_P
 FUNC_ST=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:${KONG_HTTP_PORT}/functions/v1/" -H "apikey: ${ANON_KEY}" 2>/dev/null || echo "000")
 [ "$FUNC_ST" = "200" ] && echo -e "   ${GREEN}✅ Functions: HTTP $FUNC_ST${NC}" || echo -e "   ${YELLOW}⚠️  Functions: HTTP $FUNC_ST (pode ser normal)${NC}"
 
+AI_GEN_ST=$(curl -s -o /tmp/simply-ai-generate-check.json -w "%{http_code}" -X POST "http://127.0.0.1:${KONG_HTTP_PORT}/functions/v1/ai-generate" -H "apikey: ${ANON_KEY}" -H "Content-Type: application/json" -d '{}' 2>/dev/null || echo "000")
+case "$AI_GEN_ST" in
+  400|401|403) echo -e "   ${GREEN}✅ AI Generate: HTTP $AI_GEN_ST (endpoint registrado)${NC}" ;;
+  404) echo -e "   ${RED}❌ AI Generate não registrado no router (HTTP 404). Rode: bash sync-functions.sh && docker compose up -d --force-recreate functions kong${NC}"; ERRORS=$((ERRORS + 1)) ;;
+  *) echo -e "   ${YELLOW}⚠️  AI Generate: HTTP $AI_GEN_ST${NC}" ;;
+esac
+
 REST_ST=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:${KONG_HTTP_PORT}/rest/v1/" -H "apikey: ${ANON_KEY}" 2>/dev/null || echo "000")
 [ "$REST_ST" = "200" ] && echo -e "   ${GREEN}✅ REST API: HTTP $REST_ST${NC}" || echo -e "   ${YELLOW}⚠️  REST API: HTTP $REST_ST${NC}"
 
