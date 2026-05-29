@@ -45,6 +45,10 @@ function getAdminCrudUrl() {
   return `${getAdminCrudBaseUrl()}/functions/v1/admin-crud`;
 }
 
+function getSelfHostedFunctionUrl(functionName: string) {
+  return `${getAdminCrudBaseUrl()}/functions/v1/${functionName}`;
+}
+
 function getAdminCrudApiKey() {
   return String(import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? "").trim();
 }
@@ -265,12 +269,13 @@ export async function adminAiGenerate(
     model?: string;
   }
 ): Promise<CrudResult<string>> {
-  return callAdminCrud({
-    action: "ai-generate",
-    table: "properties", // Fornecido apenas para evitar validações de 'table obrigatório' em versões legadas
-    prompt,
-    systemPrompt: options?.systemPrompt,
-    temperature: options?.temperature,
-    model: options?.model,
+  return performAdminCrudRequest(getSelfHostedFunctionUrl("ai-generate"), {
+    body: JSON.stringify({
+      prompt,
+      systemPrompt: options?.systemPrompt,
+      temperature: options?.temperature,
+      model: options?.model,
+    }),
+    headers: { "Content-Type": "application/json" },
   });
 }
