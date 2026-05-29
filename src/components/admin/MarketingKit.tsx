@@ -62,7 +62,7 @@ const MarketingKit = ({ property, onClose }: MarketingKitProps) => {
       const result = await adminAiGenerate(prompt, {
         systemPrompt: "Você é um copywriter sênior especializado no mercado imobiliário de alto padrão. Seu objetivo é criar desejo e urgência.",
         temperature: 0.8,
-        model: "deepseek-chat" // Tentará deepseek se a chave estiver lá
+        model: "deepseek-chat"
       });
 
       if (result.error) throw new Error(result.error.message);
@@ -106,7 +106,7 @@ const MarketingKit = ({ property, onClose }: MarketingKitProps) => {
             </div>
             <div>
               <h2 className="font-display text-xl font-bold text-foreground">Marketing Kit AI</h2>
-              <p className="text-xs text-muted-foreground">Material automatizado via DeepSeek Sênior</p>
+              <p className="text-xs text-muted-foreground">Material automatizado por IA</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -304,7 +304,7 @@ const MarketingKit = ({ property, onClose }: MarketingKitProps) => {
                         <Sparkles className="absolute inset-0 m-auto text-primary animate-pulse" size={24} />
                       </div>
                       <div className="text-center">
-                        <h3 className="font-bold text-lg">DeepSeek está pensando...</h3>
+                        <h3 className="font-bold text-lg">IA está pensando...</h3>
                         <p className="text-sm text-muted-foreground">Criando copy persuasiva para seu imóvel.</p>
                       </div>
                     </div>
