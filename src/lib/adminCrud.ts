@@ -253,3 +253,23 @@ export async function adminStorageSignedUrl(
   if (result.error || !result.data) return null;
   return result.data?.signedUrl || result.data;
 }
+
+/**
+ * Generate content via AI through the admin-crud edge function.
+ */
+export async function adminAiGenerate(
+  prompt: string,
+  options?: {
+    systemPrompt?: string;
+    temperature?: number;
+    model?: string;
+  }
+): Promise<CrudResult<string>> {
+  return callAdminCrud({
+    action: "ai-generate",
+    prompt,
+    systemPrompt: options?.systemPrompt,
+    temperature: options?.temperature,
+    model: options?.model,
+  });
+}
