@@ -485,9 +485,12 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // --- CRUD actions ---
-    if (!table) return json({ error: "table obrigatório", version: ADMIN_CRUD_VERSION }, 400);
-    if (!ALLOWED_TABLES.includes(table as (typeof ALLOWED_TABLES)[number])) {
-      return json({ error: `Tabela '${table}' não permitida`, version: ADMIN_CRUD_VERSION }, 400);
+    const CRUD_ACTIONS = ["insert", "update", "delete", "select"];
+    if (CRUD_ACTIONS.includes(action)) {
+      if (!table) return json({ error: "table obrigatório", version: ADMIN_CRUD_VERSION }, 400);
+      if (!ALLOWED_TABLES.includes(table as (typeof ALLOWED_TABLES)[number])) {
+        return json({ error: `Tabela '${table}' não permitida`, version: ADMIN_CRUD_VERSION }, 400);
+      }
     }
 
     if (action === "insert") {
