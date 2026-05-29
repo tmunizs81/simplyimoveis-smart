@@ -252,6 +252,7 @@ REQUIRED_SOURCE_FILES=(
   "docker/volumes/kong/kong.yml.template"
   "supabase/functions/chat/index.ts"
   "supabase/functions/admin-crud/index.ts"
+  "supabase/functions/ai-generate/index.ts"
   "supabase/functions/create-admin-user/index.ts"
   "supabase/functions/notify-telegram/index.ts"
   "supabase/functions/ai-insights/index.ts"
@@ -398,6 +399,7 @@ prompt_config "SMTP_ADMIN_EMAIL" "Email do admin" "admin@simplyimoveis.com.br"
 
 echo -e "\n${CYAN}=== Integrações ===${NC}"
 prompt_config "GROQ_API_KEY" "Chave Groq API (chat IA)" "" "true"
+prompt_config "DEEPSEEK_API_KEY" "Chave DeepSeek API (opcional, Marketing Kit AI)" "" "true"
 
 echo -e "\n${CYAN}=== Telegram (opcional) ===${NC}"
 prompt_config "TELEGRAM_BOT_TOKEN" "Telegram Bot Token"
