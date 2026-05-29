@@ -6,7 +6,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-admin-action, x-storage-bucket, x-storage-path, x-storage-upsert, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const ADMIN_CRUD_VERSION = "2026-04-02-selfhosted-r8";
+const ADMIN_CRUD_VERSION = "2026-04-02-selfhosted-r9";
 
 const buildJsonHeaders = (requestId?: string) => ({
   ...corsHeaders,
@@ -409,7 +409,8 @@ const handler = async (req: Request): Promise<Response> => {
     if (!action) return json({ error: "action obrigatório", version: ADMIN_CRUD_VERSION }, 400);
 
     // --- AI actions (Execute before any validation) ---
-    if (action === "ai-generate" || (action as string).includes("ai")) {
+    const isAiAction = action === "ai-generate" || (typeof action === "string" && action.toLowerCase().includes("ai"));
+    if (isAiAction) {
       const { prompt, systemPrompt, temperature, model } = body as any;
       if (!prompt) return json({ error: "prompt obrigatório", version: ADMIN_CRUD_VERSION }, 400);
 
@@ -547,7 +548,12 @@ const handler = async (req: Request): Promise<Response> => {
       return json({ data: result.data, version: ADMIN_CRUD_VERSION });
     }
 
-    return json({ error: "Ação inválida", version: ADMIN_CRUD_VERSION }, 400);
+    console.error(`[admin-crud][${requestId}] Erro: Ação '${action}' não reconhecida pelo roteador.`);
+    return json({ 
+      error: `Ação '${action}' inválida`, 
+      receivedAction: action,
+      version: ADMIN_CRUD_VERSION 
+    }, 400);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Erro interno";
     console.error(`[admin-crud][${requestId}] error:`, err);
