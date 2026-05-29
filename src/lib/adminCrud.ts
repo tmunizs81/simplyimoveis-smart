@@ -267,6 +267,7 @@ export async function adminAiGenerate(
 ): Promise<CrudResult<string>> {
   return callAdminCrud({
     action: "ai-generate",
+    table: "properties", // Fornecido apenas para evitar validações de 'table obrigatório' em versões legadas
     prompt,
     systemPrompt: options?.systemPrompt,
     temperature: options?.temperature,

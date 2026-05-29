@@ -6,7 +6,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-admin-action, x-storage-bucket, x-storage-path, x-storage-upsert, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const ADMIN_CRUD_VERSION = "2026-04-02-selfhosted-r6";
+const ADMIN_CRUD_VERSION = "2026-04-02-selfhosted-r7";
 
 const buildJsonHeaders = (requestId?: string) => ({
   ...corsHeaders,
@@ -407,7 +407,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (!action) return json({ error: "action obrigatório", version: ADMIN_CRUD_VERSION }, 400);
 
-    // --- AI actions ---
+    // --- AI actions (Execute before any validation) ---
     if (action === "ai-generate") {
       const { prompt, systemPrompt, temperature, model } = body as any;
       if (!prompt) return json({ error: "prompt obrigatório", version: ADMIN_CRUD_VERSION }, 400);
@@ -430,7 +430,6 @@ const handler = async (req: Request): Promise<Response> => {
       } else if (LOVABLE_API_KEY) {
         aiUrl = "https://ai.gateway.lovable.dev/v1/chat/completions";
         apiKey = LOVABLE_API_KEY;
-        // Se usar o gateway do Lovable, podemos tentar mapear para deepseek se solicitado
         aiModel = model && model.includes("/") ? model : "google/gemini-2.0-flash-exp";
       } else {
         return json({ error: "Nenhuma API Key de IA configurada (DEEPSEEK_API_KEY, GROQ_API_KEY ou LOVABLE_API_KEY)", version: ADMIN_CRUD_VERSION }, 500);
@@ -460,6 +459,8 @@ const handler = async (req: Request): Promise<Response> => {
       const aiData = await aiResp.json();
       return json({ data: aiData.choices?.[0]?.message?.content, version: ADMIN_CRUD_VERSION });
     }
+
+
 
     // --- Storage actions ---
     if (action === "storage-delete") {
