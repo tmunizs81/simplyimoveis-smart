@@ -449,37 +449,19 @@ const handler = async (req: Request): Promise<Response> => {
       const { prompt, systemPrompt, temperature, model } = body as any;
       if (!prompt) return json({ error: "prompt obrigatório", version: ADMIN_CRUD_VERSION }, 400);
 
-      const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
-      const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
-      const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-
-      let aiUrl = "";
-      let apiKey = "";
-      let aiModel = model || "deepseek-chat";
-
-      if (DEEPSEEK_API_KEY) {
-        aiUrl = "https://api.deepseek.com/v1/chat/completions";
-        apiKey = DEEPSEEK_API_KEY;
-      } else if (GROQ_API_KEY) {
-        aiUrl = "https://api.groq.com/openai/v1/chat/completions";
-        apiKey = GROQ_API_KEY;
-        aiModel = model || "llama-3.3-70b-versatile";
-      } else if (LOVABLE_API_KEY) {
-        aiUrl = "https://ai.gateway.lovable.dev/v1/chat/completions";
-        apiKey = LOVABLE_API_KEY;
-        aiModel = model && model.includes("/") ? model : "google/gemini-2.0-flash-exp";
-      } else {
+      const provider = resolveAiProvider(typeof model === "string" ? model.trim() : "");
+      if (!provider) {
         return json({ error: "Nenhuma API Key de IA configurada (DEEPSEEK_API_KEY, GROQ_API_KEY ou LOVABLE_API_KEY)", version: ADMIN_CRUD_VERSION }, 500);
       }
 
-      const aiResp = await fetch(aiUrl, {
+      const aiResp = await fetch(provider.url, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${apiKey}`,
+          ...provider.headers,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: aiModel,
+          model: provider.model,
           messages: [
             ...(systemPrompt ? [{ role: "system", content: systemPrompt }] : []),
             { role: "user", content: prompt },
@@ -490,11 +472,11 @@ const handler = async (req: Request): Promise<Response> => {
 
       if (!aiResp.ok) {
         const errText = await aiResp.text();
-        return json({ error: `Erro na IA (${aiModel}): ${errText}`, version: ADMIN_CRUD_VERSION }, 500);
+        return json({ error: `Erro na IA (${provider.name}/${provider.model}): ${errText}`, version: ADMIN_CRUD_VERSION }, 500);
       }
 
       const aiData = await aiResp.json();
-      return json({ data: aiData.choices?.[0]?.message?.content, version: ADMIN_CRUD_VERSION });
+      return json({ data: aiData.choices?.[0]?.message?.content, provider: provider.name, model: provider.model, version: ADMIN_CRUD_VERSION });
     }
 
 
