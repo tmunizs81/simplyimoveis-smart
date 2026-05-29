@@ -6,7 +6,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-admin-action, x-storage-bucket, x-storage-path, x-storage-upsert, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const ADMIN_CRUD_VERSION = "2026-04-02-selfhosted-r6";
+const ADMIN_CRUD_VERSION = "2026-04-02-selfhosted-r7";
 
 const buildJsonHeaders = (requestId?: string) => ({
   ...corsHeaders,
@@ -407,59 +407,6 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (!action) return json({ error: "action obrigatório", version: ADMIN_CRUD_VERSION }, 400);
 
-    // --- AI actions ---
-    if (action === "ai-generate") {
-      const { prompt, systemPrompt, temperature, model } = body as any;
-      if (!prompt) return json({ error: "prompt obrigatório", version: ADMIN_CRUD_VERSION }, 400);
-
-      const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
-      const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
-      const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-
-      let aiUrl = "";
-      let apiKey = "";
-      let aiModel = model || "deepseek-chat";
-
-      if (DEEPSEEK_API_KEY) {
-        aiUrl = "https://api.deepseek.com/v1/chat/completions";
-        apiKey = DEEPSEEK_API_KEY;
-      } else if (GROQ_API_KEY) {
-        aiUrl = "https://api.groq.com/openai/v1/chat/completions";
-        apiKey = GROQ_API_KEY;
-        aiModel = model || "llama-3.3-70b-versatile";
-      } else if (LOVABLE_API_KEY) {
-        aiUrl = "https://ai.gateway.lovable.dev/v1/chat/completions";
-        apiKey = LOVABLE_API_KEY;
-        // Se usar o gateway do Lovable, podemos tentar mapear para deepseek se solicitado
-        aiModel = model && model.includes("/") ? model : "google/gemini-2.0-flash-exp";
-      } else {
-        return json({ error: "Nenhuma API Key de IA configurada (DEEPSEEK_API_KEY, GROQ_API_KEY ou LOVABLE_API_KEY)", version: ADMIN_CRUD_VERSION }, 500);
-      }
-
-      const aiResp = await fetch(aiUrl, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: aiModel,
-          messages: [
-            ...(systemPrompt ? [{ role: "system", content: systemPrompt }] : []),
-            { role: "user", content: prompt },
-          ],
-          temperature: temperature || 0.7,
-        }),
-      });
-
-      if (!aiResp.ok) {
-        const errText = await aiResp.text();
-        return json({ error: `Erro na IA (${aiModel}): ${errText}`, version: ADMIN_CRUD_VERSION }, 500);
-      }
-
-      const aiData = await aiResp.json();
-      return json({ data: aiData.choices?.[0]?.message?.content, version: ADMIN_CRUD_VERSION });
-    }
 
     // --- Storage actions ---
     if (action === "storage-delete") {
