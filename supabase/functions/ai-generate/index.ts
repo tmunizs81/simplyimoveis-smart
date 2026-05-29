@@ -8,8 +8,8 @@ const corsHeaders = {
 
 const AI_GENERATE_VERSION = "2026-05-29-selfhosted-ai-generate-v1";
 
-const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify({ version: AI_GENERATE_VERSION, ...body as Record<string, unknown> }), {
+const json = (body: Record<string, unknown>, status = 200) =>
+  new Response(JSON.stringify({ version: AI_GENERATE_VERSION, ...body }), {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
