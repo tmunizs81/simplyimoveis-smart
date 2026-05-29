@@ -92,8 +92,8 @@ chmod +x volumes/db/init/*.sh 2>/dev/null || true
 
 # ── 5. Sync functions + kong ──
 echo -e "\n${BLUE}3️⃣  Sincronizando Functions + Kong...${NC}"
-bash sync-functions.sh "$INSTALL_DIR/supabase/functions" "volumes/functions" || echo -e "   ${YELLOW}⚠️  sync-functions com alertas${NC}"
-bash render-kong-config.sh || echo -e "   ${YELLOW}⚠️  render-kong com alertas${NC}"
+bash sync-functions.sh "$INSTALL_DIR/supabase/functions" "volumes/functions"
+bash render-kong-config.sh
 echo -e "   ${GREEN}✅ Functions e Kong sincronizados${NC}"
 
 # ── 6. Rebuild + restart ──

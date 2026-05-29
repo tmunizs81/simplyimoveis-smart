@@ -6,7 +6,7 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-admin-action, x-storage-bucket, x-storage-path, x-storage-upsert, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const ADMIN_CRUD_VERSION = "2026-04-02-selfhosted-r9";
+const ADMIN_CRUD_VERSION = "2026-05-29-selfhosted-r10-ai-fallback";
 
 const buildJsonHeaders = (requestId?: string) => ({
   ...corsHeaders,
@@ -90,6 +90,41 @@ const getEnv = (name: string): string => {
   const value = Deno.env.get(name);
   if (!value) throw new Error(`Variável de ambiente obrigatória ausente: ${name}`);
   return value;
+};
+
+const resolveAiProvider = (requestedModel?: string) => {
+  const deepseekKey = (Deno.env.get("DEEPSEEK_API_KEY") || "").trim();
+  const groqKey = (Deno.env.get("GROQ_API_KEY") || "").trim();
+  const lovableKey = (Deno.env.get("LOVABLE_API_KEY") || "").trim();
+
+  if (deepseekKey) {
+    return {
+      name: "DeepSeek",
+      url: "https://api.deepseek.com/v1/chat/completions",
+      model: requestedModel || "deepseek-chat",
+      headers: { Authorization: `Bearer ${deepseekKey}` },
+    };
+  }
+
+  if (groqKey) {
+    return {
+      name: "Groq",
+      url: "https://api.groq.com/openai/v1/chat/completions",
+      model: requestedModel && !requestedModel.includes("deepseek") ? requestedModel : "llama-3.3-70b-versatile",
+      headers: { Authorization: `Bearer ${groqKey}` },
+    };
+  }
+
+  if (lovableKey) {
+    return {
+      name: "Lovable AI",
+      url: "https://ai.gateway.lovable.dev/v1/chat/completions",
+      model: requestedModel && requestedModel.includes("/") ? requestedModel : "google/gemini-3-flash-preview",
+      headers: { "Lovable-API-Key": lovableKey },
+    };
+  }
+
+  return null;
 };
 
 const isAllowedBucket = (bucket: string) => (
@@ -414,37 +449,19 @@ const handler = async (req: Request): Promise<Response> => {
       const { prompt, systemPrompt, temperature, model } = body as any;
       if (!prompt) return json({ error: "prompt obrigatório", version: ADMIN_CRUD_VERSION }, 400);
 
-      const DEEPSEEK_API_KEY = Deno.env.get("DEEPSEEK_API_KEY");
-      const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
-      const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-
-      let aiUrl = "";
-      let apiKey = "";
-      let aiModel = model || "deepseek-chat";
-
-      if (DEEPSEEK_API_KEY) {
-        aiUrl = "https://api.deepseek.com/v1/chat/completions";
-        apiKey = DEEPSEEK_API_KEY;
-      } else if (GROQ_API_KEY) {
-        aiUrl = "https://api.groq.com/openai/v1/chat/completions";
-        apiKey = GROQ_API_KEY;
-        aiModel = model || "llama-3.3-70b-versatile";
-      } else if (LOVABLE_API_KEY) {
-        aiUrl = "https://ai.gateway.lovable.dev/v1/chat/completions";
-        apiKey = LOVABLE_API_KEY;
-        aiModel = model && model.includes("/") ? model : "google/gemini-2.0-flash-exp";
-      } else {
+      const provider = resolveAiProvider(typeof model === "string" ? model.trim() : "");
+      if (!provider) {
         return json({ error: "Nenhuma API Key de IA configurada (DEEPSEEK_API_KEY, GROQ_API_KEY ou LOVABLE_API_KEY)", version: ADMIN_CRUD_VERSION }, 500);
       }
 
-      const aiResp = await fetch(aiUrl, {
+      const aiResp = await fetch(provider.url, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${apiKey}`,
+          ...provider.headers,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: aiModel,
+          model: provider.model,
           messages: [
             ...(systemPrompt ? [{ role: "system", content: systemPrompt }] : []),
             { role: "user", content: prompt },
@@ -455,11 +472,11 @@ const handler = async (req: Request): Promise<Response> => {
 
       if (!aiResp.ok) {
         const errText = await aiResp.text();
-        return json({ error: `Erro na IA (${aiModel}): ${errText}`, version: ADMIN_CRUD_VERSION }, 500);
+        return json({ error: `Erro na IA (${provider.name}/${provider.model}): ${errText}`, version: ADMIN_CRUD_VERSION }, 500);
       }
 
       const aiData = await aiResp.json();
-      return json({ data: aiData.choices?.[0]?.message?.content, version: ADMIN_CRUD_VERSION });
+      return json({ data: aiData.choices?.[0]?.message?.content, provider: provider.name, model: provider.model, version: ADMIN_CRUD_VERSION });
     }
 
 

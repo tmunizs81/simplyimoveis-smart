@@ -188,6 +188,7 @@ esac
 AI_GEN_ST=$(curl -sS -m 10 -o /dev/null -w "%{http_code}" -X POST "http://127.0.0.1:${KONG_PORT}/functions/v1/ai-generate" -H "apikey: ${ANON_KEY}" -H "Content-Type: application/json" -d '{}' 2>/dev/null || echo "000")
 case "$AI_GEN_ST" in
   400|401|403) check "Edge Function ai-generate (HTTP $AI_GEN_ST)" "ok" ;;
+  404) check "Edge Function ai-generate ausente no router; rode sync-functions.sh e recrie functions/kong (HTTP $AI_GEN_ST)" "fail" ;;
   *) check "Edge Function ai-generate (HTTP $AI_GEN_ST)" "warn" ;;
 esac
 

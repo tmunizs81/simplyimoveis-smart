@@ -105,7 +105,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     const provider = resolveProvider(requestedModel);
     if (!provider) {
-      return json({ error: "Nenhuma API Key de IA configurada no VPS (DEEPSEEK_API_KEY ou GROQ_API_KEY)." }, 500);
+      return json({ error: "Nenhuma API Key de IA configurada no VPS (DEEPSEEK_API_KEY, GROQ_API_KEY ou LOVABLE_API_KEY)." }, 500);
     }
 
     const aiResp = await fetch(provider.url, {

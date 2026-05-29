@@ -49,6 +49,12 @@ function getSelfHostedFunctionUrl(functionName: string) {
   return `${getAdminCrudBaseUrl()}/functions/v1/${functionName}`;
 }
 
+const isFunctionNotFoundError = (error: CrudError | null | undefined, functionName: string) => {
+  if (!error) return false;
+  const text = `${error.message || ""} ${error.details || ""}`.toLowerCase();
+  return error.status === 404 || (text.includes(functionName.toLowerCase()) && text.includes("not found"));
+};
+
 function getAdminCrudApiKey() {
   return String(import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? "").trim();
 }
@@ -269,13 +275,46 @@ export async function adminAiGenerate(
     model?: string;
   }
 ): Promise<CrudResult<string>> {
-  return performAdminCrudRequest(getSelfHostedFunctionUrl("ai-generate"), {
-    body: JSON.stringify({
-      prompt,
-      systemPrompt: options?.systemPrompt,
-      temperature: options?.temperature,
-      model: options?.model,
-    }),
+  const payload = {
+    action: "ai-generate",
+    table: "properties",
+    prompt,
+    systemPrompt: options?.systemPrompt,
+    temperature: options?.temperature,
+    model: options?.model,
+  };
+
+  const legacyRouterResult = await callAdminCrud(payload);
+  if (!legacyRouterResult.error) return legacyRouterResult as CrudResult<string>;
+
+  const legacyText = `${legacyRouterResult.error.message || ""} ${legacyRouterResult.error.details || ""}`.toLowerCase();
+  const shouldProbeDedicatedFunction =
+    legacyText.includes("ação") ||
+    legacyText.includes("acao") ||
+    legacyText.includes("action") ||
+    legacyText.includes("table") ||
+    legacyText.includes("tabela");
+
+  if (!shouldProbeDedicatedFunction) {
+    return legacyRouterResult as CrudResult<string>;
+  }
+
+  const dedicatedResult = await performAdminCrudRequest(getSelfHostedFunctionUrl("ai-generate"), {
+    body: JSON.stringify(payload),
     headers: { "Content-Type": "application/json" },
   });
+
+  if (isFunctionNotFoundError(dedicatedResult.error, "ai-generate")) {
+    return {
+      data: null,
+      error: {
+        message: "IA não registrada no runtime self-hosted. Atualize o VPS com: cd /opt/simply-imoveis/docker && sudo bash quick-update.sh",
+        stage: "selfhosted.functions.router",
+        details: legacyRouterResult.error.message,
+        status: 404,
+      },
+    };
+  }
+
+  return dedicatedResult as CrudResult<string>;
 }
