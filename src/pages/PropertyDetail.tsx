@@ -105,21 +105,30 @@ const PropertyDetail = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] bg-black/95 flex items-center justify-center p-0 sm:p-4"
+            className="fixed inset-0 z-[60] bg-black/95 flex flex-col"
           >
-            <button 
-              onClick={() => setLightboxOpen(false)} 
-              className="absolute top-4 right-4 text-white/70 hover:text-white z-20 p-2 bg-black/20 rounded-full backdrop-blur-sm"
-            >
-              <X size={28} />
-            </button>
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4">
+              <div className="text-white/80 text-sm font-medium">
+                {currentImage + 1} / {images.length}
+              </div>
+              <button
+                onClick={() => setLightboxOpen(false)}
+                className="text-white/70 hover:text-white p-2 bg-white/10 hover:bg-white/20 rounded-full backdrop-blur-sm transition-colors"
+                aria-label="Fechar slideshow"
+              >
+                <X size={24} />
+              </button>
+            </div>
 
-            <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
-              <Carousel 
+            {/* Slideshow stage */}
+            <div className="flex-1 min-h-0 flex items-center justify-center px-0 sm:px-6 pb-4">
+              <Carousel
                 className="w-full h-full"
                 opts={{
                   startIndex: currentImage,
                   loop: true,
+                  align: "center",
                 }}
                 setApi={(api) => {
                   api?.on("select", () => {
@@ -128,28 +137,24 @@ const PropertyDetail = () => {
                 }}
               >
                 <CarouselContent className="h-full ml-0">
-                  {images.map((img, i) => (
-                    <CarouselItem key={img.id} className="h-full pl-0 flex items-center justify-center">
+                  {images.map((img) => (
+                    <CarouselItem
+                      key={img.id}
+                      className="h-full pl-0 flex items-center justify-center"
+                    >
                       <img
                         src={getMediaUrl(img.file_path)}
                         alt={property.title}
-                        className="max-w-full max-h-full object-contain select-none"
+                        className="max-w-[100vw] max-h-[calc(100dvh-100px)] sm:max-w-[90vw] sm:max-h-[calc(100dvh-120px)] w-auto h-auto object-contain select-none"
                         draggable={false}
                       />
                     </CarouselItem>
                   ))}
                 </CarouselContent>
-                
-                {/* Desktop controls */}
-                <div className="hidden sm:block">
-                  <CarouselPrevious className="left-6 w-12 h-12 bg-white/10 hover:bg-white/20 border-none text-white backdrop-blur-md" />
-                  <CarouselNext className="right-6 w-12 h-12 bg-white/10 hover:bg-white/20 border-none text-white backdrop-blur-md" />
-                </div>
 
-                {/* Counter indicator */}
-                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-black/50 backdrop-blur-md text-white px-4 py-2 rounded-full text-sm font-medium z-10">
-                  {currentImage + 1} / {images.length}
-                </div>
+                {/* Controls */}
+                <CarouselPrevious className="left-2 sm:left-4 w-10 h-10 sm:w-12 sm:h-12 bg-white/10 hover:bg-white/20 border-none text-white backdrop-blur-md" />
+                <CarouselNext className="right-2 sm:right-4 w-10 h-10 sm:w-12 sm:h-12 bg-white/10 hover:bg-white/20 border-none text-white backdrop-blur-md" />
               </Carousel>
             </div>
           </motion.div>
